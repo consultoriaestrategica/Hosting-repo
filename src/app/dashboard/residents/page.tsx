@@ -39,11 +39,13 @@ export default function ResidentsPage() {
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Residentes</h1>
         <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" className="h-8 gap-1">
-            <PlusCircle className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Agregar Nuevo Residente
-            </span>
+          <Button size="sm" className="h-8 gap-1" asChild>
+            <Link href="/dashboard/residents/new">
+              <PlusCircle className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Agregar Nuevo Residente
+              </span>
+            </Link>
           </Button>
         </div>
       </div>
