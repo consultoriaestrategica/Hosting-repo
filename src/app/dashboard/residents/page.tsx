@@ -26,11 +26,11 @@ import {
 import { Badge } from "@/components/ui/badge"
 
 const residents = [
-  { id: "res-001", name: "Maria Rodriguez", age: 82, pathology: "Alzheimer", dependency: "Alta" },
-  { id: "res-002", name: "Carlos Gomez", age: 78, pathology: "Hipertensión", dependency: "Media" },
-  { id: "res-003", name: "Ana Torres", age: 85, pathology: "Diabetes", dependency: "Media" },
-  { id: "res-004", name: "Luis Fernandez", age: 75, pathology: "Artritis", dependency: "Baja" },
-  { id: "res-005", name: "Elena Sanchez", age: 90, pathology: "Cardiopatía", dependency: "Alta" },
+  { id: "res-001", name: "Maria Rodriguez", age: 82, pathology: "Alzheimer", dependency: "Alta", status: "Activo" },
+  { id: "res-002", name: "Carlos Gomez", age: 78, pathology: "Hipertensión", dependency: "Media", status: "Activo" },
+  { id: "res-003", name: "Ana Torres", age: 85, pathology: "Diabetes", dependency: "Media", status: "Inactivo" },
+  { id: "res-004", name: "Luis Fernandez", age: 75, pathology: "Artritis", dependency: "Baja", status: "Activo" },
+  { id: "res-005", name: "Elena Sanchez", age: 90, pathology: "Cardiopatía", dependency: "Alta", status: "Activo" },
 ]
 
 export default function ResidentsPage() {
@@ -63,6 +63,7 @@ export default function ResidentsPage() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Edad</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Patología Principal</TableHead>
                 <TableHead>Nivel de Dependencia</TableHead>
                 <TableHead>
@@ -75,6 +76,11 @@ export default function ResidentsPage() {
                 <TableRow key={resident.id}>
                   <TableCell className="font-medium">{resident.name}</TableCell>
                   <TableCell>{resident.age}</TableCell>
+                  <TableCell>
+                     <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>
+                      {resident.status}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{resident.pathology}</TableCell>
                   <TableCell>
                     <Badge

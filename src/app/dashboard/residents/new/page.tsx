@@ -31,6 +31,7 @@ const residentFormSchema = z.object({
   dob: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de nacimiento inválida." }),
   idNumber: z.string().min(5, { message: "La cédula debe tener al menos 5 caracteres." }),
   gender: z.enum(["Femenino", "Masculino", "Otro"]),
+  status: z.enum(["Activo", "Inactivo"]),
   pathologies: z.string().optional(),
   allergies: z.string().optional(),
   medications: z.string().optional(),
@@ -62,6 +63,7 @@ export default function NewResidentPage() {
       familyKinship: "",
       familyPhone: "",
       familyEmail: "",
+      status: "Activo",
     },
   })
 
@@ -159,84 +161,103 @@ export default function NewResidentPage() {
                   <CardTitle>Información Médica y de Cuidado</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="pathologies"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Patologías Principales</FormLabel>
-                           <FormControl>
-                            <Textarea placeholder="Ej. Alzheimer, Hipertensión (separadas por comas)" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="medications"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Medicamentos Recetados</FormLabel>
-                           <FormControl>
-                            <Textarea placeholder="Ej. Donepezilo 10mg, Lisinopril 20mg (separadas por comas)" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                   <div className="grid sm:grid-cols-2 gap-4">
-                     <FormField
-                      control={form.control}
-                      name="allergies"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Alergias Conocidas</FormLabel>
-                           <FormControl>
-                            <Textarea placeholder="Ej. Penicilina, Mariscos (separadas por comas)" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="diet"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Plan de Alimentación</FormLabel>
-                           <FormControl>
-                            <Textarea placeholder="Ej. Baja en sodio, alimentos blandos" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                   <FormField
-                      control={form.control}
-                      name="dependency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nivel de Dependencia</FormLabel>
-                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormField
+                        control={form.control}
+                        name="pathologies"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Patologías Principales</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccione un nivel" />
-                              </SelectTrigger>
+                                <Textarea placeholder="Ej. Alzheimer, Hipertensión (separadas por comas)" {...field} />
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Baja">Baja</SelectItem>
-                              <SelectItem value="Media">Media</SelectItem>
-                              <SelectItem value="Alta">Alta</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="medications"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Medicamentos Recetados</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Ej. Donepezilo 10mg, Lisinopril 20mg (separadas por comas)" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="allergies"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Alergias Conocidas</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Ej. Penicilina, Mariscos (separadas por comas)" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                         <FormField
+                        control={form.control}
+                        name="diet"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Plan de Alimentación</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Ej. Baja en sodio, alimentos blandos" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="dependency"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Nivel de Dependencia</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccione un nivel" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="Baja">Baja</SelectItem>
+                                    <SelectItem value="Media">Media</SelectItem>
+                                    <SelectItem value="Alta">Alta</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                        <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Estado</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleccione el estado" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                <SelectItem value="Activo">Activo</SelectItem>
+                                <SelectItem value="Inactivo">Inactivo</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </div>
                 </CardContent>
               </Card>
             </div>
