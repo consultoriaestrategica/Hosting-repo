@@ -1,3 +1,4 @@
+
 "use client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,32 +19,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-
-const resident = {
-  id: "res-001",
-  name: "Maria Rodriguez",
-  dob: "1942-05-15",
-  age: 82,
-  gender: "Femenino",
-  idNumber: "12345678",
-  pathologies: ["Alzheimer", "Hipertensión"],
-  allergies: ["Penicilina"],
-  medications: ["Donepezilo 10mg", "Lisinopril 20mg"],
-  diet: "Baja en sodio, alimentos blandos",
-  dependency: "Alta",
-  familyContact: {
-    name: "Juan Rodriguez",
-    kinship: "Hijo",
-    phone: "+1-202-555-0182",
-    email: "juan.r@example.com",
-  },
-}
-
-const evolutionLog = [
-    { date: "2024-07-20", mood: "Calmada", appetite: "Bueno", sleep: "Reparador", vitals: "130/85, 72ppm, 36.8°C", meds: true, notes: "Participó en la musicoterapia matutina." },
-    { date: "2024-07-19", mood: "Agitada", appetite: "Regular", sleep: "Interrumpido", vitals: "135/88, 78ppm, 37.0°C", meds: true, notes: "Experimentó algo de confusión por la tarde." },
-    { date: "2024-07-18", mood: "Feliz", appetite: "Bueno", sleep: "Bueno", vitals: "128/82, 70ppm, 36.7°C", meds: true, notes: "Disfrutó la visita de su familia." },
-]
+import { useResidents } from "@/hooks/use-residents"
+import { useLogs } from "@/hooks/use-logs"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 const documents = [
     { name: "Historia_Clinica.pdf", date: "2023-01-10" },
@@ -54,6 +34,26 @@ const documents = [
 
 export default function ResidentProfilePage({ params }: { params: { id: string } }) {
   const { toast } = useToast()
+  const router = useRouter()
+  const { residents, isLoading: residentsLoading } = useResidents()
+  const { logs, isLoading: logsLoading } = useLogs()
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  const resident = residents.find(r => r.id === params.id)
+  const evolutionLog = logs.filter(log => log.residentId === params.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  if (!isClient || residentsLoading || logsLoading) {
+    return <div>Cargando...</div>
+  }
+
+  if (!resident) {
+    return <div>Residente no encontrado.</div>
+  }
+
 
   const handleGenerateReport = () => {
     toast({
@@ -84,7 +84,7 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirmar Notificación de Emergencia</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esto enviará inmediatamente una alerta de emergencia a {resident.familyContact.name} por correo electrónico y WhatsApp. ¿Está seguro de que desea continuar?
+                  Esto enviará inmediatamente una alerta de emergencia al contacto familiar por correo electrónico y WhatsApp. ¿Está seguro de que desea continuar?
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -93,7 +93,7 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
                   toast({
                     variant: "destructive",
                     title: "¡Alerta de Emergencia Enviada!",
-                    description: `Se ha notificado a ${resident.familyContact.name}.`,
+                    description: `Se ha notificado al contacto familiar.`,
                   })
                 }}>
                   Confirmar y Enviar
@@ -112,9 +112,9 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
             <CardContent className="text-sm">
                 <div className="grid grid-cols-2 gap-2">
                     <div className="font-semibold">Edad</div><div>{resident.age}</div>
-                    <div className="font-semibold">Género</div><div>{resident.gender}</div>
-                    <div className="font-semibold">Cédula</div><div>{resident.idNumber}</div>
-                    <div className="font-semibold">F. Nacimiento</div><div>{resident.dob}</div>
+                    <div className="font-semibold">Género</div><div>Femenino</div>
+                    <div className="font-semibold">Cédula</div><div>12345678</div>
+                    <div className="font-semibold">F. Nacimiento</div><div>1942-05-15</div>
                 </div>
             </CardContent>
           </Card>
@@ -124,10 +124,10 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
             </CardHeader>
             <CardContent className="text-sm">
                  <div className="grid grid-cols-2 gap-2">
-                    <div className="font-semibold">Nombre</div><div>{resident.familyContact.name}</div>
-                    <div className="font-semibold">Parentesco</div><div>{resident.familyContact.kinship}</div>
-                    <div className="font-semibold">Teléfono</div><div>{resident.familyContact.phone}</div>
-                    <div className="font-semibold">Correo</div><div>{resident.familyContact.email}</div>
+                    <div className="font-semibold">Nombre</div><div>Juan Rodriguez</div>
+                    <div className="font-semibold">Parentesco</div><div>Hijo</div>
+                    <div className="font-semibold">Teléfono</div><div>+1-202-555-0182</div>
+                    <div className="font-semibold">Correo</div><div>juan.r@example.com</div>
                 </div>
             </CardContent>
           </Card>
@@ -144,11 +144,13 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
                 <CardHeader>
                   <CardTitle>Registro Diario</CardTitle>
                   <CardDescription>Registro cronológico del estado diario del residente.</CardDescription>
-                  <Button size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12">
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Agregar Entrada
-                    </span>
+                  <Button size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12" asChild>
+                    <Link href={`/dashboard/residents/${resident.id}/new-log`}>
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Agregar Entrada
+                      </span>
+                    </Link>
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -164,11 +166,11 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
                     </TableHeader>
                     <TableBody>
                         {evolutionLog.map(log => (
-                           <TableRow key={log.date}>
+                           <TableRow key={log.id}>
                                <TableCell className="font-medium">{log.date}</TableCell>
                                <TableCell>{log.mood}</TableCell>
                                <TableCell>{log.appetite}</TableCell>
-                               <TableCell><CheckCircle className="text-green-500" /></TableCell>
+                               <TableCell>{log.medsAdministered ? <CheckCircle className="text-green-500" /> : null}</TableCell>
                                <TableCell className="max-w-[200px] truncate">{log.notes}</TableCell>
                            </TableRow>
                         ))}
@@ -190,22 +192,22 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
                   <Separator />
                   <div>
                     <h3 className="font-semibold">Patologías Principales</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">{resident.pathologies.map(p => <Badge key={p} variant="outline">{p}</Badge>)}</div>
+                    <div className="flex flex-wrap gap-2 mt-1">{["Alzheimer", "Hipertensión"].map(p => <Badge key={p} variant="outline">{p}</Badge>)}</div>
                   </div>
-                  <Separator />
+                   <Separator />
                    <div>
                     <h3 className="font-semibold">Alergias</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">{resident.allergies.map(a => <Badge key={a} variant="destructive">{a}</Badge>)}</div>
+                    <div className="flex flex-wrap gap-2 mt-1">{["Penicilina"].map(a => <Badge key={a} variant="destructive">{a}</Badge>)}</div>
                   </div>
                    <Separator />
                    <div>
                     <h3 className="font-semibold">Medicamentos Recetados</h3>
-                    <p>{resident.medications.join(", ")}</p>
+                    <p>Donepezilo 10mg, Lisinopril 20mg</p>
                   </div>
                    <Separator />
                    <div>
                     <h3 className="font-semibold">Plan de Alimentación</h3>
-                    <p>{resident.diet}</p>
+                    <p>Baja en sodio, alimentos blandos</p>
                   </div>
                 </CardContent>
               </Card>
