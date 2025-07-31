@@ -10,14 +10,16 @@ type Resident = {
   pathology: string;
   dependency: "Baja" | "Media" | "Alta";
   status: "Activo" | "Inactivo";
+  admissionDate: string;
+  roomType: "Básica" | "Premium";
 };
 
 const initialResidents: Resident[] = [
-  { id: "res-001", name: "Maria Rodriguez", age: 82, pathology: "Alzheimer", dependency: "Alta", status: "Activo" },
-  { id: "res-002", name: "Carlos Gomez", age: 78, pathology: "Hipertensión", dependency: "Media", status: "Activo" },
-  { id: "res-003", name: "Ana Torres", age: 85, pathology: "Diabetes", dependency: "Media", status: "Inactivo" },
-  { id: "res-004", name: "Luis Fernandez", age: 75, pathology: "Artritis", dependency: "Baja", status: "Activo" },
-  { id: "res-005", name: "Elena Sanchez", age: 90, pathology: "Cardiopatía", dependency: "Alta", status: "Activo" },
+  { id: "res-001", name: "Maria Rodriguez", age: 82, pathology: "Alzheimer", dependency: "Alta", status: "Activo", admissionDate: "2023-01-15", roomType: "Premium" },
+  { id: "res-002", name: "Carlos Gomez", age: 78, pathology: "Hipertensión", dependency: "Media", status: "Activo", admissionDate: "2023-03-20", roomType: "Básica" },
+  { id: "res-003", name: "Ana Torres", age: 85, pathology: "Diabetes", dependency: "Media", status: "Inactivo", admissionDate: "2022-11-10", roomType: "Básica" },
+  { id: "res-004", name: "Luis Fernandez", age: 75, pathology: "Artritis", dependency: "Baja", status: "Activo", admissionDate: "2024-02-01", roomType: "Premium" },
+  { id: "res-005", name: "Elena Sanchez", age: 90, pathology: "Cardiopatía", dependency: "Alta", status: "Activo", admissionDate: "2021-06-12", roomType: "Premium" },
 ];
 
 const RESIDENTS_STORAGE_KEY = 'residents';
@@ -42,8 +44,9 @@ export function useResidents() {
     setIsLoading(false);
   }, []);
 
-  const addResident = useCallback((newResident: Resident) => {
-    const updatedResidents = [...residents, newResident];
+  const addResident = useCallback((newResident: Omit<Resident, 'id'>) => {
+    const residentWithId = { ...newResident, id: `res-${Date.now()}` };
+    const updatedResidents = [...residents, residentWithId];
     setResidents(updatedResidents);
     try {
         localStorage.setItem(RESIDENTS_STORAGE_KEY, JSON.stringify(updatedResidents));

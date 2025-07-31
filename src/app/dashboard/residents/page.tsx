@@ -50,7 +50,7 @@ export default function ResidentsPage() {
           <Button size="sm" className="h-8 gap-1" asChild>
             <Link href="/dashboard/residents/new">
               <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-rap">
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Agregar Nuevo Residente
               </span>
             </Link>
@@ -70,9 +70,9 @@ export default function ResidentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Edad</TableHead>
+                <TableHead>Habitación</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Patología Principal</TableHead>
+                <TableHead>F. de Ingreso</TableHead>
                 <TableHead>Nivel de Dependencia</TableHead>
                 <TableHead>
                   <span className="sr-only">Acciones</span>
@@ -83,13 +83,17 @@ export default function ResidentsPage() {
               {residents.map((resident) => (
                 <TableRow key={resident.id}>
                   <TableCell className="font-medium">{resident.name}</TableCell>
-                  <TableCell>{resident.age}</TableCell>
+                  <TableCell>
+                     <Badge variant={resident.roomType === "Premium" ? "default" : "secondary"}>
+                      {resident.roomType}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                      <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>
                       {resident.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{resident.pathology}</TableCell>
+                  <TableCell>{resident.admissionDate}</TableCell>
                   <TableCell>
                     <Badge
                       variant={

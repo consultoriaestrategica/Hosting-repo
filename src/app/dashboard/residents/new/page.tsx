@@ -44,6 +44,8 @@ const residentFormSchema = z.object({
   familyKinship: z.string().min(2, { message: "El parentesco debe tener al menos 2 caracteres." }),
   familyPhone: z.string().min(7, { message: "El teléfono debe ser válido." }),
   familyEmail: z.string().email({ message: "Correo electrónico inválido." }),
+  admissionDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de ingreso inválida." }),
+  roomType: z.enum(["Básica", "Premium"]),
 })
 
 type ResidentFormValues = z.infer<typeof residentFormSchema>
@@ -73,18 +75,20 @@ export default function NewResidentPage() {
       familyPhone: "",
       familyEmail: "",
       status: "Activo",
+      admissionDate: new Date().toISOString().split('T')[0], // Default to today
     },
   })
 
  function onSubmit(data: ResidentFormValues) {
     const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
     const newResident = {
-        id: `res-${Date.now()}`,
         name: data.name,
         age: age,
         pathology: data.pathologies?.split(',')[0].trim() || 'N/A',
         dependency: data.dependency,
         status: data.status,
+        admissionDate: data.admissionDate,
+        roomType: data.roomType,
     };
     addResident(newResident);
     toast({
@@ -169,6 +173,40 @@ export default function NewResidentPage() {
                               <SelectItem value="Femenino">Femenino</SelectItem>
                               <SelectItem value="Masculino">Masculino</SelectItem>
                               <SelectItem value="Otro">Otro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="admissionDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fecha de Ingreso</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="roomType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de Habitación</FormLabel>
+                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione una habitación" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Básica">Habitación Básica</SelectItem>
+                              <SelectItem value="Premium">Habitación Premium</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
