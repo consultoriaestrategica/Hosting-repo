@@ -19,11 +19,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import NewLogForm from "./new-log-form"
+
 
 const documents = [
     { name: "Historia_Clinica.pdf", date: "2023-01-10" },
@@ -38,6 +50,7 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
   const [isClient, setIsClient] = useState(false)
+  const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
@@ -144,14 +157,23 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
                 <CardHeader>
                   <CardTitle>Registro Diario</CardTitle>
                   <CardDescription>Registro cronológico del estado diario del residente.</CardDescription>
-                  <Button size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12" asChild>
-                    <Link href={`/dashboard/residents/${resident.id}/new-log`}>
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Agregar Entrada
-                      </span>
-                    </Link>
-                  </Button>
+                   <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
+                        <DialogTrigger asChild>
+                           <Button size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12">
+                                <PlusCircle className="h-3.5 w-3.5" />
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                                    Agregar Entrada
+                                </span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-4xl">
+                            <DialogHeader>
+                                <DialogTitle>Agregar Registro de Evolución para {resident.name}</DialogTitle>
+                                <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
+                            </DialogHeader>
+                            <NewLogForm residentId={resident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
+                        </DialogContent>
+                    </Dialog>
                 </CardHeader>
                 <CardContent>
                    <Table>
@@ -254,3 +276,5 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </>
   )
 }
+
+    
