@@ -26,23 +26,23 @@ import {
 import { Badge } from "@/components/ui/badge"
 
 const residents = [
-  { id: "res-001", name: "Maria Rodriguez", age: 82, pathology: "Alzheimer's", dependency: "High" },
-  { id: "res-002", name: "Carlos Gomez", age: 78, pathology: "Hypertension", dependency: "Medium" },
-  { id: "res-003", name: "Ana Torres", age: 85, pathology: "Diabetes", dependency: "Medium" },
-  { id: "res-004", name: "Luis Fernandez", age: 75, pathology: "Arthritis", dependency: "Low" },
-  { id: "res-005", name: "Elena Sanchez", age: 90, pathology: "Heart Disease", dependency: "High" },
+  { id: "res-001", name: "Maria Rodriguez", age: 82, pathology: "Alzheimer", dependency: "Alta" },
+  { id: "res-002", name: "Carlos Gomez", age: 78, pathology: "Hipertensión", dependency: "Media" },
+  { id: "res-003", name: "Ana Torres", age: 85, pathology: "Diabetes", dependency: "Media" },
+  { id: "res-004", name: "Luis Fernandez", age: 75, pathology: "Artritis", dependency: "Baja" },
+  { id: "res-005", name: "Elena Sanchez", age: 90, pathology: "Cardiopatía", dependency: "Alta" },
 ]
 
 export default function ResidentsPage() {
   return (
     <>
       <div className="flex items-center">
-        <h1 className="text-3xl font-bold font-headline">Residents</h1>
+        <h1 className="text-3xl font-bold font-headline">Residentes</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button size="sm" className="h-8 gap-1">
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Add New Resident
+              Agregar Nuevo Residente
             </span>
           </Button>
         </div>
@@ -50,21 +50,21 @@ export default function ResidentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Resident Roster</CardTitle>
+          <CardTitle>Lista de Residentes</CardTitle>
           <CardDescription>
-            Manage and view details of all residents.
+            Administre y vea los detalles de todos los residentes.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Age</TableHead>
-                <TableHead>Main Pathology</TableHead>
-                <TableHead>Dependency Level</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Edad</TableHead>
+                <TableHead>Patología Principal</TableHead>
+                <TableHead>Nivel de Dependencia</TableHead>
                 <TableHead>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">Acciones</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -77,9 +77,9 @@ export default function ResidentsPage() {
                   <TableCell>
                     <Badge
                       variant={
-                        resident.dependency === "High"
+                        resident.dependency === "Alta"
                           ? "destructive"
-                          : resident.dependency === "Medium"
+                          : resident.dependency === "Media"
                           ? "secondary"
                           : "outline"
                       }
@@ -100,12 +100,12 @@ export default function ResidentsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuItem asChild>
-                           <Link href={`/dashboard/residents/${resident.id}`}>View Profile</Link>
+                           <Link href={`/dashboard/residents/${resident.id}`}>Ver Perfil</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>Generate Report</DropdownMenuItem>
+                        <DropdownMenuItem>Editar</DropdownMenuItem>
+                        <DropdownMenuItem>Generar Reporte</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

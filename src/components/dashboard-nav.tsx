@@ -23,11 +23,11 @@ export function DashboardNav() {
         <SidebarMenuButton
           asChild
           isActive={isActive("/dashboard")}
-          tooltip="Dashboard"
+          tooltip="Panel de Control"
         >
           <Link href="/dashboard">
             <BarChart3 />
-            <span>Dashboard</span>
+            <span>Panel de Control</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -35,11 +35,11 @@ export function DashboardNav() {
         <SidebarMenuButton
           asChild
           isActive={isActive("/dashboard/residents")}
-          tooltip="Residents"
+          tooltip="Residentes"
         >
           <Link href="/dashboard/residents">
             <Users />
-            <span>Residents</span>
+            <span>Residentes</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -47,11 +47,11 @@ export function DashboardNav() {
         <SidebarMenuButton
           asChild
           isActive={isActive("/dashboard/logs")}
-          tooltip="Daily Log"
+          tooltip="Registro Diario"
         >
           <Link href="#">
             <ClipboardList />
-            <span>Daily Log</span>
+            <span>Registro Diario</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -59,11 +59,11 @@ export function DashboardNav() {
         <SidebarMenuButton
           asChild
           isActive={isActive("/dashboard/reports")}
-          tooltip="Reports"
+          tooltip="Reportes"
         >
           <Link href="#">
             <FileText />
-            <span>Reports</span>
+            <span>Reportes</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -71,11 +71,11 @@ export function DashboardNav() {
         <SidebarMenuButton
           asChild
           isActive={isActive("/dashboard/settings")}
-          tooltip="Settings"
+          tooltip="Configuración"
         >
           <Link href="#">
             <Settings />
-            <span>Settings</span>
+            <span>Configuración</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>

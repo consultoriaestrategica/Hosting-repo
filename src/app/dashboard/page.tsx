@@ -12,59 +12,59 @@ const ageDistributionData = [
 ];
 
 const pathologyData = [
-  { name: 'Hypertension', value: 15, fill: "hsl(var(--chart-1))" },
+  { name: 'Hipertensión', value: 15, fill: "hsl(var(--chart-1))" },
   { name: 'Diabetes', value: 10, fill: "hsl(var(--chart-2))" },
-  { name: 'Alzheimer\'s', value: 7, fill: "hsl(var(--chart-3))" },
-  { name: 'Arthritis', value: 9, fill: "hsl(var(--chart-4))" },
+  { name: 'Alzheimer', value: 7, fill: "hsl(var(--chart-3))" },
+  { name: 'Artritis', value: 9, fill: "hsl(var(--chart-4))" },
 ];
 
 const dependencyData = [
-  { name: 'Low', value: 10, fill: "hsl(var(--chart-1))" },
-  { name: 'Medium', value: 15, fill: "hsl(var(--chart-2))" },
-  { name: 'High', value: 6, fill: "hsl(var(--chart-3))" },
+  { name: 'Bajo', value: 10, fill: "hsl(var(--chart-1))" },
+  { name: 'Medio', value: 15, fill: "hsl(var(--chart-2))" },
+  { name: 'Alto', value: 6, fill: "hsl(var(--chart-3))" },
 ];
 
 export default function DashboardPage() {
   return (
     <>
-      <h1 className="text-3xl font-bold font-headline mb-6">Dashboard</h1>
+      <h1 className="text-3xl font-bold font-headline mb-6">Panel de Control</h1>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Residents</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Residentes</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">31</div>
-            <p className="text-xs text-muted-foreground">+2 since last month</p>
+            <p className="text-xs text-muted-foreground">+2 desde el mes pasado</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Dependency</CardTitle>
+            <CardTitle className="text-sm font-medium">Dependencia Promedio</CardTitle>
             <Accessibility className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Medium</div>
-            <p className="text-xs text-muted-foreground">Based on current assessments</p>
+            <div className="text-2xl font-bold">Media</div>
+            <p className="text-xs text-muted-foreground">Basado en evaluaciones actuales</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Common Pathology</CardTitle>
+            <CardTitle className="text-sm font-medium">Patología Común</CardTitle>
             <Stethoscope className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Hypertension</div>
-            <p className="text-xs text-muted-foreground">Most prevalent condition</p>
+            <div className="text-2xl font-bold">Hipertensión</div>
+            <p className="text-xs text-muted-foreground">Condición más prevalente</p>
           </CardContent>
         </Card>
       </div>
       <div className="grid gap-4 mt-6 md:grid-cols-2 lg:grid-cols-7">
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle>Age Distribution</CardTitle>
-            <CardDescription>Number of residents by age group.</CardDescription>
+            <CardTitle>Distribución por Edad</CardTitle>
+            <CardDescription>Número de residentes por grupo de edad.</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={{}} className="h-[300px] w-full">
@@ -79,8 +79,8 @@ export default function DashboardPage() {
         </Card>
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Distribution by Pathology</CardTitle>
-            <CardDescription>Most common health conditions.</CardDescription>
+            <CardTitle>Distribución por Patología</CardTitle>
+            <CardDescription>Condiciones de salud más comunes.</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
             <ChartContainer config={{}} className="h-[300px] w-full">
@@ -97,8 +97,8 @@ export default function DashboardPage() {
         </Card>
          <Card className="lg:col-span-7">
           <CardHeader>
-            <CardTitle>Dependency Level Distribution</CardTitle>
-            <CardDescription>Percentage of residents by dependency level.</CardDescription>
+            <CardTitle>Distribución del Nivel de Dependencia</CardTitle>
+            <CardDescription>Porcentaje de residentes por nivel de dependencia.</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
              <ChartContainer config={{}} className="h-[300px] w-full">

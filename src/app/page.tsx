@@ -12,48 +12,48 @@ export default function LoginPage() {
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold font-headline">Guardian Angel</h1>
+            <h1 className="text-3xl font-bold font-headline">Ángel Guardián</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your credentials to access the portal
+              Ingrese sus credenciales para acceder al portal
             </p>
           </div>
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl font-headline">Login</CardTitle>
+              <CardTitle className="text-2xl font-headline">Iniciar Sesión</CardTitle>
               <CardDescription>
-                Select your role to sign in.
+                Seleccione su rol para iniciar sesión.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Correo Electrónico</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="m@ejemplo.com"
                   required
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Contraseña</Label>
                 </div>
                 <Input id="password" type="password" required />
               </div>
               <div className="grid gap-2 mt-4">
                  <Button asChild className="w-full">
                   <Link href="/dashboard">
-                    <Users className="mr-2 h-4 w-4" /> Admin Login
+                    <Users className="mr-2 h-4 w-4" /> Acceso Administrador
                   </Link>
                 </Button>
                 <Button asChild variant="secondary" className="w-full">
                   <Link href="/dashboard">
-                    <Stethoscope className="mr-2 h-4 w-4" /> Staff Login
+                    <Stethoscope className="mr-2 h-4 w-4" /> Acceso Personal
                   </Link>
                 </Button>
                  <Button asChild variant="outline" className="w-full">
                   <Link href="/dashboard">
-                    <HeartHandshake className="mr-2 h-4 w-4" /> Family Login
+                    <HeartHandshake className="mr-2 h-4 w-4" /> Acceso Familiares
                   </Link>
                 </Button>
               </div>
@@ -64,7 +64,7 @@ export default function LoginPage() {
       <div className="hidden bg-muted lg:block">
         <Image
           src="https://placehold.co/1200x900.png"
-          alt="Elderly care"
+          alt="Cuidado de ancianos"
           data-ai-hint="caregiver elderly"
           width="1200"
           height="900"

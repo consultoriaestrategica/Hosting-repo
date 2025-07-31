@@ -23,21 +23,21 @@ export default function DashboardLayout({
         <SidebarHeader>
           <Link href="/dashboard" className="flex items-center gap-2 font-headline text-lg font-semibold">
             <Home className="h-6 w-6" />
-            <span>Guardian Angel</span>
+            <span>Ángel Guardián</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
           <DashboardNav />
         </SidebarContent>
         <SidebarFooter>
-          {/* Footer content if any */}
+          
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
            <SidebarTrigger className="md:hidden" />
            <div className="w-full flex-1">
-             {/* Can add breadcrumbs or search here */}
+             
            </div>
            <UserNav />
         </header>
