@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button, type ButtonProps } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const useSidebar = () => {
   const [isOpen, setIsOpen] = React.useState(false)
@@ -74,35 +75,35 @@ function SidebarHeader({
     <div
       className={cn(
         "flex h-14 items-center border-b p-4 lg:h-[60px]",
+        !isOpen && "justify-center",
         className
       )}
       {...props}
     >
-      <div
-        className={cn(
-          "flex w-full items-center justify-between",
-          !isOpen && "justify-center"
-        )}
-      >
-        <div
-          className={cn(
-            "flex flex-1 items-center",
-            !isOpen && "hidden md:flex"
-          )}
-        >
-          {props.children}
-        </div>
-        {isMobile && (
-          <Button
-            variant="ghost"
-            className="p-1"
-            onClick={() => setIsOpen(false)}
-          >
-            <X className="h-6 w-6" />
-            <span className="sr-only">Close sidebar</span>
-          </Button>
-        )}
+      <div className={cn("flex flex-1 items-center", !isOpen && "hidden")}>
+        {props.children}
       </div>
+      {isMobile ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={() => setIsOpen(false)}
+        >
+          <X className="h-6 w-6" />
+          <span className="sr-only">Cerrar menú</span>
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          <span className="sr-only">Alternar menú</span>
+        </Button>
+      )}
     </div>
   )
 }
@@ -120,10 +121,12 @@ function SidebarFooter({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
+  const { isOpen } = useSidebarContext()
   return (
     <div
       className={cn(
         "mt-auto border-t p-4",
+        !isOpen && "p-2",
         className
       )}
       {...props}
@@ -133,7 +136,7 @@ function SidebarFooter({
 SidebarFooter.displayName = "SidebarFooter"
 
 const sidebarMenuStyles = cva(
-  "flex flex-col text-card-foreground [&>*:not(:last-child)]:mb-1",
+  "flex flex-col text-card-foreground",
   {
     variants: {},
   }
@@ -184,39 +187,60 @@ const sidebarMenuButtonStyles = cva(
 
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
-  ButtonProps & { isActive?: boolean; asChild?: boolean }
->(({ className, isActive, asChild = false, ...props }, ref) => {
+  ButtonProps & { isActive?: boolean; asChild?: boolean; tooltip?: string }
+>(({ className, isActive, asChild = false, tooltip, ...props }, ref) => {
   const { isOpen } = useSidebarContext()
-  const Comp = asChild ? "div" : Button
-  return (
-    <Comp
+
+  const button = (
+    <Button
       ref={ref}
       variant="ghost"
       className={cn(
         sidebarMenuButtonStyles({ isActive, className }),
         !isOpen && "justify-center"
       )}
+      asChild={asChild}
       {...props}
     >
-      <div
-        className={cn(
-          "flex items-center",
-          !isOpen &&
-            "group-hover:absolute group-hover:left-1/2 group-hover:top-1/2 group-hover:-translate-x-1/2 group-hover:-translate-y-1/2"
-        )}
-      >
-        <div
-          className={cn(
-            "flex w-full items-center gap-2",
-            !isOpen && "justify-center"
-          )}
-        >
-          {props.children}
-        </div>
-      </div>
-    </Comp>
+      {asChild ? (
+        React.isValidElement(props.children) &&
+        React.cloneElement(props.children as React.ReactElement<any>, {
+          children: (
+            <>
+              {(props.children as any).props.children[0]}
+              <span className={cn("ml-2", isOpen ? "inline" : "hidden")}>
+                {(props.children as any).props.children[1]}
+              </span>
+            </>
+          ),
+        })
+      ) : (
+        <>
+          {React.isValidElement(props.children) && props.children}
+          <span className={cn("ml-2", isOpen ? "inline" : "hidden")}>
+            {props.title}
+          </span>
+        </>
+      )}
+    </Button>
   )
+
+  if (!isOpen && tooltip) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return button
 })
+
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 function SidebarTrigger({ className, ...props }: ButtonProps) {
@@ -245,7 +269,7 @@ function SidebarInset({
     <div
       className={cn(
         "flex min-h-dvh flex-1 flex-col transition-[margin-left] duration-300 ease-in-out",
-        !isOpen ? "md:ml-16" : "md:ml-xs",
+        !isOpen ? "md:ml-16" : "md:ml-72",
         className
       )}
       {...props}

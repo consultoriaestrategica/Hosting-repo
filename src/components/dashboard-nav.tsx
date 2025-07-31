@@ -14,71 +14,33 @@ export function DashboardNav() {
   const pathname = usePathname()
 
   const isActive = (path: string) => {
-    return pathname === path
+    return pathname === path || (path !== "/dashboard" && pathname.startsWith(path))
   }
+
+  const navItems = [
+    { href: "/dashboard", label: "Panel de Control", icon: <BarChart3 /> },
+    { href: "/dashboard/residents", label: "Residentes", icon: <Users /> },
+    { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList /> },
+    { href: "/dashboard/reports", label: "Reportes", icon: <FileText /> },
+    { href: "/dashboard/settings", label: "Configuración", icon: <Settings /> },
+  ]
 
   return (
     <SidebarMenu>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/dashboard")}
-          tooltip="Panel de Control"
-        >
-          <Link href="/dashboard">
-            <BarChart3 />
-            <span>Panel de Control</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/dashboard/residents")}
-          tooltip="Residentes"
-        >
-          <Link href="/dashboard/residents">
-            <Users />
-            <span>Residentes</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/dashboard/logs")}
-          tooltip="Registro Diario"
-        >
-          <Link href="#">
-            <ClipboardList />
-            <span>Registro Diario</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/dashboard/reports")}
-          tooltip="Reportes"
-        >
-          <Link href="#">
-            <FileText />
-            <span>Reportes</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/dashboard/settings")}
-          tooltip="Configuración"
-        >
-          <Link href="#">
-            <Settings />
-            <span>Configuración</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+      {navItems.map((item) => (
+        <SidebarMenuItem key={item.href}>
+          <SidebarMenuButton
+            asChild
+            isActive={isActive(item.href)}
+            tooltip={item.label}
+          >
+            <Link href={item.href}>
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
     </SidebarMenu>
   )
 }
