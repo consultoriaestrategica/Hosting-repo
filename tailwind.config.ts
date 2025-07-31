@@ -77,6 +77,9 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      spacing: {
+        xs: '20rem' /* 320px */
+      },
       keyframes: {
         'accordion-down': {
           from: {
