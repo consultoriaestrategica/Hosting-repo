@@ -28,14 +28,23 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useResidents } from "@/hooks/use-residents"
 import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ResidentsPage() {
   const { residents, isLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     setIsClient(true)
   }, [])
+
+  const handleGenerateReport = (residentName: string) => {
+    toast({
+      title: "Generando Reporte...",
+      description: `Se está creando un reporte en PDF para ${residentName}.`,
+    })
+  }
 
 
   if (!isClient || isLoading) {
@@ -125,7 +134,7 @@ export default function ResidentsPage() {
                            <Link href={`/dashboard/residents/${resident.id}`}>Ver Perfil</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem>Generar Reporte</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>Generar Reporte</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
