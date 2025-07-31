@@ -26,14 +26,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
 import NewLogForm from "./new-log-form"
 
 
@@ -45,8 +41,8 @@ const documents = [
 
 
 export default function ResidentProfilePage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { toast } = useToast()
-  const router = useRouter()
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
   const [isClient, setIsClient] = useState(false)
@@ -56,8 +52,8 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     setIsClient(true)
   }, [])
 
-  const resident = residents.find(r => r.id === params.id)
-  const evolutionLog = logs.filter(log => log.residentId === params.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const resident = residents.find(r => r.id === id)
+  const evolutionLog = logs.filter(log => log.residentId === id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   if (!isClient || residentsLoading || logsLoading) {
     return <div>Cargando...</div>
@@ -276,5 +272,3 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </>
   )
 }
-
-    
