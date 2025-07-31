@@ -1,3 +1,5 @@
+
+"use client"
 import Link from "next/link"
 import { PlusCircle, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,16 +26,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-
-const residents = [
-  { id: "res-001", name: "Maria Rodriguez", age: 82, pathology: "Alzheimer", dependency: "Alta", status: "Activo" },
-  { id: "res-002", name: "Carlos Gomez", age: 78, pathology: "Hipertensión", dependency: "Media", status: "Activo" },
-  { id: "res-003", name: "Ana Torres", age: 85, pathology: "Diabetes", dependency: "Media", status: "Inactivo" },
-  { id: "res-004", name: "Luis Fernandez", age: 75, pathology: "Artritis", dependency: "Baja", status: "Activo" },
-  { id: "res-005", name: "Elena Sanchez", age: 90, pathology: "Cardiopatía", dependency: "Alta", status: "Activo" },
-]
+import { useResidents } from "@/hooks/use-residents"
+import { useEffect, useState } from "react"
 
 export default function ResidentsPage() {
+  const { residents, isLoading } = useResidents()
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+
+  if (!isClient || isLoading) {
+    return <div>Cargando...</div>
+  }
+
   return (
     <>
       <div className="flex items-center">
@@ -42,7 +50,7 @@ export default function ResidentsPage() {
           <Button size="sm" className="h-8 gap-1" asChild>
             <Link href="/dashboard/residents/new">
               <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              <span className="sr-only sm:not-sr-only sm:whitespace-rap">
                 Agregar Nuevo Residente
               </span>
             </Link>

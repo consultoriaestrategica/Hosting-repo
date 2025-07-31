@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -25,6 +26,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { useResidents } from "@/hooks/use-residents"
+import { useState, useEffect } from "react"
 
 const residentFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -48,6 +51,12 @@ type ResidentFormValues = z.infer<typeof residentFormSchema>
 export default function NewResidentPage() {
   const { toast } = useToast()
   const router = useRouter()
+  const { addResident, isLoading } = useResidents()
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const form = useForm<ResidentFormValues>({
     resolver: zodResolver(residentFormSchema),
@@ -67,14 +76,29 @@ export default function NewResidentPage() {
     },
   })
 
-  function onSubmit(data: ResidentFormValues) {
-    console.log(data)
+ function onSubmit(data: ResidentFormValues) {
+    const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
+    const newResident = {
+        id: `res-${Date.now()}`,
+        name: data.name,
+        age: age,
+        pathology: data.pathologies?.split(',')[0].trim() || 'N/A',
+        dependency: data.dependency,
+        status: data.status,
+    };
+    addResident(newResident);
     toast({
       title: "Residente Registrado",
       description: `${data.name} ha sido agregado exitosamente.`,
     })
     router.push("/dashboard/residents")
   }
+
+
+  if (!isClient || isLoading) {
+    return <div>Cargando...</div>
+  }
+
 
   return (
     <>
@@ -329,7 +353,7 @@ export default function NewResidentPage() {
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="submit">Guardar Residente</Button>
+            <Button type="submit" disabled={isLoading}>Guardar Residente</Button>
           </div>
         </form>
       </Form>
