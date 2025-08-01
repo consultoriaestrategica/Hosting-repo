@@ -1,7 +1,7 @@
 
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, FileText, Pencil } from "lucide-react"
+import { PlusCircle, MoreHorizontal, FileText, ClipboardList } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -25,11 +25,20 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { useResidents } from "@/hooks/use-residents"
 import { useEffect, useState, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
+import NewLogForm from "./[id]/new-log-form"
 
 function ResidentsPageContent() {
   const { residents, isLoading } = useResidents()
@@ -37,6 +46,9 @@ function ResidentsPageContent() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
+  const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+  const [selectedResident, setSelectedResident] = useState<any | null>(null);
+
 
   useEffect(() => {
     setIsClient(true)
@@ -47,6 +59,11 @@ function ResidentsPageContent() {
       title: "Generando Reporte...",
       description: `Se está creando un reporte en PDF para ${residentName}.`,
     })
+  }
+  
+  const handleAddLogClick = (resident: any) => {
+    setSelectedResident(resident);
+    setIsLogDialogOpen(true);
   }
 
   if (!isClient || isLoading) {
@@ -141,9 +158,9 @@ function ResidentsPageContent() {
                         </DropdownMenuItem>
                         {!isFamilyRole && (
                           <>
-                            <DropdownMenuItem>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar
+                            <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
+                              <ClipboardList className="mr-2 h-4 w-4" />
+                              Agregar Evolución
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
                               <FileText className="mr-2 h-4 w-4" />
@@ -160,6 +177,18 @@ function ResidentsPageContent() {
           </Table>
         </CardContent>
       </Card>
+      
+      {selectedResident && (
+        <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
+            <DialogContent className="sm:max-w-4xl">
+                <DialogHeader>
+                    <DialogTitle>Agregar Registro de Evolución para {selectedResident.name}</DialogTitle>
+                    <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
+                </DialogHeader>
+                <NewLogForm residentId={selectedResident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
+            </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }
