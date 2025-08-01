@@ -281,6 +281,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   )
 }
 
+// This is the server component part
 export default function ResidentProfilePage({ params }: { params: { id: string } }) {
   return (
     <Suspense fallback={<div>Cargando...</div>}>
