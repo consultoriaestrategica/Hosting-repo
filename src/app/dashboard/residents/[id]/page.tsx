@@ -41,7 +41,7 @@ const documents = [
 ]
 
 function ResidentProfilePageContent({ params }: { params: { id: string } }) {
-  const id = params.id;
+  const { id } = params;
   const { toast } = useToast()
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
@@ -289,5 +289,3 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </Suspense>
   )
 }
-
-    
