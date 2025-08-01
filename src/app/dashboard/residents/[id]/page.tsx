@@ -41,7 +41,7 @@ const documents = [
 ]
 
 function ResidentProfilePageContent({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const id = params.id;
   const { toast } = useToast()
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
