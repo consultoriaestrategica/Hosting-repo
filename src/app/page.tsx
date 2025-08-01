@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -42,17 +43,17 @@ export default function LoginPage() {
               </div>
               <div className="grid gap-2 mt-4">
                  <Button asChild className="w-full">
-                  <Link href="/dashboard">
+                  <Link href="/dashboard?role=admin">
                     <Users className="mr-2 h-4 w-4" /> Acceso Administrador
                   </Link>
                 </Button>
                 <Button asChild variant="secondary" className="w-full">
-                  <Link href="/dashboard">
+                  <Link href="/dashboard?role=staff">
                     <Stethoscope className="mr-2 h-4 w-4" /> Acceso Personal
                   </Link>
                 </Button>
                  <Button asChild variant="outline" className="w-full">
-                  <Link href="/dashboard">
+                  <Link href="/dashboard?role=family">
                     <HeartHandshake className="mr-2 h-4 w-4" /> Acceso Familiares
                   </Link>
                 </Button>

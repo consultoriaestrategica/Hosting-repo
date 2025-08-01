@@ -29,8 +29,9 @@ import {
 } from "@/components/ui/dialog"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import NewLogForm from "./new-log-form"
+import { useSearchParams } from "next/navigation"
 
 
 const documents = [
@@ -39,14 +40,16 @@ const documents = [
     { name: "Consentimiento_Informado.pdf", date: "2023-01-11" },
 ]
 
-
-export default function ResidentProfilePage({ params }: { params: { id: string } }) {
+function ResidentProfilePageContent({ params }: { params: { id: string } }) {
   const { id } = params;
   const { toast } = useToast()
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
   const [isClient, setIsClient] = useState(false)
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
+  const searchParams = useSearchParams()
+  const role = searchParams.get('role') || 'admin';
+
 
   useEffect(() => {
     setIsClient(true)
@@ -63,6 +66,8 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     return <div>Residente no encontrado.</div>
   }
 
+  const isFamilyRole = role === 'family';
+
 
   const handleGenerateReport = () => {
     toast({
@@ -77,40 +82,42 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
         <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold font-headline tracking-tight sm:grow-0">
           Perfil de {resident.name}
         </h1>
-        <div className="hidden items-center gap-2 md:ml-auto md:flex">
-          <Button variant="outline" size="sm" onClick={handleGenerateReport}>
-            <FileText className="h-4 w-4 mr-2" />
-            Generar Reporte
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Alerta de Emergencia
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Notificación de Emergencia</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esto enviará inmediatamente una alerta de emergencia al contacto familiar por correo electrónico y WhatsApp. ¿Está seguro de que desea continuar?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                  toast({
-                    variant: "destructive",
-                    title: "¡Alerta de Emergencia Enviada!",
-                    description: `Se ha notificado al contacto familiar.`,
-                  })
-                }}>
-                  Confirmar y Enviar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        {!isFamilyRole && (
+          <div className="hidden items-center gap-2 md:ml-auto md:flex">
+            <Button variant="outline" size="sm" onClick={handleGenerateReport}>
+              <FileText className="h-4 w-4 mr-2" />
+              Generar Reporte
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Alerta de Emergencia
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Notificación de Emergencia</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esto enviará inmediatamente una alerta de emergencia al contacto familiar por correo electrónico y WhatsApp. ¿Está seguro de que desea continuar?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => {
+                    toast({
+                      variant: "destructive",
+                      title: "¡Alerta de Emergencia Enviada!",
+                      description: `Se ha notificado al contacto familiar.`,
+                    })
+                  }}>
+                    Confirmar y Enviar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
       <div className="grid flex-1 items-start gap-4 lg:grid-cols-3 lg:gap-8 mt-4">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-1 lg:gap-8">
@@ -146,30 +153,32 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
             <TabsList>
               <TabsTrigger value="evolution">Evolución Diaria</TabsTrigger>
               <TabsTrigger value="profile">Perfil Completo</TabsTrigger>
-              <TabsTrigger value="documents">Documentos</TabsTrigger>
+              {!isFamilyRole && <TabsTrigger value="documents">Documentos</TabsTrigger>}
             </TabsList>
             <TabsContent value="evolution">
               <Card>
                 <CardHeader>
                   <CardTitle>Registro Diario</CardTitle>
                   <CardDescription>Registro cronológico del estado diario del residente.</CardDescription>
-                   <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
-                        <DialogTrigger asChild>
-                           <Button size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12">
-                                <PlusCircle className="h-3.5 w-3.5" />
-                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                    Agregar Entrada
-                                </span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-4xl">
-                            <DialogHeader>
-                                <DialogTitle>Agregar Registro de Evolución para {resident.name}</DialogTitle>
-                                <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
-                            </DialogHeader>
-                            <NewLogForm residentId={resident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
-                        </DialogContent>
-                    </Dialog>
+                  {!isFamilyRole && (
+                    <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12">
+                                  <PlusCircle className="h-3.5 w-3.5" />
+                                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                                      Agregar Entrada
+                                  </span>
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-4xl">
+                              <DialogHeader>
+                                  <DialogTitle>Agregar Registro de Evolución para {resident.name}</DialogTitle>
+                                  <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
+                              </DialogHeader>
+                              <NewLogForm residentId={resident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
+                          </DialogContent>
+                      </Dialog>
+                  )}
                 </CardHeader>
                 <CardContent>
                    <Table>
@@ -270,5 +279,13 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
         </div>
       </div>
     </>
+  )
+}
+
+export default function ResidentProfilePage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <ResidentProfilePageContent params={params} />
+    </Suspense>
   )
 }
