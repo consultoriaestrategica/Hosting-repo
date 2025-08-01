@@ -59,6 +59,12 @@ export default function LoginPage() {
               </div>
             </CardContent>
           </Card>
+           <div className="mt-4 text-center text-sm">
+              ¿No tienes una cuenta?{' '}
+              <Link href="#" className="underline">
+                Regístrate
+              </Link>
+            </div>
         </div>
       </div>
       <div className="hidden bg-muted lg:block">
