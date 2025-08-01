@@ -40,7 +40,8 @@ const documents = [
     { name: "Consentimiento_Informado.pdf", date: "2023-01-11" },
 ]
 
-function ResidentProfilePageContent({ id }: { id: string }) {
+function ResidentProfilePageContent({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { toast } = useToast()
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
@@ -284,7 +285,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
 export default function ResidentProfilePage({ params }: { params: { id: string } }) {
   return (
     <Suspense fallback={<div>Cargando...</div>}>
-      <ResidentProfilePageContent id={params.id} />
+      <ResidentProfilePageContent params={params} />
     </Suspense>
   )
 }
