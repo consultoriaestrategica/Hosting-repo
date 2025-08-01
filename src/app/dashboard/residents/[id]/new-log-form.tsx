@@ -24,9 +24,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useLogs } from "@/hooks/use-logs"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
+import { Mic, MicOff } from "lucide-react"
 
 const logFormSchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha inválida." }),
@@ -48,16 +49,68 @@ interface NewLogFormProps {
 export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps) {
   const { toast } = useToast()
   const { addLog, isLoading } = useLogs()
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<any>(null)
 
   const form = useForm<LogFormValues>({
     resolver: zodResolver(logFormSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       medsAdministered: true,
+      notes: ""
     },
   })
 
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = true
+      recognitionRef.current.lang = 'es-ES'
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result) => result.transcript)
+          .join('')
+        form.setValue("notes", form.getValues("notes") + transcript)
+      }
+      recognitionRef.current.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error)
+        toast({
+            variant: "destructive",
+            title: "Error de Reconocimiento",
+            description: "No se pudo iniciar el dictado por voz."
+        })
+        setIsListening(false)
+      }
+    }
+  }, [form, toast])
+
+
+  const handleToggleListening = () => {
+    if (!recognitionRef.current) {
+        toast({
+            variant: "destructive",
+            title: "Navegador no compatible",
+            description: "Tu navegador no soporta el dictado por voz."
+        })
+      return
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    } else {
+      recognitionRef.current.start()
+      setIsListening(true)
+    }
+  }
+
  function onSubmit(data: LogFormValues) {
+    if (isListening) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    }
     const newLog = {
         residentId: residentId,
         ...data,
@@ -68,7 +121,11 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
       description: `Se ha añadido una nueva entrada de evolución.`,
     })
     onFormSubmit();
-    form.reset();
+    form.reset({
+        date: new Date().toISOString().split('T')[0],
+        medsAdministered: true,
+        notes: ""
+    });
   }
 
   return (
@@ -199,7 +256,19 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
                         <FormItem>
                         <FormLabel>Notas de Evolución</FormLabel>
                         <FormControl>
-                            <Textarea placeholder="Describa cualquier observación relevante..." {...field} />
+                            <div className="relative">
+                                <Textarea placeholder="Describa cualquier observación relevante..." {...field} />
+                                <Button
+                                    type="button"
+                                    size="icon"
+                                    variant={isListening ? "destructive" : "outline"}
+                                    className="absolute bottom-2 right-2 h-7 w-7"
+                                    onClick={handleToggleListening}
+                                >
+                                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                                    <span className="sr-only">{isListening ? 'Dejar de grabar' : 'Empezar a grabar'}</span>
+                                </Button>
+                            </div>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -216,5 +285,4 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
       </Form>
   )
 }
-
     
