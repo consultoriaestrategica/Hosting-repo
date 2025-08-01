@@ -1,5 +1,4 @@
 
-
 "use client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -283,7 +282,7 @@ function ResidentProfilePageContent({ params }: { params: { id: string } }) {
   )
 }
 
-export default async function ResidentProfilePage({ params }: { params: { id: string } }) {
+export default function ResidentProfilePage({ params }: { params: { id: string } }) {
   return (
     <Suspense fallback={<div>Cargando...</div>}>
       <ResidentProfilePageContent params={params} />
