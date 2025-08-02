@@ -45,16 +45,17 @@ export function useLogs() {
   }, []);
 
   const addLog = useCallback((newLog: Omit<Log, 'id'>) => {
-    const logWithId = { ...newLog, id: `log-${Date.now()}` };
-    const updatedLogs = [...logs, logWithId];
-    setLogs(updatedLogs);
-    try {
-        localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(updatedLogs));
-    } catch (error) {
-        console.error("Failed to save to localStorage", error);
-    }
-  }, [logs]);
+    setLogs(prevLogs => {
+        const logWithId = { ...newLog, id: `log-${Date.now()}` };
+        const updatedLogs = [logWithId, ...prevLogs];
+        try {
+            localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(updatedLogs));
+        } catch (error) {
+            console.error("Failed to save to localStorage", error);
+        }
+        return updatedLogs;
+    });
+  }, []);
 
   return { logs, addLog, isLoading };
 }
-
