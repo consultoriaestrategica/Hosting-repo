@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -76,12 +77,12 @@ function SidebarHeader({
     <div
       className={cn(
         "flex h-14 items-center border-b p-4 lg:h-[60px]",
-        !isOpen && "justify-center",
+        !isOpen && "justify-center px-2",
         className
       )}
       {...props}
     >
-      <div className={cn("flex flex-1 items-center", !isOpen && "hidden")}>
+      <div className={cn("flex flex-1 items-center gap-2", !isOpen && "justify-center")}>
         {props.children}
       </div>
       {isMobile ? (
@@ -264,13 +265,13 @@ function SidebarInset({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  const { isOpen } = useSidebarContext()
+  const { isOpen, isMobile } = useSidebarContext()
 
   return (
     <div
       className={cn(
         "flex min-h-dvh w-full flex-1 flex-col transition-[margin-left] duration-300 ease-in-out",
-        !isOpen ? "md:ml-16" : "md:ml-72",
+        !isMobile && (isOpen ? "ml-72" : "ml-16"),
         className
       )}
       {...props}
