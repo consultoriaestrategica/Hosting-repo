@@ -24,12 +24,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useLogs } from "@/hooks/use-logs"
+import { useResidents } from "@/hooks/use-residents"
 import { useState, useEffect, useRef } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Mic, MicOff } from "lucide-react"
 
 const logFormSchema = z.object({
+  residentId: z.string({ required_error: "Debe seleccionar un residente." }),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha inválida." }),
   mood: z.enum(["Feliz", "Calmado", "Ansioso", "Agitado", "Triste"]),
   appetite: z.enum(["Bueno", "Regular", "Pobre"]),
@@ -42,24 +44,32 @@ const logFormSchema = z.object({
 type LogFormValues = z.infer<typeof logFormSchema>
 
 interface NewLogFormProps {
-    residentId: string;
+    residentId?: string;
     onFormSubmit: () => void;
 }
 
 export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps) {
   const { toast } = useToast()
   const { addLog, isLoading } = useLogs()
+  const { residents } = useResidents()
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<any>(null)
 
   const form = useForm<LogFormValues>({
     resolver: zodResolver(logFormSchema),
     defaultValues: {
+      residentId: residentId || undefined,
       date: new Date().toISOString().split('T')[0],
       medsAdministered: true,
       notes: ""
     },
   })
+  
+  useEffect(() => {
+    if (residentId) {
+        form.setValue("residentId", residentId);
+    }
+  }, [residentId, form]);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -111,9 +121,10 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
       recognitionRef.current.stop()
       setIsListening(false)
     }
+    const { residentId, ...logData } = data;
     const newLog = {
         residentId: residentId,
-        ...data,
+        ...logData,
     };
     addLog(newLog);
     toast({
@@ -122,6 +133,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
     })
     onFormSubmit();
     form.reset({
+        residentId: residentId || undefined,
         date: new Date().toISOString().split('T')[0],
         medsAdministered: true,
         notes: ""
@@ -133,6 +145,30 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="space-y-4 p-4">
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {!residentId && (
+                   <FormField
+                    control={form.control}
+                    name="residentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Residente</FormLabel>
+                         <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccione un residente" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {residents.map(r => (
+                                <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="date"

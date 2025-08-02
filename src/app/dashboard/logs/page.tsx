@@ -25,15 +25,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useEffect, useState } from "react"
+import NewLogForm from "../residents/[id]/new-log-form"
 
 export default function LogsPage() {
   const { logs, isLoading: logsLoading } = useLogs()
   const { residents, isLoading: residentsLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
+  const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
@@ -55,6 +64,25 @@ export default function LogsPage() {
     <>
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Registro Diario</h1>
+        <div className="ml-auto flex items-center gap-2">
+            <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm" className="h-8 gap-1">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                            Agregar Entrada
+                        </span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Agregar Registro de Evolución</DialogTitle>
+                        <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
+                    </DialogHeader>
+                    <NewLogForm onFormSubmit={() => setIsLogDialogOpen(false)} />
+                </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
       <Card>
