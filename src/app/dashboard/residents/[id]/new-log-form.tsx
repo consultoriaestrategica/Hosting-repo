@@ -61,7 +61,11 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
       residentId: residentId || undefined,
       date: new Date().toISOString().split('T')[0],
       medsAdministered: true,
-      notes: ""
+      notes: "",
+      vitals: "",
+      mood: undefined,
+      appetite: undefined,
+      sleep: undefined,
     },
   })
   
@@ -72,27 +76,30 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
   }, [residentId, form]);
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition()
-      recognitionRef.current.continuous = true
-      recognitionRef.current.lang = 'es-ES'
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result) => result.transcript)
-          .join('')
-        form.setValue("notes", form.getValues("notes") + transcript)
-      }
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error)
-        toast({
-            variant: "destructive",
-            title: "Error de Reconocimiento",
-            description: "No se pudo iniciar el dictado por voz."
-        })
-        setIsListening(false)
-      }
+    // Check for window to ensure it's running on the client
+    if (typeof window !== "undefined") {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        if (SpeechRecognition) {
+          recognitionRef.current = new SpeechRecognition()
+          recognitionRef.current.continuous = true
+          recognitionRef.current.lang = 'es-ES'
+          recognitionRef.current.onresult = (event: any) => {
+            const transcript = Array.from(event.results)
+              .map((result: any) => result[0])
+              .map((result) => result.transcript)
+              .join('')
+            form.setValue("notes", form.getValues("notes") + transcript)
+          }
+          recognitionRef.current.onerror = (event: any) => {
+            console.error("Speech recognition error", event.error)
+            toast({
+                variant: "destructive",
+                title: "Error de Reconocimiento",
+                description: "No se pudo iniciar el dictado por voz."
+            })
+            setIsListening(false)
+          }
+        }
     }
   }, [form, toast])
 
@@ -136,7 +143,11 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
         residentId: residentId || undefined,
         date: new Date().toISOString().split('T')[0],
         medsAdministered: true,
-        notes: ""
+        notes: "",
+        vitals: "",
+        mood: undefined,
+        appetite: undefined,
+        sleep: undefined,
     });
   }
 
