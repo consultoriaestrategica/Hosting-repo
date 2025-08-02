@@ -56,10 +56,10 @@ const Sidebar = React.forwardRef<
     <aside
       ref={ref}
       className={cn(
-        "fixed left-0 top-0 z-50 flex h-full min-h-dvh w-full flex-shrink-0 flex-col border-r bg-card transition-[transform,width] duration-300 ease-in-out md:relative",
-        isMobile ? "max-w-xs" : "md:w-72",
-        !isOpen && isMobile && "-translate-x-full",
-        !isOpen && !isMobile && "md:w-16",
+        "fixed left-0 top-0 z-50 flex h-dvh flex-shrink-0 flex-col border-r bg-card transition-[width,transform] duration-300 ease-in-out md:relative",
+        isMobile ? "max-w-xs" : "",
+        isMobile && !isOpen ? "-translate-x-full" : "",
+        !isMobile && (isOpen ? "w-72" : "w-16"),
         className
       )}
       {...props}
@@ -261,25 +261,6 @@ function SidebarTrigger({ className, ...props }: ButtonProps) {
 }
 SidebarTrigger.displayName = "SidebarTrigger"
 
-function SidebarInset({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  const { isOpen, isMobile } = useSidebarContext()
-
-  return (
-    <div
-      className={cn(
-        "flex min-h-dvh w-full flex-1 flex-col transition-[margin-left] duration-300 ease-in-out",
-        !isMobile && (isOpen ? "ml-72" : "ml-16"),
-        className
-      )}
-      {...props}
-    />
-  )
-}
-SidebarInset.displayName = "SidebarInset"
-
 export {
   SidebarProvider,
   Sidebar,
@@ -290,6 +271,5 @@ export {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-  SidebarInset,
   useSidebarContext
 }
