@@ -45,7 +45,6 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
   const [isClient, setIsClient] = useState(false)
-  const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
 
@@ -159,25 +158,6 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                 <CardHeader>
                   <CardTitle>Registro Diario</CardTitle>
                   <CardDescription>Registro cronológico del estado diario del residente.</CardDescription>
-                  {!isFamilyRole && (
-                    <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12">
-                                  <PlusCircle className="h-3.5 w-3.5" />
-                                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                      Agregar Entrada
-                                  </span>
-                              </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-4xl">
-                              <DialogHeader>
-                                  <DialogTitle>Agregar Registro de Evolución para {resident.name}</DialogTitle>
-                                  <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
-                              </DialogHeader>
-                              <NewLogForm residentId={resident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
-                          </DialogContent>
-                      </Dialog>
-                  )}
                 </CardHeader>
                 <CardContent>
                    <Table>
