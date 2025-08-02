@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
 import { useState, useEffect } from "react"
+import { UploadCloud, File as FileIcon, X } from "lucide-react"
 
 const residentFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -46,6 +47,7 @@ const residentFormSchema = z.object({
   familyEmail: z.string().email({ message: "Correo electrónico inválido." }),
   admissionDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de ingreso inválida." }),
   roomType: z.enum(["Básica", "Premium"]),
+  documents: z.array(z.any()).optional(),
 })
 
 type ResidentFormValues = z.infer<typeof residentFormSchema>
@@ -55,6 +57,7 @@ export default function NewResidentPage() {
   const router = useRouter()
   const { addResident, isLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
 
   useEffect(() => {
     setIsClient(true)
@@ -76,8 +79,21 @@ export default function NewResidentPage() {
       familyEmail: "",
       status: "Activo",
       admissionDate: new Date().toISOString().split('T')[0], // Default to today
+      documents: [],
     },
   })
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const newFiles = Array.from(event.target.files)
+      setUploadedFiles((prevFiles) => [...prevFiles, ...newFiles])
+    }
+  }
+  
+  const removeFile = (index: number) => {
+    setUploadedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+  }
+
 
  function onSubmit(data: ResidentFormValues) {
     const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
@@ -89,6 +105,7 @@ export default function NewResidentPage() {
         status: data.status,
         admissionDate: data.admissionDate,
         roomType: data.roomType,
+        documents: uploadedFiles.map(file => ({ name: file.name, size: file.size })),
     };
     addResident(newResident);
     toast({
@@ -385,6 +402,55 @@ export default function NewResidentPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+             <div className="lg:col-span-3">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Documentos</CardTitle>
+                        <CardDescription>Cargue los documentos relevantes del residente como historia clínica, cédula, etc.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField
+                        control={form.control}
+                        name="documents"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <div className="flex flex-col items-center justify-center w-full">
+                                        <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
+                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                <UploadCloud className="w-8 h-8 mb-4 text-muted-foreground" />
+                                                <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Haga clic para cargar</span> o arrastre y suelte</p>
+                                                <p className="text-xs text-muted-foreground">PDF, PNG, JPG (MAX. 5MB)</p>
+                                            </div>
+                                            <Input id="dropzone-file" type="file" className="hidden" multiple onChange={handleFileChange} />
+                                        </label>
+                                    </div> 
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        {uploadedFiles.length > 0 && (
+                            <div className="mt-4">
+                                <h3 className="text-sm font-medium">Archivos Seleccionados:</h3>
+                                <ul className="mt-2 space-y-2">
+                                    {uploadedFiles.map((file, index) => (
+                                    <li key={index} className="flex items-center justify-between p-2 rounded-md bg-muted">
+                                        <div className="flex items-center gap-2">
+                                            <FileIcon className="w-4 h-4 text-muted-foreground" />
+                                            <span className="text-sm">{file.name}</span>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(index)}>
+                                            <X className="w-4 h-4" />
+                                        </Button>
+                                    </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
           </div>
           <div className="flex justify-end gap-2">

@@ -3,6 +3,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+type ResidentDocument = {
+  name: string;
+  size: number;
+};
+
 type Resident = {
   id: string;
   name: string;
@@ -12,6 +17,7 @@ type Resident = {
   status: "Activo" | "Inactivo";
   admissionDate: string;
   roomType: "Básica" | "Premium";
+  documents?: ResidentDocument[];
 };
 
 const initialResidents: Resident[] = [
