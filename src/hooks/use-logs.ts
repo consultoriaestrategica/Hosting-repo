@@ -28,7 +28,7 @@ export function useLogs() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const loadLogs = useCallback(() => {
     try {
       const storedLogs = localStorage.getItem(LOGS_STORAGE_KEY);
       if (storedLogs) {
@@ -44,18 +44,36 @@ export function useLogs() {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    loadLogs();
+    
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === LOGS_STORAGE_KEY) {
+        loadLogs();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadLogs]);
+
   const addLog = useCallback((newLog: Omit<Log, 'id'>) => {
-    setLogs(prevLogs => {
-        const logWithId = { ...newLog, id: `log-${Date.now()}` };
-        const updatedLogs = [logWithId, ...prevLogs];
-        try {
-            localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(updatedLogs));
-        } catch (error) {
-            console.error("Failed to save to localStorage", error);
-        }
-        return updatedLogs;
-    });
-  }, []);
+    const logWithId = { ...newLog, id: `log-${Date.now()}` };
+    const updatedLogs = [logWithId, ...logs];
+     try {
+        localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(updatedLogs));
+        // Manually dispatch event for the current tab to pick up the change
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: LOGS_STORAGE_KEY,
+            newValue: JSON.stringify(updatedLogs),
+        }));
+    } catch (error) {
+        console.error("Failed to save to localStorage", error);
+    }
+  }, [logs]);
 
   return { logs, addLog, isLoading };
 }

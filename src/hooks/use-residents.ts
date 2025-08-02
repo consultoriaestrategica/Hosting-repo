@@ -28,7 +28,7 @@ export function useResidents() {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const loadResidents = useCallback(() => {
     try {
       const storedResidents = localStorage.getItem(RESIDENTS_STORAGE_KEY);
       if (storedResidents) {
@@ -44,12 +44,32 @@ export function useResidents() {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    loadResidents();
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === RESIDENTS_STORAGE_KEY) {
+        loadResidents();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+        window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadResidents]);
+
+
   const addResident = useCallback((newResident: Omit<Resident, 'id'>) => {
     const residentWithId = { ...newResident, id: `res-${Date.now()}` };
     const updatedResidents = [...residents, residentWithId];
-    setResidents(updatedResidents);
     try {
         localStorage.setItem(RESIDENTS_STORAGE_KEY, JSON.stringify(updatedResidents));
+         window.dispatchEvent(new StorageEvent('storage', {
+            key: RESIDENTS_STORAGE_KEY,
+            newValue: JSON.stringify(updatedResidents),
+        }));
     } catch (error) {
         console.error("Failed to save to localStorage", error);
     }
