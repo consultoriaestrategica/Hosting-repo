@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, PlusCircle, CheckCircle, FileText } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
