@@ -269,7 +269,7 @@ function SidebarInset({
   return (
     <div
       className={cn(
-        "flex min-h-dvh flex-1 flex-col transition-[margin-left] duration-300 ease-in-out",
+        "flex min-h-dvh w-full flex-1 flex-col transition-[margin-left] duration-300 ease-in-out",
         !isOpen ? "md:ml-16" : "md:ml-72",
         className
       )}
