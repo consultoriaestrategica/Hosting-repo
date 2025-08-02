@@ -19,18 +19,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
 import { useEffect, useState, Suspense } from "react"
-import NewLogForm from "./new-log-form"
 import { useSearchParams } from "next/navigation"
 
 
@@ -54,7 +45,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   }, [])
 
   const resident = residents.find(r => r.id === id)
-  const evolutionLog = logs.filter(log => log.residentId === id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const evolutionLog = [...logs].filter(log => log.residentId === id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   if (!isClient || residentsLoading || logsLoading) {
     return <div>Cargando...</div>
@@ -173,7 +164,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                     <TableBody>
                         {evolutionLog.map(log => (
                            <TableRow key={log.id}>
-                               <TableCell className="font-medium">{log.date}</TableCell>
+                               <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
                                <TableCell>{log.mood}</TableCell>
                                <TableCell>{log.appetite}</TableCell>
                                <TableCell>{log.medsAdministered ? <CheckCircle className="text-green-500" /> : null}</TableCell>

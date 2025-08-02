@@ -16,10 +16,10 @@ type Log = {
 };
 
 const initialLogs: Log[] = [
-    { id: "log-001", residentId: "res-001", date: "2024-07-20", mood: "Calmada", appetite: "Bueno", sleep: "Reparador", vitals: "130/85, 72ppm, 36.8°C", medsAdministered: true, notes: "Participó en la musicoterapia matutina." },
-    { id: "log-002", residentId: "res-001", date: "2024-07-19", mood: "Agitada", appetite: "Regular", sleep: "Interrumpido", vitals: "135/88, 78ppm, 37.0°C", medsAdministered: true, notes: "Experimentó algo de confusión por la tarde." },
-    { id: "log-003", residentId: "res-001", date: "2024-07-18", mood: "Feliz", appetite: "Bueno", sleep: "Bueno", vitals: "128/82, 70ppm, 36.7°C", medsAdministered: true, notes: "Disfrutó la visita de su familia." },
-    { id: "log-004", residentId: "res-002", date: "2024-07-20", mood: "Feliz", appetite: "Bueno", sleep: "Bueno", vitals: "140/90, 80ppm, 36.9°C", medsAdministered: true, notes: "Presión arterial estable." },
+    { id: "log-001", residentId: "res-001", date: new Date(2024, 6, 20).toISOString(), mood: "Calmada", appetite: "Bueno", sleep: "Reparador", vitals: "130/85, 72ppm, 36.8°C", medsAdministered: true, notes: "Participó en la musicoterapia matutina." },
+    { id: "log-002", residentId: "res-001", date: new Date(2024, 6, 19).toISOString(), mood: "Agitada", appetite: "Regular", sleep: "Interrumpido", vitals: "135/88, 78ppm, 37.0°C", medsAdministered: true, notes: "Experimentó algo de confusión por la tarde." },
+    { id: "log-003", residentId: "res-001", date: new Date(2024, 6, 18).toISOString(), mood: "Feliz", appetite: "Bueno", sleep: "Bueno", vitals: "128/82, 70ppm, 36.7°C", medsAdministered: true, notes: "Disfrutó la visita de su familia." },
+    { id: "log-004", residentId: "res-002", date: new Date(2024, 6, 20).toISOString(), mood: "Feliz", appetite: "Bueno", sleep: "Bueno", vitals: "140/90, 80ppm, 36.9°C", medsAdministered: true, notes: "Presión arterial estable." },
 ];
 
 const LOGS_STORAGE_KEY = 'daily_logs';

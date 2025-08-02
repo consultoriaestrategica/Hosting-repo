@@ -58,7 +58,7 @@ export default function LogsPage() {
     return residents.find(r => r.id === residentId)?.name || "N/A"
   }
   
-  const sortedLogs = logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <>
@@ -109,7 +109,7 @@ export default function LogsPage() {
             <TableBody>
               {sortedLogs.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell className="font-medium">{log.date}</TableCell>
+                  <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Link href={`/dashboard/residents/${log.residentId}`} className="hover:underline">
                         {getResidentName(log.residentId)}
