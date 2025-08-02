@@ -55,9 +55,10 @@ const Sidebar = React.forwardRef<
     <aside
       ref={ref}
       className={cn(
-        "fixed left-0 top-0 z-50 flex h-full min-h-dvh w-full max-w-xs flex-shrink-0 flex-col border-r bg-card transition-[transform,width] duration-300 ease-in-out md:relative md:max-w-xs",
+        "fixed left-0 top-0 z-50 flex h-full min-h-dvh w-full flex-shrink-0 flex-col border-r bg-card transition-[transform,width] duration-300 ease-in-out md:relative",
+        isMobile ? "max-w-xs" : "md:w-72",
         !isOpen && isMobile && "-translate-x-full",
-        !isOpen && !isMobile && "w-16",
+        !isOpen && !isMobile && "md:w-16",
         className
       )}
       {...props}
@@ -100,8 +101,8 @@ function SidebarHeader({
           className="shrink-0"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          <span className="sr-only">Alternar menú</span>
+          <Menu className="h-6 w-6" />
+           <span className="sr-only">Alternar menú</span>
         </Button>
       )}
     </div>
