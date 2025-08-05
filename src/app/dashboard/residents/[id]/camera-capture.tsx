@@ -14,7 +14,7 @@ interface CameraCaptureProps {
 export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   const { toast } = useToast()
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
-  const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [isStreamActive, setIsStreamActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -23,49 +23,47 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
+      setIsStreamActive(false);
     }
   }, [])
 
   const enableCamera = useCallback(async () => {
+    // Reset previous state
+    setCapturedImage(null);
     if (streamRef.current) {
       stopCameraStream();
     }
     
-    setCapturedImage(null);
-
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-        }
-        setHasPermission(true)
-        setIsCameraOpen(true)
-      } catch (error) {
-        console.error("Error accessing camera:", error)
-        setHasPermission(false)
-        setIsCameraOpen(false)
-        toast({
-          variant: "destructive",
-          title: "Acceso a Cámara Denegado",
-          description: "Por favor, habilite el permiso de cámara en su navegador.",
-        })
-      }
-    } else {
+    // Check for browser support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setHasPermission(false)
         toast({
             variant: "destructive",
             title: "Cámara no Soportada",
             description: "Su navegador no soporta el acceso a la cámara.",
         })
+        return;
     }
-  }, [toast, stopCameraStream])
 
-  const closeCamera = useCallback(() => {
-    stopCameraStream()
-    setIsCameraOpen(false)
-  }, [stopCameraStream])
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+        setHasPermission(true)
+        setIsStreamActive(true);
+      } catch (error) {
+        console.error("Error accessing camera:", error)
+        setHasPermission(false)
+        setIsStreamActive(false);
+        toast({
+          variant: "destructive",
+          title: "Acceso a Cámara Denegado",
+          description: "Por favor, habilite el permiso de cámara en su navegador.",
+        })
+      }
+  }, [toast, stopCameraStream])
 
   const capturePhoto = () => {
     if (videoRef.current) {
@@ -79,25 +77,36 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         const dataUri = canvas.toDataURL("image/jpeg")
         setCapturedImage(dataUri)
         onPhotoTaken(dataUri)
-        closeCamera()
+        stopCameraStream();
       }
     }
   }
-
-  useEffect(() => {
-    return () => {
-      stopCameraStream()
-    }
-  }, [stopCameraStream])
   
   const handleRetry = () => {
     setCapturedImage(null)
     enableCamera()
   };
+  
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      stopCameraStream()
+    }
+  }, [stopCameraStream])
+
+  // Don't render anything until component is mounted
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+      setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+      return null;
+  }
 
   return (
     <div className="space-y-2">
-      {!isCameraOpen && !capturedImage && (
+      {!isStreamActive && !capturedImage && (
         <Button type="button" variant="outline" onClick={enableCamera} className="w-full">
           <Camera className="mr-2 h-4 w-4" />
           Abrir Cámara
@@ -114,7 +123,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         </Alert>
       )}
 
-      {isCameraOpen && (
+      {isStreamActive && (
         <div className="space-y-2 rounded-md border p-2">
             <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
             <div className="flex justify-center gap-2">
@@ -122,7 +131,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
                     <Camera className="mr-2 h-4 w-4" />
                     Capturar Foto
                 </Button>
-                 <Button type="button" variant="outline" onClick={closeCamera} className="w-full">
+                 <Button type="button" variant="outline" onClick={stopCameraStream} className="w-full">
                     <CameraOff className="mr-2 h-4 w-4" />
                     Cerrar Cámara
                 </Button>
