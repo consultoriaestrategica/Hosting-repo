@@ -102,17 +102,36 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      // We can toast here, but since it's a permanent state, maybe just disable the feature.
-      // For now, we'll let it fail silently on handleToggleListening if recognitionRef.current is null.
+      toast({
+        variant: "destructive",
+        title: "Navegador no compatible",
+        description: "Tu navegador no soporta la API de Reconocimiento de Voz.",
+      });
       return;
     }
 
     recognitionRef.current = new SpeechRecognition();
     const recognition = recognitionRef.current;
     recognition.lang = 'es-ES';
-    recognition.continuous = true; // Keep listening even after a pause
-    recognition.interimResults = false; // We only want final results
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        transcript += event.results[i][0].transcript;
+      }
+      
+      // Update the form field directly here, this is a safe context
+      if (activeDictationField) {
+          const currentNotes = form.getValues(activeDictationField) || "";
+          // Use interim results for real-time feedback, but only finalize onend
+           if (event.results[event.results.length -1].isFinal) {
+             form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
+           }
+      }
+    };
+    
     recognition.onend = () => {
       setIsListening(false);
       setActiveDictationField(null);
@@ -130,6 +149,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       setActiveDictationField(null);
     };
 
+    // Cleanup function
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
@@ -138,36 +158,20 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         recognitionRef.current.onresult = null;
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [activeDictationField, form, toast]); 
 
   const handleToggleListening = useCallback((fieldName: DictationField) => {
     const recognition = recognitionRef.current;
-    if (!recognition) {
-       toast({ variant: "destructive", title: "Navegador no compatible", description: "Tu navegador no soporta la API de Reconocimiento de Voz." });
-       return;
-    }
+    if (!recognition) return;
     
     if (isListening) {
       recognition.stop();
     } else {
       setActiveDictationField(fieldName);
       setIsListening(true);
-      
-      // We set the onresult listener right before starting
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            transcript += event.results[i][0].transcript;
-        }
-
-        const currentNotes = form.getValues(fieldName) || "";
-        form.setValue(fieldName, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
-      };
-
       recognition.start();
     }
-  }, [isListening, form, toast]);
+  }, [isListening]);
 
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -369,3 +373,5 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       </Form>
   )
 }
+
+    
