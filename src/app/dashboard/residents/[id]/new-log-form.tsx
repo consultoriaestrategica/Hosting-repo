@@ -104,6 +104,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           recognitionRef.current = new SpeechRecognition()
           recognitionRef.current.continuous = true
           recognitionRef.current.lang = 'es-ES'
+          
           recognitionRef.current.onresult = (event: any) => {
             if (!activeDictationField) return;
             const transcript = Array.from(event.results)
@@ -113,15 +114,38 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
             const currentNotes = form.getValues(activeDictationField) || "";
             form.setValue(activeDictationField, currentNotes + transcript)
           }
+
           recognitionRef.current.onerror = (event: any) => {
-            console.error("Speech recognition error", event.error)
-            toast({ variant: "destructive", title: "Error de Reconocimiento", description: "No se pudo iniciar el dictado por voz." })
+            // The "aborted" error is common when the user stops talking or the mic is stopped programmatically.
+            // We don't need to show a toast for it.
+            if (event.error === 'aborted') {
+                console.info("Speech recognition aborted.");
+            } else {
+                console.error("Speech recognition error", event.error)
+                toast({ variant: "destructive", title: "Error de Reconocimiento", description: "No se pudo iniciar el dictado por voz." })
+            }
             setIsListening(false)
             setActiveDictationField(null)
           }
+
+          recognitionRef.current.onend = () => {
+              if (isListening) {
+                setIsListening(false);
+                setActiveDictationField(null);
+              }
+          };
+
         }
     }
-  }, [form, toast, activeDictationField])
+    
+    // Cleanup function to stop recognition when the component unmounts
+    return () => {
+        if (recognitionRef.current && isListening) {
+            recognitionRef.current.stop();
+        }
+    }
+
+  }, [form, toast, activeDictationField, isListening])
 
   const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
     if (!recognitionRef.current) {
@@ -129,12 +153,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         return
     }
 
-    if (isListening && activeDictationField === fieldName) {
-      recognitionRef.current.stop()
-      setIsListening(false)
-      setActiveDictationField(null)
-    } else {
-      if (isListening) recognitionRef.current.stop();
+    const isCurrentlyActive = isListening && activeDictationField === fieldName;
+
+    if (isListening) {
+        recognitionRef.current.stop()
+        setIsListening(false)
+        setActiveDictationField(null)
+    }
+
+    if (!isCurrentlyActive) {
       setActiveDictationField(fieldName)
       recognitionRef.current.start()
       setIsListening(true)
