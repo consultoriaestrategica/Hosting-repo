@@ -75,6 +75,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       residentId: residentId || undefined,
       date: new Date().toISOString(),
       reportType: undefined,
+      heartRate: undefined,
+      respiratoryRate: undefined,
+      spo2: undefined,
+      feedingType: "",
+      evolutionNotes: "",
+      supplierName: "",
+      supplyDate: "",
+      supplyDescription: "",
+      supplyNotes: "",
     },
   })
   
@@ -191,6 +200,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     })
     onFormSubmit();
     form.reset();
+    setPhotoPreview(null);
   }
 
   return (
@@ -205,7 +215,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         <FormLabel>Tipo de Registro</FormLabel>
                         <FormControl>
                           <RadioGroup
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => {
+                                field.onChange(value);
+                                form.reset({
+                                    residentId: form.getValues("residentId"),
+                                    date: form.getValues("date"),
+                                    reportType: value as "medico" | "suministro",
+                                });
+                                setPhotoPreview(null);
+                            }}
                             defaultValue={field.value}
                             className="flex items-center space-x-4"
                           >
@@ -275,7 +293,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         <FormField control={form.control} name="feedingType" render={({ field }) => (<FormItem><FormLabel>Alimentación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Vía Oral">Vía Oral</SelectItem><SelectItem value="Parental">Parental</SelectItem><SelectItem value="Sonda">Sonda</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                     </div>
                     <FormField control={form.control} name="evolutionNotes" render={({ field }) => (<FormItem><FormLabel>Notas de Evolución</FormLabel><FormControl><div className="relative"><Textarea placeholder="Describa cualquier observación relevante..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'evolutionNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleListening('evolutionNotes')}>{isListening && activeDictationField === 'evolutionNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="photoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica</FormLabel><FormControl><Input id="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="photoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica</FormLabel><FormControl><div><Input id="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label></div></FormControl><FormMessage /></FormItem>)} />
                 </div>
               )}
 
@@ -287,7 +305,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     </div>
                      <FormField control={form.control} name="supplyDescription" render={({ field }) => (<FormItem><FormLabel>Descripción del Suministro</FormLabel><FormControl><Textarea placeholder="Ej. 2 cajas de guantes, 5 kits de curación" {...field} /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={form.control} name="supplyNotes" render={({ field }) => (<FormItem><FormLabel>Notas Adicionales</FormLabel><FormControl><div className="relative"><Textarea placeholder="Observaciones adicionales sobre la entrega..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'supplyNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleListening('supplyNotes')}>{isListening && activeDictationField === 'supplyNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={form.control} name="supplyPhotoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica del Suministro</FormLabel><FormControl><Input id="supply-photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="supply-photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={form.control} name="supplyPhotoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica del Suministro</FormLabel><FormControl><div><Input id="supply-photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="supply-photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label></div></FormControl><FormMessage /></FormItem>)} />
                  </div>
               )}
             </div>
