@@ -26,10 +26,10 @@ import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
-import { Mic, MicOff, Upload, FileImage, Loader2 } from "lucide-react"
-import { CameraCapture } from "./camera-capture"
+import { Mic, MicOff, Camera, RefreshCw, X } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
@@ -42,14 +42,14 @@ const reportFormSchema = z.object({
   spo2: z.coerce.number().optional(),
   feedingType: z.string().optional(),
   evolutionNotes: z.string().optional(),
-  photoEvidence: z.any().optional(),
+  photoEvidence: z.string().optional(),
 
   // Supply fields
   supplierName: z.string().optional(),
   supplyDate: z.string().optional(),
   supplyDescription: z.string().optional(),
   supplyNotes: z.string().optional(),
-  supplyPhotoEvidence: z.any().optional(),
+  supplyPhotoEvidence: z.string().optional(),
 })
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
@@ -64,12 +64,17 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { toast } = useToast()
   const { addLog, isLoading } = useLogs()
   const { residents } = useResidents()
-  const [isListening, setIsListening] = useState(false)
+
+  // --- State and Refs ---
+  const [isListening, setIsListening] = useState(false);
   const [activeDictationField, setActiveDictationField] = useState<DictationField | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
@@ -77,135 +82,126 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       residentId: residentId || "",
       date: new Date().toISOString().substring(0, 16),
       reportType: undefined,
-      heartRate: undefined,
-      respiratoryRate: undefined,
-      spo2: undefined,
-      feedingType: "",
       evolutionNotes: "",
-      supplierName: "",
-      supplyDate: "",
-      supplyDescription: "",
       supplyNotes: "",
-      photoEvidence: null,
-      supplyPhotoEvidence: null,
     },
   })
   
   const reportType = form.watch("reportType");
 
-  useEffect(() => {
-    if (residentId) {
-        form.setValue("residentId", residentId);
+  // --- Dictation Logic ---
+  const handleToggleDictation = (field: DictationField) => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
     }
-  }, [residentId, form]);
 
-  useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast({
-        variant: "destructive",
-        title: "Navegador no compatible",
-        description: "Tu navegador no soporta la API de Reconocimiento de Voz.",
-      });
+      toast({ variant: "destructive", title: "Navegador no compatible", description: "El dictado por voz no es soportado en este navegador." });
       return;
     }
 
     const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
     recognition.lang = 'es-ES';
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
+    recognitionRef.current = recognition;
+    setActiveDictationField(field);
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results).map(result => result[0].transcript).join('');
+      const currentNotes = form.getValues(field) || "";
+      form.setValue(field, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
+    };
 
     recognition.onend = () => {
       setIsListening(false);
       setActiveDictationField(null);
+      recognitionRef.current = null;
     };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    
+    recognition.onerror = (event) => {
       let description = "Ocurrió un error desconocido con el dictado.";
-      if (event.error === 'no-speech') {
-        description = "No se detectó voz. Por favor, intente hablar de nuevo.";
-      } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        description = "El permiso para usar el micrófono fue denegado. Habilítelo en la configuración de su navegador.";
-      }
+      if (event.error === 'no-speech') description = "No se detectó voz. Por favor, intente hablar de nuevo.";
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') description = "Permiso de micrófono denegado. Habilítelo en su navegador.";
       toast({ variant: "destructive", title: "Error de Dictado", description });
       setIsListening(false);
       setActiveDictationField(null);
     };
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-      if (activeDictationField) {
-        const currentNotes = form.getValues(activeDictationField) || "";
-        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
-      }
-    };
-    
-    // Cleanup
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, form.setValue]); // Dependencies should be stable
-
-  // Re-attach onresult handler when activeDictationField changes
-  useEffect(() => {
-    const recognition = recognitionRef.current;
-    if (recognition) {
-       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript;
-        if (activeDictationField) {
-            const currentNotes = form.getValues(activeDictationField) || "";
-            form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
-        }
-      };
-    }
-  }, [activeDictationField, form]);
-
-  const handleToggleListening = useCallback((fieldName: DictationField) => {
-    const recognition = recognitionRef.current;
-    if (!recognition) return;
-    
-    if (isListening) {
-      recognition.stop();
-      return;
-    }
-    
-    setActiveDictationField(fieldName);
-    setIsListening(true);
     recognition.start();
+  };
 
-  }, [isListening]);
-
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setPhotoUploading(true);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setTimeout(() => {
-          setPhotoPreview(reader.result as string);
-          if (reportType === 'medico') form.setValue('photoEvidence', reader.result);
-          if (reportType === 'suministro') form.setValue('supplyPhotoEvidence', reader.result);
-          setPhotoUploading(false);
-          toast({ title: "Evidencia Cargada", description: "La foto se ha cargado correctamente." });
-        }, 1500);
-      };
-      reader.readAsDataURL(file);
+  // --- Camera Logic ---
+  const openCamera = async () => {
+    if (isCameraOpen) return;
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setIsCameraOpen(true);
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      setCameraError("No se pudo acceder a la cámara. Por favor, asegúrese de haber otorgado los permisos necesarios en su navegador.");
+      setIsCameraOpen(false);
     }
   };
+
+  const closeCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    streamRef.current = null;
+    setIsCameraOpen(false);
+  };
   
-  const handlePhotoTaken = (dataUri: string) => {
-    setPhotoPreview(dataUri);
-    if (reportType === 'medico') form.setValue('photoEvidence', dataUri);
-    if (reportType === 'suministro') form.setValue('supplyPhotoEvidence', dataUri);
-     toast({ title: "Evidencia Capturada", description: "La foto se ha guardado correctamente." });
+  const takePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const photoDataUrl = canvas.toDataURL('image/jpeg');
+        setPhotoPreview(photoDataUrl);
+        const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
+        form.setValue(fieldToUpdate, photoDataUrl);
+        toast({ title: "Evidencia Capturada", description: "La foto se ha guardado correctamente." });
+    }
+    closeCamera();
+  };
+
+  const resetPhoto = () => {
+    setPhotoPreview(null);
+    const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
+    form.setValue(fieldToUpdate, undefined);
   }
 
- function onSubmit(data: ReportFormValues) {
+  // --- Lifecycle and Submit ---
+  useEffect(() => {
+    if (residentId) {
+        form.setValue("residentId", residentId);
+    }
+    // Cleanup function when component unmounts
+    return () => {
+      recognitionRef.current?.stop();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [residentId, form]);
+
+
+  function onSubmit(data: ReportFormValues) {
     if (isListening) {
       recognitionRef.current?.stop()
     }
@@ -249,6 +245,52 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     setPhotoPreview(null);
   }
 
+  const renderPhotoEvidence = (field: any) => (
+    <FormItem>
+      <FormLabel>{field.name === 'photoEvidence' ? 'Evidencia Fotográfica' : 'Evidencia Fotográfica del Suministro'}</FormLabel>
+      <FormControl>
+        <div className="space-y-2">
+            {photoPreview ? (
+                 <div className="relative aspect-video w-full">
+                    <img src={photoPreview} alt="Vista previa de la foto" className="w-full h-full object-contain rounded-md border"/>
+                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={resetPhoto}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                 </div>
+            ) : isCameraOpen ? (
+                 <div className="space-y-2 rounded-md border p-2">
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video rounded-md bg-muted"></video>
+                    <div className="flex justify-center gap-2">
+                        <Button type="button" onClick={takePhoto} className="w-full">
+                            <Camera className="mr-2 h-4 w-4" />
+                            Capturar Foto
+                        </Button>
+                        <Button type="button" variant="outline" onClick={closeCamera} className="w-full">
+                            <X className="mr-2 h-4 w-4" />
+                            Cerrar
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                <Button type="button" variant="outline" onClick={openCamera} className="w-full">
+                    <Camera className="mr-2 h-4 w-4" />
+                    Abrir Cámara
+                </Button>
+                {cameraError && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Error de Cámara</AlertTitle>
+                        <AlertDescription>{cameraError}</AlertDescription>
+                    </Alert>
+                )}
+                </>
+            )}
+        </div>
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  );
+
   return (
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -264,20 +306,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                             onValueChange={(value) => {
                                 field.onChange(value);
                                 form.reset({
-                                    residentId: form.getValues("residentId"),
-                                    date: form.getValues("date"),
+                                    ...form.getValues(),
                                     reportType: value as "medico" | "suministro",
-                                    heartRate: undefined,
-                                    respiratoryRate: undefined,
-                                    spo2: undefined,
-                                    feedingType: "",
-                                    evolutionNotes: "",
-                                    supplierName: "",
-                                    supplyDate: "",
-                                    supplyDescription: "",
-                                    supplyNotes: "",
-                                    photoEvidence: null,
-                                    supplyPhotoEvidence: null,
                                 });
                                 setPhotoPreview(null);
                             }}
@@ -349,8 +379,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         <FormField control={form.control} name="spo2" render={({ field }) => (<FormItem><FormLabel>Saturación de Oxígeno (SPO2 %)</FormLabel><FormControl><Input type="number" placeholder="97" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="feedingType" render={({ field }) => (<FormItem><FormLabel>Alimentación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Vía Oral">Vía Oral</SelectItem><SelectItem value="Parental">Parental</SelectItem><SelectItem value="Sonda">Sonda</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                     </div>
-                    <FormField control={form.control} name="evolutionNotes" render={({ field }) => (<FormItem><FormLabel>Notas de Evolución</FormLabel><FormControl><div className="relative"><Textarea placeholder="Describa cualquier observación relevante..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'evolutionNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleListening('evolutionNotes')}>{isListening && activeDictationField === 'evolutionNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="photoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica</FormLabel><FormControl><div className="space-y-2"><Input id="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label><CameraCapture onPhotoTaken={handlePhotoTaken} /></div></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="evolutionNotes" render={({ field }) => (<FormItem><FormLabel>Notas de Evolución</FormLabel><FormControl><div className="relative"><Textarea placeholder="Describa cualquier observación relevante..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'evolutionNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleDictation('evolutionNotes')}>{isListening && activeDictationField === 'evolutionNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="photoEvidence" render={({ field }) => renderPhotoEvidence(field)} />
                 </div>
               )}
 
@@ -361,8 +391,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         <FormField control={form.control} name="supplyDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Entrega</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                      <FormField control={form.control} name="supplyDescription" render={({ field }) => (<FormItem><FormLabel>Descripción del Suministro</FormLabel><FormControl><Textarea placeholder="Ej. 2 cajas de guantes, 5 kits de curación" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={form.control} name="supplyNotes" render={({ field }) => (<FormItem><FormLabel>Notas Adicionales</FormLabel><FormControl><div className="relative"><Textarea placeholder="Observaciones adicionales sobre la entrega..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'supplyNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleListening('supplyNotes')}>{isListening && activeDictationField === 'supplyNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={form.control} name="supplyPhotoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica del Suministro</FormLabel><FormControl><div className="space-y-2"><Input id="supply-photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="supply-photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label><CameraCapture onPhotoTaken={handlePhotoTaken} /></div></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={form.control} name="supplyNotes" render={({ field }) => (<FormItem><FormLabel>Notas Adicionales</FormLabel><FormControl><div className="relative"><Textarea placeholder="Observaciones adicionales sobre la entrega..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'supplyNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleDictation('supplyNotes')}>{isListening && activeDictationField === 'supplyNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={form.control} name="supplyPhotoEvidence" render={({ field }) => renderPhotoEvidence(field)} />
                  </div>
               )}
             </div>
@@ -379,5 +409,3 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       </Form>
   )
 }
-
-    
