@@ -104,7 +104,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    recognitionRef.current = new SpeechRecognition();
+    const recognition = recognitionRef.current;
     recognition.lang = 'es-ES';
     recognition.continuous = true;
     recognition.interimResults = false;
@@ -117,21 +118,26 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         }
       }
       
-      if (activeDictationField) {
-        const currentNotes = form.getValues(activeDictationField) || "";
-        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
-      }
+      setActiveDictationField(currentField => {
+          if (currentField) {
+              const currentNotes = form.getValues(currentField) || "";
+              form.setValue(currentField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
+          }
+          return currentField;
+      });
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      let errorMessage = `Ocurrió un error: ${event.error}`;
       if (event.error === 'no-speech') {
-        toast({ title: "No se detectó voz", description: "Por favor, hable más claro o acérquese al micrófono." });
+        errorMessage = "No se detectó voz. Por favor, hable más claro.";
       } else if (event.error === 'not-allowed') {
-        toast({ variant: "destructive", title: "Permiso denegado", description: "Necesitas dar permiso al micrófono para usar esta función." });
-      } else if (event.error !== 'aborted') {
-        console.error(`Ocurrió un error de reconocimiento de voz: ${event.error}`);
-        toast({ variant: "destructive", title: "Error de Reconocimiento", description: `Ocurrió un error: ${event.error}` });
+        errorMessage = "Necesitas dar permiso al micrófono para usar esta función.";
+      } else if (event.error === 'aborted') {
+        // Don't show an error for aborted, as it's often user-initiated
+        return;
       }
+      toast({ variant: "destructive", title: "Error de Reconocimiento", description: errorMessage });
     };
 
     recognition.onend = () => {
@@ -139,12 +145,12 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       setActiveDictationField(null);
     };
 
-    recognitionRef.current = recognition;
-
     return () => {
-      recognition?.stop();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
     };
-  }, [form, toast, activeDictationField]);
+  }, [form, toast]);
 
 
   const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
