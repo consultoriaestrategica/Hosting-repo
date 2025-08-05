@@ -75,9 +75,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       residentId: residentId || "",
       date: new Date().toISOString().substring(0, 16),
       reportType: undefined,
-      heartRate: undefined,
-      respiratoryRate: undefined,
-      spo2: undefined,
+      heartRate: 0,
+      respiratoryRate: 0,
+      spo2: 0,
       feedingType: "",
       evolutionNotes: "",
       supplierName: "",
@@ -118,13 +118,10 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         }
       }
       
-      setActiveDictationField(currentField => {
-          if (currentField) {
-              const currentNotes = form.getValues(currentField) || "";
-              form.setValue(currentField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
-          }
-          return currentField;
-      });
+      if (activeDictationField) {
+        const currentNotes = form.getValues(activeDictationField) || "";
+        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
+      }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -134,7 +131,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       } else if (event.error === 'not-allowed') {
         errorMessage = "Necesitas dar permiso al micrófono para usar esta función.";
       } else if (event.error === 'aborted') {
-        // Don't show an error for aborted, as it's often user-initiated
         return;
       }
       toast({ variant: "destructive", title: "Error de Reconocimiento", description: errorMessage });
@@ -150,7 +146,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         recognitionRef.current.stop();
       }
     };
-  }, [form, toast]);
+  }, [form, toast, activeDictationField]);
 
 
   const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
@@ -247,9 +243,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                                     residentId: form.getValues("residentId"),
                                     date: form.getValues("date"),
                                     reportType: value as "medico" | "suministro",
-                                    heartRate: undefined,
-                                    respiratoryRate: undefined,
-                                    spo2: undefined,
+                                    heartRate: 0,
+                                    respiratoryRate: 0,
+                                    spo2: 0,
                                     feedingType: "",
                                     evolutionNotes: "",
                                     supplierName: "",
