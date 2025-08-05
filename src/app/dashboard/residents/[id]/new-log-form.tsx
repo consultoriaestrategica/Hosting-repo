@@ -76,9 +76,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       residentId: residentId || "",
       date: new Date().toISOString().substring(0, 16),
       reportType: undefined,
-      heartRate: 0,
-      respiratoryRate: 0,
-      spo2: 0,
+      heartRate: undefined,
+      respiratoryRate: undefined,
+      spo2: undefined,
       feedingType: "",
       evolutionNotes: "",
       supplierName: "",
@@ -99,7 +99,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   }, [residentId, form]);
 
   useEffect(() => {
-    // Inicializar la API de reconocimiento de voz
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       console.error("Tu navegador no soporta la API de Reconocimiento de Voz.");
@@ -109,23 +108,21 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     const recognition = new SpeechRecognition();
     recognition.lang = 'es-ES';
     recognition.continuous = true;
-    recognition.interimResults = false;
-
+    recognition.interimResults = true;
     recognitionRef.current = recognition;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                transcript += event.results[i][0].transcript;
-            }
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
         }
-        
-        // El estado del campo activo se lee directamente cuando se necesita
-        if (activeDictationField) {
-             const currentNotes = form.getValues(activeDictationField) || "";
-             form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
-        }
+      }
+
+      if (finalTranscript && activeDictationField) {
+        const currentNotes = form.getValues(activeDictationField) || "";
+        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${finalTranscript}`.trim() : finalTranscript);
+      }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -141,6 +138,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         }
         console.error("Speech recognition error", event.error);
         setIsListening(false);
+        setActiveDictationField(null);
     };
 
     recognition.onend = () => {
@@ -148,22 +146,21 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         setActiveDictationField(null);
     };
 
-    // Limpieza al desmontar el componente
     return () => {
         if (recognitionRef.current) {
             recognitionRef.current.stop();
         }
     };
-  }, [form, toast, activeDictationField]); // Se ejecuta solo una vez al montar
+  }, [form, toast, activeDictationField]);
 
   const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
-    if (isListening) {
+    if (isListening && activeDictationField === fieldName) {
       recognition.stop();
     } else {
-      setActiveDictationField(fieldName); // Se establece qué campo se está dictando
+      setActiveDictationField(fieldName);
       setIsListening(true);
       recognition.start();
     }
@@ -175,7 +172,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       setPhotoUploading(true);
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Simulate upload
         setTimeout(() => {
           setPhotoPreview(reader.result as string);
           if (reportType === 'medico') form.setValue('photoEvidence', reader.result);
@@ -197,7 +193,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
  function onSubmit(data: ReportFormValues) {
     if (isListening) {
-      recognitionRef.current.stop()
+      recognitionRef.current?.stop()
     }
     
     const baseLog = {
@@ -257,9 +253,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                                     residentId: form.getValues("residentId"),
                                     date: form.getValues("date"),
                                     reportType: value as "medico" | "suministro",
-                                    heartRate: 0,
-                                    respiratoryRate: 0,
-                                    spo2: 0,
+                                    heartRate: undefined,
+                                    respiratoryRate: undefined,
+                                    spo2: undefined,
                                     feedingType: "",
                                     evolutionNotes: "",
                                     supplierName: "",

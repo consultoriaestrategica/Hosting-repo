@@ -16,49 +16,50 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
-  const [stream, setStream] = useState<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const stopCameraStream = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop())
-      setStream(null)
-    }
-  }, [stream])
+  const stopCameraStream = useCallback((stream: MediaStream | null) => {
+    stream?.getTracks().forEach((track) => track.stop())
+  }, [])
 
   const enableCamera = useCallback(async () => {
-    if (stream) {
-        stopCameraStream();
+    setCapturedImage(null)
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        setHasPermission(true)
+        setIsCameraOpen(true)
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      } catch (error) {
+        console.error("Error accessing camera:", error)
+        setHasPermission(false)
+        setIsCameraOpen(false)
+        toast({
+          variant: "destructive",
+          title: "Acceso a Cámara Denegado",
+          description: "Por favor, habilite el permiso de cámara en su navegador.",
+        })
+      }
+    } else {
+        setHasPermission(false)
+        toast({
+            variant: "destructive",
+            title: "Cámara no Soportada",
+            description: "Su navegador no soporta el acceso a la cámara.",
+        })
     }
-    setCapturedImage(null);
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      setStream(mediaStream)
-      setHasPermission(true)
-      setIsCameraOpen(true)
-    } catch (error) {
-      console.error("Error accessing camera:", error)
-      setHasPermission(false)
-      setIsCameraOpen(false)
-      toast({
-        variant: "destructive",
-        title: "Acceso a Cámara Denegado",
-        description: "Por favor, habilite el permiso de cámara en su navegador.",
-      })
-    }
-  }, [stopCameraStream, stream, toast]);
+  }, [toast])
 
-  useEffect(() => {
-    if (isCameraOpen && stream && videoRef.current) {
-        videoRef.current.srcObject = stream;
+  const closeCamera = useCallback(() => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      stopCameraStream(videoRef.current.srcObject as MediaStream)
+      videoRef.current.srcObject = null
     }
-  }, [isCameraOpen, stream]);
-
-  const closeCamera = () => {
-    stopCameraStream();
-    setIsCameraOpen(false);
-  }
+    setIsCameraOpen(false)
+  }, [stopCameraStream])
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -76,13 +77,21 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
       }
     }
   }
-  
+
   // Cleanup effect
   useEffect(() => {
     return () => {
-      stopCameraStream()
+       if (videoRef.current && videoRef.current.srcObject) {
+            stopCameraStream(videoRef.current.srcObject as MediaStream)
+       }
     }
   }, [stopCameraStream])
+  
+  const handleRetry = () => {
+    setHasPermission(null);
+    setCapturedImage(null);
+    enableCamera();
+  };
 
   return (
     <div className="space-y-2">
@@ -98,12 +107,12 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Permiso de Cámara Requerido</AlertTitle>
             <AlertDescription>
-                No se pudo acceder a la cámara. Por favor, verifique los permisos en su navegador.
+                No se pudo acceder a la cámara. Por favor, verifique los permisos y vuelva a intentarlo.
             </AlertDescription>
         </Alert>
       )}
 
-      {isCameraOpen && (
+      {isCameraOpen && hasPermission && (
         <div className="space-y-2 rounded-md border p-2">
             <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
             <div className="flex justify-center gap-2">
@@ -123,10 +132,9 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         <div className="space-y-2">
             <p className="text-sm font-medium text-center">Vista Previa:</p>
             <div className="relative aspect-video w-full">
-                 {/* Using a standard img tag for reliable data URI rendering */}
                  <img src={capturedImage} alt="Foto capturada" className="w-full h-full object-contain rounded-md"/>
             </div>
-            <Button type="button" variant="outline" onClick={enableCamera} className="w-full">
+            <Button type="button" variant="outline" onClick={handleRetry} className="w-full">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Tomar otra foto
             </Button>
