@@ -121,7 +121,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         <div className="space-y-2">
             <p className="text-sm font-medium text-center">Vista Previa:</p>
             <div className="relative aspect-video w-full">
-                 <Image src={capturedImage} alt="Foto capturada" layout="fill" objectFit="contain" className="rounded-md"/>
+                 <Image src={capturedImage} alt="Foto capturada" fill objectFit="contain" className="rounded-md"/>
             </div>
             <Button variant="outline" onClick={enableCamera} className="w-full">
                 <RefreshCw className="mr-2 h-4 w-4" />
