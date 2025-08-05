@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, CheckCircle, FileText } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -140,35 +140,38 @@ function ResidentProfilePageContent({ id }: { id: string }) {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
            <Tabs defaultValue="evolution">
             <TabsList>
-              <TabsTrigger value="evolution">Evolución Diaria</TabsTrigger>
+              <TabsTrigger value="evolution">Historial de Reportes</TabsTrigger>
               <TabsTrigger value="profile">Perfil Completo</TabsTrigger>
               {!isFamilyRole && <TabsTrigger value="documents">Documentos</TabsTrigger>}
             </TabsList>
             <TabsContent value="evolution">
               <Card>
                 <CardHeader>
-                  <CardTitle>Registro Diario</CardTitle>
-                  <CardDescription>Registro cronológico del estado diario del residente.</CardDescription>
+                  <CardTitle>Registro de Reportes</CardTitle>
+                  <CardDescription>Registro cronológico de los reportes del residente.</CardDescription>
                 </CardHeader>
                 <CardContent>
                    <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Fecha</TableHead>
-                        <TableHead>Ánimo</TableHead>
-                        <TableHead>Apetito</TableHead>
-                        <TableHead>Meds</TableHead>
-                        <TableHead>Notas</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Detalle</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                         {evolutionLog.map(log => (
                            <TableRow key={log.id}>
                                <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
-                               <TableCell>{log.mood}</TableCell>
-                               <TableCell>{log.appetite}</TableCell>
-                               <TableCell>{log.medsAdministered ? <CheckCircle className="text-green-500" /> : null}</TableCell>
-                               <TableCell className="max-w-[200px] truncate">{log.notes}</TableCell>
+                                <TableCell>
+                                    <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
+                                        {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
+                                        {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
+                                    </Badge>
+                                </TableCell>
+                               <TableCell className="max-w-[200px] truncate">
+                                 {log.reportType === 'medico' ? log.evolutionNotes : log.supplyDescription}
+                               </TableCell>
                            </TableRow>
                         ))}
                     </TableBody>

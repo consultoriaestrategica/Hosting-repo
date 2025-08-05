@@ -1,7 +1,7 @@
 
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Stethoscope, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -37,6 +37,7 @@ import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useEffect, useState } from "react"
 import NewLogForm from "../residents/[id]/new-log-form"
+import { Badge } from "@/components/ui/badge"
 
 export default function LogsPage() {
   const { logs, isLoading: logsLoading } = useLogs()
@@ -70,14 +71,14 @@ export default function LogsPage() {
                     <Button size="sm" className="h-8 gap-1">
                         <PlusCircle className="h-3.5 w-3.5" />
                         <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                            Agregar Entrada
+                            Agregar Reporte
                         </span>
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-4xl">
                     <DialogHeader>
-                        <DialogTitle>Agregar Registro de Evolución</DialogTitle>
-                        <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
+                        <DialogTitle>Agregar Reporte Diario</DialogTitle>
+                        <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
                     </DialogHeader>
                     <NewLogForm onFormSubmit={() => setIsLogDialogOpen(false)} />
                 </DialogContent>
@@ -87,9 +88,9 @@ export default function LogsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Evoluciones Recientes</CardTitle>
+          <CardTitle>Reportes Recientes</CardTitle>
           <CardDescription>
-            Listado de los últimos registros de evolución de los residentes.
+            Listado de los últimos reportes médicos y de suministros.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -98,9 +99,8 @@ export default function LogsPage() {
               <TableRow>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Residente</TableHead>
-                <TableHead>Estado de Ánimo</TableHead>
-                <TableHead>Apetito</TableHead>
-                <TableHead>Notas</TableHead>
+                <TableHead>Tipo de Reporte</TableHead>
+                <TableHead>Detalle Principal</TableHead>
                 <TableHead>
                   <span className="sr-only">Acciones</span>
                 </TableHead>
@@ -115,9 +115,15 @@ export default function LogsPage() {
                         {getResidentName(log.residentId)}
                     </Link>
                   </TableCell>
-                  <TableCell>{log.mood}</TableCell>
-                  <TableCell>{log.appetite}</TableCell>
-                  <TableCell className="max-w-xs truncate">{log.notes}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
+                        {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
+                        {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {log.reportType === 'medico' ? log.evolutionNotes : log.supplyDescription}
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -26,49 +27,59 @@ import { useToast } from "@/hooks/use-toast"
 import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useState, useEffect, useRef } from "react"
-import { Checkbox } from "@/components/ui/checkbox"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
-import { Mic, MicOff } from "lucide-react"
+import { Mic, MicOff, Upload, FileImage, Loader2 } from "lucide-react"
 
-const logFormSchema = z.object({
+const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha inválida." }),
-  mood: z.enum(["Feliz", "Calmado", "Ansioso", "Agitado", "Triste"]),
-  appetite: z.enum(["Bueno", "Regular", "Pobre"]),
-  sleep: z.enum(["Reparador", "Interrumpido", "Poco"]),
-  vitals: z.string().optional(),
-  medsAdministered: z.boolean().default(false).optional(),
-  notes: z.string().min(5, { message: "Las notas deben tener al menos 5 caracteres." }),
+  reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
+
+  // Medical fields
+  heartRate: z.number().optional(),
+  respiratoryRate: z.number().optional(),
+  spo2: z.number().optional(),
+  feedingType: z.string().optional(),
+  evolutionNotes: z.string().optional(),
+  photoEvidence: z.any().optional(),
+
+  // Supply fields
+  supplierName: z.string().optional(),
+  supplyDate: z.string().optional(),
+  supplyDescription: z.string().optional(),
+  supplyNotes: z.string().optional(),
+  supplyPhotoEvidence: z.any().optional(),
 })
 
-type LogFormValues = z.infer<typeof logFormSchema>
+type ReportFormValues = z.infer<typeof reportFormSchema>
 
-interface NewLogFormProps {
+interface NewReportFormProps {
     residentId?: string;
     onFormSubmit: () => void;
 }
 
-export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps) {
+export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormProps) {
   const { toast } = useToast()
   const { addLog, isLoading } = useLogs()
   const { residents } = useResidents()
   const [isListening, setIsListening] = useState(false)
+  const [activeDictationField, setActiveDictationField] = useState<"evolutionNotes" | "supplyNotes" | null>(null);
   const recognitionRef = useRef<any>(null)
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  const form = useForm<LogFormValues>({
-    resolver: zodResolver(logFormSchema),
+
+  const form = useForm<ReportFormValues>({
+    resolver: zodResolver(reportFormSchema),
     defaultValues: {
       residentId: residentId || undefined,
-      date: new Date().toISOString().split('T')[0],
-      medsAdministered: true,
-      notes: "",
-      vitals: "",
-      mood: undefined,
-      appetite: undefined,
-      sleep: undefined,
+      date: new Date().toISOString(),
+      reportType: undefined,
     },
   })
   
+  const reportType = form.watch("reportType");
+
   useEffect(() => {
     if (residentId) {
         form.setValue("residentId", residentId);
@@ -76,7 +87,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
   }, [residentId, form]);
 
   useEffect(() => {
-    // Check for window to ensure it's running on the client
     if (typeof window !== "undefined") {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
         if (SpeechRecognition) {
@@ -84,252 +94,213 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewLogFormProps
           recognitionRef.current.continuous = true
           recognitionRef.current.lang = 'es-ES'
           recognitionRef.current.onresult = (event: any) => {
+            if (!activeDictationField) return;
             const transcript = Array.from(event.results)
               .map((result: any) => result[0])
               .map((result) => result.transcript)
               .join('')
-            form.setValue("notes", form.getValues("notes") + transcript)
+            const currentNotes = form.getValues(activeDictationField) || "";
+            form.setValue(activeDictationField, currentNotes + transcript)
           }
           recognitionRef.current.onerror = (event: any) => {
             console.error("Speech recognition error", event.error)
-            toast({
-                variant: "destructive",
-                title: "Error de Reconocimiento",
-                description: "No se pudo iniciar el dictado por voz."
-            })
+            toast({ variant: "destructive", title: "Error de Reconocimiento", description: "No se pudo iniciar el dictado por voz." })
             setIsListening(false)
+            setActiveDictationField(null)
           }
         }
     }
-  }, [form, toast])
+  }, [form, toast, activeDictationField])
 
-
-  const handleToggleListening = () => {
+  const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
     if (!recognitionRef.current) {
-        toast({
-            variant: "destructive",
-            title: "Navegador no compatible",
-            description: "Tu navegador no soporta el dictado por voz."
-        })
-      return
+        toast({ variant: "destructive", title: "Navegador no compatible", description: "Tu navegador no soporta el dictado por voz."})
+        return
     }
 
-    if (isListening) {
+    if (isListening && activeDictationField === fieldName) {
       recognitionRef.current.stop()
       setIsListening(false)
+      setActiveDictationField(null)
     } else {
+      if (isListening) recognitionRef.current.stop();
+      setActiveDictationField(fieldName)
       recognitionRef.current.start()
       setIsListening(true)
     }
   }
 
- function onSubmit(data: LogFormValues) {
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setPhotoUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Simulate upload
+        setTimeout(() => {
+          setPhotoPreview(reader.result as string);
+          if (reportType === 'medico') form.setValue('photoEvidence', reader.result);
+          if (reportType === 'suministro') form.setValue('supplyPhotoEvidence', reader.result);
+          setPhotoUploading(false);
+          toast({ title: "Evidencia Cargada", description: "La foto se ha cargado correctamente." });
+        }, 1500);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+ function onSubmit(data: ReportFormValues) {
     if (isListening) {
       recognitionRef.current.stop()
       setIsListening(false)
     }
-    const { residentId, ...logData } = data;
-    const newLog = {
-        residentId: residentId,
-        ...logData,
-    };
-    addLog(newLog);
+    
+    const baseLog = {
+      residentId: data.residentId,
+      date: new Date(data.date).toISOString(),
+      reportType: data.reportType,
+    }
+
+    let finalLogData;
+
+    if (data.reportType === 'medico') {
+      finalLogData = {
+        ...baseLog,
+        heartRate: data.heartRate,
+        respiratoryRate: data.respiratoryRate,
+        spo2: data.spo2,
+        feedingType: data.feedingType,
+        evolutionNotes: data.evolutionNotes,
+        photoEvidenceUrl: data.photoEvidence,
+      };
+    } else { // suministro
+      finalLogData = {
+        ...baseLog,
+        supplierName: data.supplierName,
+        supplyDate: data.supplyDate,
+        supplyDescription: data.supplyDescription,
+        supplyNotes: data.supplyNotes,
+        supplyPhotoEvidenceUrl: data.supplyPhotoEvidence,
+      };
+    }
+
+    addLog(finalLogData);
     toast({
-      title: "Registro Guardado",
-      description: `Se ha añadido una nueva entrada de evolución.`,
+      title: "Reporte Guardado",
+      description: `Se ha añadido un nuevo reporte de ${data.reportType}.`,
     })
     onFormSubmit();
-    form.reset({
-        residentId: residentId || undefined,
-        date: new Date().toISOString().split('T')[0],
-        medsAdministered: true,
-        notes: "",
-        vitals: "",
-        mood: undefined,
-        appetite: undefined,
-        sleep: undefined,
-    });
+    form.reset();
   }
 
   return (
     <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="space-y-4 p-4">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {!residentId && (
-                   <FormField
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-4 p-4 max-h-[70vh] overflow-y-auto">
+               <FormField
                     control={form.control}
-                    name="residentId"
+                    name="reportType"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Residente</FormLabel>
-                         <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un residente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {residents.map(r => (
-                                <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <FormItem className="space-y-3">
+                        <FormLabel>Tipo de Registro</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex items-center space-x-4"
+                          >
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="medico" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Médico</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="suministro" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Suministro</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha del Registro</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="mood"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estado de Ánimo</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccione el ánimo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Feliz">Feliz</SelectItem>
-                          <SelectItem value="Calmado">Calmado</SelectItem>
-                          <SelectItem value="Ansioso">Ansioso</SelectItem>
-                          <SelectItem value="Agitado">Agitado</SelectItem>
-                          <SelectItem value="Triste">Triste</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="appetite"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Apetito</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccione el apetito" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Bueno">Bueno</SelectItem>
-                          <SelectItem value="Regular">Regular</SelectItem>
-                          <SelectItem value="Pobre">Pobre</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="sleep"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Calidad del Sueño</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccione el sueño" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Reparador">Reparador</SelectItem>
-                          <SelectItem value="Interrumpido">Interrumpido</SelectItem>
-                          <SelectItem value="Poco">Poco</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                 <FormField
+
+              {reportType && (
+                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {!residentId && (
+                    <FormField
+                        control={form.control}
+                        name="residentId"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Residente</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Seleccione un residente" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {residents.map(r => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    )}
+                    <FormField
                     control={form.control}
-                    name="vitals"
+                    name="date"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Signos Vitales (Opcional)</FormLabel>
+                        <FormLabel>Fecha del Registro</FormLabel>
                         <FormControl>
-                            <Input placeholder="Ej. 120/80, 75ppm, 36.5°C" {...field} />
+                            <Input type="datetime-local" {...field} />
                         </FormControl>
                         <FormMessage />
-                        </FormItem>
-                    )}
-                 />
-                <FormField
-                    control={form.control}
-                    name="medsAdministered"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-end space-x-2 pb-1">
-                            <FormControl>
-                                <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                                <FormLabel>
-                                ¿Se administraron medicamentos?
-                                </FormLabel>
-                            </div>
                         </FormItem>
                     )}
                     />
-               </div>
-                <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Notas de Evolución</FormLabel>
-                        <FormControl>
-                            <div className="relative">
-                                <Textarea placeholder="Describa cualquier observación relevante..." {...field} />
-                                <Button
-                                    type="button"
-                                    size="icon"
-                                    variant={isListening ? "destructive" : "outline"}
-                                    className="absolute bottom-2 right-2 h-7 w-7"
-                                    onClick={handleToggleListening}
-                                >
-                                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                                    <span className="sr-only">{isListening ? 'Dejar de grabar' : 'Empezar a grabar'}</span>
-                                </Button>
-                            </div>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                </div>
+              )}
+
+              {reportType === 'medico' && (
+                <div className="space-y-4 pt-4 border-t">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <FormField control={form.control} name="heartRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Cardíaca (lpm)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="respiratoryRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Respiratoria (rpm)</FormLabel><FormControl><Input type="number" placeholder="18" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="spo2" render={({ field }) => (<FormItem><FormLabel>Saturación de Oxígeno (SPO2 %)</FormLabel><FormControl><Input type="number" placeholder="97" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="feedingType" render={({ field }) => (<FormItem><FormLabel>Alimentación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Vía Oral">Vía Oral</SelectItem><SelectItem value="Parental">Parental</SelectItem><SelectItem value="Sonda">Sonda</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                    </div>
+                    <FormField control={form.control} name="evolutionNotes" render={({ field }) => (<FormItem><FormLabel>Notas de Evolución</FormLabel><FormControl><div className="relative"><Textarea placeholder="Describa cualquier observación relevante..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'evolutionNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleListening('evolutionNotes')}>{isListening && activeDictationField === 'evolutionNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="photoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica</FormLabel><FormControl><Input id="photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label></FormControl><FormMessage /></FormItem>)} />
+                </div>
+              )}
+
+              {reportType === 'suministro' && (
+                 <div className="space-y-4 pt-4 border-t">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormField control={form.control} name="supplierName" render={({ field }) => (<FormItem><FormLabel>Nombre de quien entrega</FormLabel><FormControl><Input placeholder="Ej. Carlos Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="supplyDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Entrega</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
+                     <FormField control={form.control} name="supplyDescription" render={({ field }) => (<FormItem><FormLabel>Descripción del Suministro</FormLabel><FormControl><Textarea placeholder="Ej. 2 cajas de guantes, 5 kits de curación" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={form.control} name="supplyNotes" render={({ field }) => (<FormItem><FormLabel>Notas Adicionales</FormLabel><FormControl><div className="relative"><Textarea placeholder="Observaciones adicionales sobre la entrega..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'supplyNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleListening('supplyNotes')}>{isListening && activeDictationField === 'supplyNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={form.control} name="supplyPhotoEvidence" render={({ field }) => (<FormItem><FormLabel>Evidencia Fotográfica del Suministro</FormLabel><FormControl><Input id="supply-photo-upload" type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} /><label htmlFor="supply-photo-upload" className="cursor-pointer flex items-center gap-2 p-2 border-2 border-dashed rounded-md justify-center"> {photoUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : photoPreview ? <FileImage className="h-4 w-4 text-green-500" /> : <Upload className="h-4 w-4" />} {photoUploading ? "Subiendo..." : photoPreview ? "Imagen cargada" : "Cargar Foto"}</label></FormControl><FormMessage /></FormItem>)} />
+                 </div>
+              )}
             </div>
+
+           {reportType && (
             <DialogFooter>
                 <DialogClose asChild>
                     <Button type="button" variant="outline">Cancelar</Button>
                 </DialogClose>
-                <Button type="submit" disabled={isLoading}>Guardar Registro</Button>
+                <Button type="submit" disabled={isLoading}>Guardar Reporte</Button>
             </DialogFooter>
+           )}
         </form>
       </Form>
   )
 }
-    
