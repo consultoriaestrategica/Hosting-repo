@@ -104,35 +104,34 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       return;
     }
 
-    recognitionRef.current = new SpeechRecognition();
-    const recognition = recognitionRef.current;
+    const recognition = new SpeechRecognition();
     recognition.lang = 'es-ES';
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       let transcript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        transcript += event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript;
+        }
       }
       
       if (activeDictationField) {
         const currentNotes = form.getValues(activeDictationField) || "";
-        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`: transcript);
+        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       if (event.error === 'no-speech') {
         toast({ title: "No se detectó voz", description: "Por favor, hable más claro o acérquese al micrófono." });
       } else if (event.error === 'not-allowed') {
         toast({ variant: "destructive", title: "Permiso denegado", description: "Necesitas dar permiso al micrófono para usar esta función." });
       } else if (event.error !== 'aborted') {
+        console.error(`Ocurrió un error de reconocimiento de voz: ${event.error}`);
         toast({ variant: "destructive", title: "Error de Reconocimiento", description: `Ocurrió un error: ${event.error}` });
       }
-      
-      setIsListening(false);
-      setActiveDictationField(null);
     };
 
     recognition.onend = () => {
@@ -140,25 +139,21 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       setActiveDictationField(null);
     };
 
+    recognitionRef.current = recognition;
+
     return () => {
-      if (recognition) {
-        recognition.stop();
-      }
+      recognition?.stop();
     };
-  }, [form, toast, activeDictationField]); // Removed isListening from dependencies
+  }, [form, toast, activeDictationField]);
 
 
   const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
-  
-    const isCurrentlyActive = isListening && activeDictationField === fieldName;
-  
+
     if (isListening) {
       recognition.stop();
-    }
-  
-    if (!isCurrentlyActive) {
+    } else {
       setActiveDictationField(fieldName);
       setIsListening(true);
       recognition.start();
