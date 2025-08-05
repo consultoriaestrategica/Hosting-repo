@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast"
 import { Camera, CameraOff, AlertTriangle, RefreshCw } from "lucide-react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import Image from "next/image"
 
 interface CameraCaptureProps {
   onPhotoTaken: (dataUri: string) => void
@@ -28,7 +27,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
     }
   }, [stream])
 
-  const enableCamera = async () => {
+  const enableCamera = useCallback(async () => {
     if (stream) {
         stopCameraStream();
     }
@@ -38,9 +37,6 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
       setStream(mediaStream)
       setHasPermission(true)
       setIsCameraOpen(true)
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-      }
     } catch (error) {
       console.error("Error accessing camera:", error)
       setHasPermission(false)
@@ -51,7 +47,13 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         description: "Por favor, habilite el permiso de cámara en su navegador.",
       })
     }
-  }
+  }, [stopCameraStream, stream, toast]);
+
+  useEffect(() => {
+    if (isCameraOpen && stream && videoRef.current) {
+        videoRef.current.srcObject = stream;
+    }
+  }, [isCameraOpen, stream]);
 
   const closeCamera = () => {
     stopCameraStream();
@@ -121,7 +123,8 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         <div className="space-y-2">
             <p className="text-sm font-medium text-center">Vista Previa:</p>
             <div className="relative aspect-video w-full">
-                 <Image src={capturedImage} alt="Foto capturada" fill objectFit="contain" className="rounded-md"/>
+                 {/* Using a standard img tag for reliable data URI rendering */}
+                 <img src={capturedImage} alt="Foto capturada" className="w-full h-full object-contain rounded-md"/>
             </div>
             <Button type="button" variant="outline" onClick={enableCamera} className="w-full">
                 <RefreshCw className="mr-2 h-4 w-4" />
