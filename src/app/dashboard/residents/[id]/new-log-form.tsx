@@ -106,18 +106,25 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       return;
     }
 
-    recognitionRef.current = new SpeechRecognition();
-    const recognition = recognitionRef.current;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = 'es-ES';
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-       if (activeDictationField) {
-        const currentNotes = form.getValues(activeDictationField) || "";
-        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript + ' ';
       }
+      
+      setActiveDictationField((currentField) => {
+          if (currentField) {
+              const currentNotes = form.getValues(currentField) || "";
+              form.setValue(currentField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
+          }
+          return currentField;
+      });
     };
     
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -132,6 +139,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         toast({ variant: "destructive", title: "Error de Reconocimiento", description: errorMessage });
       }
       console.error("Speech recognition error", event.error);
+      setIsListening(false);
+      setActiveDictationField(null);
     };
 
     recognition.onend = () => {
@@ -142,21 +151,25 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
+        recognitionRef.current = null;
       }
     };
-  }, [form, toast, activeDictationField]); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
   const handleToggleListening = useCallback((fieldName: DictationField) => {
-    if (!recognitionRef.current) return;
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
     
     if (isListening) {
-      recognitionRef.current.stop();
+      recognition.stop();
     } else {
       setActiveDictationField(fieldName);
       setIsListening(true);
-      recognitionRef.current.start();
+      recognition.start();
     }
   }, [isListening]);
+
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
