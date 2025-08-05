@@ -17,19 +17,24 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const stopCameraStream = useCallback((stream: MediaStream | null) => {
-    stream?.getTracks().forEach((track) => track.stop())
+  const stopCameraStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
   }, [])
 
   const enableCamera = useCallback(async () => {
-    setCapturedImage(null)
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        streamRef.current = stream
         setHasPermission(true)
         setIsCameraOpen(true)
+        setCapturedImage(null)
         if (videoRef.current) {
           videoRef.current.srcObject = stream
         }
@@ -54,10 +59,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   }, [toast])
 
   const closeCamera = useCallback(() => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      stopCameraStream(videoRef.current.srcObject as MediaStream)
-      videoRef.current.srcObject = null
-    }
+    stopCameraStream()
     setIsCameraOpen(false)
   }, [stopCameraStream])
 
@@ -78,19 +80,15 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
     }
   }
 
-  // Cleanup effect
   useEffect(() => {
     return () => {
-       if (videoRef.current && videoRef.current.srcObject) {
-            stopCameraStream(videoRef.current.srcObject as MediaStream)
-       }
+      stopCameraStream()
     }
   }, [stopCameraStream])
   
   const handleRetry = () => {
-    setHasPermission(null);
-    setCapturedImage(null);
-    enableCamera();
+    setCapturedImage(null)
+    enableCamera()
   };
 
   return (

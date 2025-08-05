@@ -26,7 +26,7 @@ import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Mic, MicOff, Upload, FileImage, Loader2 } from "lucide-react"
 import { CameraCapture } from "./camera-capture"
@@ -53,6 +53,7 @@ const reportFormSchema = z.object({
 })
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
+type DictationField = "evolutionNotes" | "supplyNotes";
 
 interface NewReportFormProps {
     residentId?: string;
@@ -64,8 +65,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { addLog, isLoading } = useLogs()
   const { residents } = useResidents()
   const [isListening, setIsListening] = useState(false)
-  const [activeDictationField, setActiveDictationField] = useState<"evolutionNotes" | "supplyNotes" | null>(null);
-  const recognitionRef = useRef<any>(null)
+  const [activeDictationField, setActiveDictationField] = useState<DictationField | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
@@ -105,11 +106,11 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    recognitionRef.current = new SpeechRecognition();
+    const recognition = recognitionRef.current;
     recognition.lang = 'es-ES';
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognitionRef.current = recognition;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscript = '';
@@ -118,13 +119,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           finalTranscript += event.results[i][0].transcript;
         }
       }
-
+      
       if (finalTranscript && activeDictationField) {
         const currentNotes = form.getValues(activeDictationField) || "";
         form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${finalTranscript}`.trim() : finalTranscript);
       }
     };
-
+    
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         let errorMessage = `Ocurrió un error: ${event.error}`;
         if (event.error === 'no-speech') {
@@ -151,20 +152,20 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
             recognitionRef.current.stop();
         }
     };
-  }, [form, toast, activeDictationField]);
+  }, [form, toast, activeDictationField]); // activeDictationField is needed to update form values
 
-  const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
+  const handleToggleListening = useCallback((fieldName: DictationField) => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
-    if (isListening && activeDictationField === fieldName) {
+    if (isListening) {
       recognition.stop();
     } else {
       setActiveDictationField(fieldName);
       setIsListening(true);
       recognition.start();
     }
-  };
+  }, [isListening]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
