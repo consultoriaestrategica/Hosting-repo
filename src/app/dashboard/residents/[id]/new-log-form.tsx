@@ -110,28 +110,12 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       return;
     }
 
-    recognitionRef.current = new SpeechRecognition();
-    const recognition = recognitionRef.current;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = 'es-ES';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        transcript += event.results[i][0].transcript;
-      }
-      
-      // Update the form field directly here, this is a safe context
-      if (activeDictationField) {
-          const currentNotes = form.getValues(activeDictationField) || "";
-          // Use interim results for real-time feedback, but only finalize onend
-           if (event.results[event.results.length -1].isFinal) {
-             form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
-           }
-      }
-    };
-    
     recognition.onend = () => {
       setIsListening(false);
       setActiveDictationField(null);
@@ -149,16 +133,36 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       setActiveDictationField(null);
     };
 
-    // Cleanup function
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      if (activeDictationField) {
+        const currentNotes = form.getValues(activeDictationField) || "";
+        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
+      }
+    };
+    
+    // Cleanup
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
-        recognitionRef.current.onend = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.onresult = null;
       }
     };
-  }, [activeDictationField, form, toast]); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast, form.setValue]); // Dependencies should be stable
+
+  // Re-attach onresult handler when activeDictationField changes
+  useEffect(() => {
+    const recognition = recognitionRef.current;
+    if (recognition) {
+       recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        if (activeDictationField) {
+            const currentNotes = form.getValues(activeDictationField) || "";
+            form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript, { shouldValidate: true });
+        }
+      };
+    }
+  }, [activeDictationField, form]);
 
   const handleToggleListening = useCallback((fieldName: DictationField) => {
     const recognition = recognitionRef.current;
@@ -166,11 +170,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     
     if (isListening) {
       recognition.stop();
-    } else {
-      setActiveDictationField(fieldName);
-      setIsListening(true);
-      recognition.start();
+      return;
     }
+    
+    setActiveDictationField(fieldName);
+    setIsListening(true);
+    recognition.start();
+
   }, [isListening]);
 
 
