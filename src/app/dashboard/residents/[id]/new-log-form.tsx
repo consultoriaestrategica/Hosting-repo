@@ -98,75 +98,72 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   }, [residentId, form]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-        if (SpeechRecognition) {
-          recognitionRef.current = new SpeechRecognition()
-          recognitionRef.current.continuous = true
-          recognitionRef.current.lang = 'es-ES'
-          
-          recognitionRef.current.onresult = (event: any) => {
-            if (!activeDictationField) return;
-            const transcript = Array.from(event.results)
-              .map((result: any) => result[0])
-              .map((result) => result.transcript)
-              .join('')
-            const currentNotes = form.getValues(activeDictationField) || "";
-            form.setValue(activeDictationField, currentNotes + transcript)
-          }
-
-          recognitionRef.current.onerror = (event: any) => {
-            // The "aborted" error is common when the user stops talking or the mic is stopped programmatically.
-            // We don't need to show a toast for it.
-            if (event.error === 'aborted') {
-                console.info("Speech recognition aborted.");
-            } else {
-                console.error("Speech recognition error", event.error)
-                toast({ variant: "destructive", title: "Error de Reconocimiento", description: "No se pudo iniciar el dictado por voz." })
-            }
-            setIsListening(false)
-            setActiveDictationField(null)
-          }
-
-          recognitionRef.current.onend = () => {
-              if (isListening) {
-                setIsListening(false);
-                setActiveDictationField(null);
-              }
-          };
-
-        }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast({ variant: "destructive", title: "Navegador no compatible", description: "Tu navegador no soporta el dictado por voz." });
+      return;
     }
-    
-    // Cleanup function to stop recognition when the component unmounts
+
+    recognitionRef.current = new SpeechRecognition();
+    const recognition = recognitionRef.current;
+    recognition.lang = 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        transcript += event.results[i][0].transcript;
+      }
+      
+      if (activeDictationField) {
+        const currentNotes = form.getValues(activeDictationField) || "";
+        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`: transcript);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error === 'no-speech') {
+        toast({ title: "No se detectó voz", description: "Por favor, hable más claro o acérquese al micrófono." });
+      } else if (event.error === 'not-allowed') {
+        toast({ variant: "destructive", title: "Permiso denegado", description: "Necesitas dar permiso al micrófono para usar esta función." });
+      } else if (event.error !== 'aborted') {
+        toast({ variant: "destructive", title: "Error de Reconocimiento", description: `Ocurrió un error: ${event.error}` });
+      }
+      
+      setIsListening(false);
+      setActiveDictationField(null);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setActiveDictationField(null);
+    };
+
     return () => {
-        if (recognitionRef.current && isListening) {
-            recognitionRef.current.stop();
-        }
-    }
+      if (recognition) {
+        recognition.stop();
+      }
+    };
+  }, [form, toast, activeDictationField]); // Removed isListening from dependencies
 
-  }, [form, toast, activeDictationField, isListening])
 
   const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
-    if (!recognitionRef.current) {
-        toast({ variant: "destructive", title: "Navegador no compatible", description: "Tu navegador no soporta el dictado por voz."})
-        return
-    }
-
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+  
     const isCurrentlyActive = isListening && activeDictationField === fieldName;
-
+  
     if (isListening) {
-        recognitionRef.current.stop()
-        setIsListening(false)
-        setActiveDictationField(null)
+      recognition.stop();
     }
-
+  
     if (!isCurrentlyActive) {
-      setActiveDictationField(fieldName)
-      recognitionRef.current.start()
-      setIsListening(true)
+      setActiveDictationField(fieldName);
+      setIsListening(true);
+      recognition.start();
     }
-  }
+  };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -190,7 +187,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
  function onSubmit(data: ReportFormValues) {
     if (isListening) {
       recognitionRef.current.stop()
-      setIsListening(false)
     }
     
     const baseLog = {
