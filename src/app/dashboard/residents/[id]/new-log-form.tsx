@@ -36,9 +36,9 @@ const reportFormSchema = z.object({
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
 
   // Medical fields
-  heartRate: z.number().optional(),
-  respiratoryRate: z.number().optional(),
-  spo2: z.number().optional(),
+  heartRate: z.coerce.number().optional(),
+  respiratoryRate: z.coerce.number().optional(),
+  spo2: z.coerce.number().optional(),
   feedingType: z.string().optional(),
   evolutionNotes: z.string().optional(),
   photoEvidence: z.any().optional(),
@@ -324,9 +324,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
               {reportType === 'medico' && (
                 <div className="space-y-4 pt-4 border-t">
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <FormField control={form.control} name="heartRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Cardíaca (lpm)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="respiratoryRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Respiratoria (rpm)</FormLabel><FormControl><Input type="number" placeholder="18" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="spo2" render={({ field }) => (<FormItem><FormLabel>Saturación de Oxígeno (SPO2 %)</FormLabel><FormControl><Input type="number" placeholder="97" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="heartRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Cardíaca (lpm)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="respiratoryRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Respiratoria (rpm)</FormLabel><FormControl><Input type="number" placeholder="18" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="spo2" render={({ field }) => (<FormItem><FormLabel>Saturación de Oxígeno (SPO2 %)</FormLabel><FormControl><Input type="number" placeholder="97" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="feedingType" render={({ field }) => (<FormItem><FormLabel>Alimentación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Vía Oral">Vía Oral</SelectItem><SelectItem value="Parental">Parental</SelectItem><SelectItem value="Sonda">Sonda</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                     </div>
                     <FormField control={form.control} name="evolutionNotes" render={({ field }) => (<FormItem><FormLabel>Notas de Evolución</FormLabel><FormControl><div className="relative"><Textarea placeholder="Describa cualquier observación relevante..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'evolutionNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleListening('evolutionNotes')}>{isListening && activeDictationField === 'evolutionNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
@@ -359,3 +359,5 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       </Form>
   )
 }
+
+    
