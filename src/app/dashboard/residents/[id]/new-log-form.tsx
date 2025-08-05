@@ -118,10 +118,14 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         }
       }
       
-      if (activeDictationField) {
-        const currentNotes = form.getValues(activeDictationField) || "";
-        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
-      }
+      // We need to use the state setter's callback to get the latest active field
+      setActiveDictationField(currentField => {
+          if (currentField) {
+              const currentNotes = form.getValues(currentField) || "";
+              form.setValue(currentField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
+          }
+          return currentField;
+      });
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -131,9 +135,12 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       } else if (event.error === 'not-allowed') {
         errorMessage = "Necesitas dar permiso al micrófono para usar esta función.";
       } else if (event.error === 'aborted') {
+        // This is a normal event when the user stops talking, so we don't show an error.
         return;
       }
       toast({ variant: "destructive", title: "Error de Reconocimiento", description: errorMessage });
+      setIsListening(false);
+      setActiveDictationField(null);
     };
 
     recognition.onend = () => {
@@ -146,14 +153,14 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         recognitionRef.current.stop();
       }
     };
-  }, [form, toast, activeDictationField]);
+  }, [form, toast]);
 
 
   const handleToggleListening = (fieldName: "evolutionNotes" | "supplyNotes") => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
-    if (isListening) {
+    if (isListening && activeDictationField === fieldName) {
       recognition.stop();
     } else {
       setActiveDictationField(fieldName);
