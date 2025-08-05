@@ -21,10 +21,10 @@ export function DashboardNav() {
   }
   
   const allNavItems = [
-    { href: "/dashboard", label: "Panel de Control", icon: <BarChart3 />, roles: ['admin', 'staff', 'family'] },
-    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['admin', 'staff', 'family'] },
+    { href: "/dashboard", label: "Panel de Control", icon: <BarChart3 />, roles: ['admin', 'family'] },
+    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['admin', 'family'] },
     { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['admin', 'staff'] },
-    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['admin', 'staff'] },
+    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['admin'] },
     { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['admin'] },
   ]
 
