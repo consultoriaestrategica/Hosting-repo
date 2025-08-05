@@ -102,68 +102,59 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      console.error("Tu navegador no soporta la API de Reconocimiento de Voz.");
+      toast({ variant: "destructive", title: "Navegador no compatible", description: "Tu navegador no soporta la API de Reconocimiento de Voz." });
       return;
     }
 
     recognitionRef.current = new SpeechRecognition();
     const recognition = recognitionRef.current;
     recognition.lang = 'es-ES';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        }
-      }
-      
-      if (finalTranscript && activeDictationField) {
+      const transcript = event.results[0][0].transcript;
+       if (activeDictationField) {
         const currentNotes = form.getValues(activeDictationField) || "";
-        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${finalTranscript}`.trim() : finalTranscript);
+        form.setValue(activeDictationField, currentNotes ? `${currentNotes} ${transcript}`.trim() : transcript);
       }
     };
     
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        let errorMessage = `Ocurrió un error: ${event.error}`;
-        if (event.error === 'no-speech') {
-            errorMessage = "No se detectó voz. Por favor, hable más claro.";
-             toast({ variant: "default", title: "No se detectó voz", description: "Por favor, intente hablar de nuevo." });
-        } else if (event.error === 'not-allowed') {
-            errorMessage = "Necesitas dar permiso al micrófono para usar esta función.";
-            toast({ variant: "destructive", title: "Permiso de Micrófono Denegado", description: errorMessage });
-        } else if (event.error !== 'aborted') {
-            toast({ variant: "destructive", title: "Error de Reconocimiento", description: errorMessage });
-        }
-        console.error("Speech recognition error", event.error);
-        setIsListening(false);
-        setActiveDictationField(null);
+      let errorMessage = `Ocurrió un error: ${event.error}`;
+      if (event.error === 'no-speech') {
+        errorMessage = "No se detectó voz. Por favor, hable más claro.";
+        toast({ variant: "default", title: "No se detectó voz", description: "Por favor, intente hablar de nuevo." });
+      } else if (event.error === 'not-allowed') {
+        errorMessage = "Necesitas dar permiso al micrófono para usar esta función.";
+        toast({ variant: "destructive", title: "Permiso de Micrófono Denegado", description: errorMessage });
+      } else if (event.error !== 'aborted') {
+        toast({ variant: "destructive", title: "Error de Reconocimiento", description: errorMessage });
+      }
+      console.error("Speech recognition error", event.error);
     };
 
     recognition.onend = () => {
-        setIsListening(false);
-        setActiveDictationField(null);
+      setIsListening(false);
+      setActiveDictationField(null);
     };
 
     return () => {
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
     };
-  }, [form, toast, activeDictationField]); // activeDictationField is needed to update form values
+  }, [form, toast, activeDictationField]); 
 
   const handleToggleListening = useCallback((fieldName: DictationField) => {
-    const recognition = recognitionRef.current;
-    if (!recognition) return;
-
+    if (!recognitionRef.current) return;
+    
     if (isListening) {
-      recognition.stop();
+      recognitionRef.current.stop();
     } else {
       setActiveDictationField(fieldName);
       setIsListening(true);
-      recognition.start();
+      recognitionRef.current.start();
     }
   }, [isListening]);
 

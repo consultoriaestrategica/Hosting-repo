@@ -18,7 +18,6 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const stopCameraStream = useCallback(() => {
     if (streamRef.current) {
@@ -28,16 +27,21 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   }, [])
 
   const enableCamera = useCallback(async () => {
+    if (streamRef.current) {
+      stopCameraStream();
+    }
+    
+    setCapturedImage(null);
+
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         streamRef.current = stream
-        setHasPermission(true)
-        setIsCameraOpen(true)
-        setCapturedImage(null)
         if (videoRef.current) {
           videoRef.current.srcObject = stream
         }
+        setHasPermission(true)
+        setIsCameraOpen(true)
       } catch (error) {
         console.error("Error accessing camera:", error)
         setHasPermission(false)
@@ -56,7 +60,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
             description: "Su navegador no soporta el acceso a la cámara.",
         })
     }
-  }, [toast])
+  }, [toast, stopCameraStream])
 
   const closeCamera = useCallback(() => {
     stopCameraStream()
@@ -64,9 +68,9 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   }, [stopCameraStream])
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
+    if (videoRef.current) {
       const video = videoRef.current
-      const canvas = canvasRef.current
+      const canvas = document.createElement("canvas")
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
       const context = canvas.getContext("2d")
@@ -110,7 +114,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         </Alert>
       )}
 
-      {isCameraOpen && hasPermission && (
+      {isCameraOpen && (
         <div className="space-y-2 rounded-md border p-2">
             <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
             <div className="flex justify-center gap-2">
@@ -138,8 +142,6 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
             </Button>
         </div>
       )}
-
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   )
 }
