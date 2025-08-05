@@ -85,7 +85,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
   return (
     <div className="space-y-2">
       {!isCameraOpen && !capturedImage && (
-        <Button variant="outline" onClick={enableCamera} className="w-full">
+        <Button type="button" variant="outline" onClick={enableCamera} className="w-full">
           <Camera className="mr-2 h-4 w-4" />
           Abrir Cámara
         </Button>
@@ -105,11 +105,11 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
         <div className="space-y-2 rounded-md border p-2">
             <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay playsInline muted />
             <div className="flex justify-center gap-2">
-                 <Button onClick={capturePhoto} className="w-full">
+                 <Button type="button" onClick={capturePhoto} className="w-full">
                     <Camera className="mr-2 h-4 w-4" />
                     Capturar Foto
                 </Button>
-                 <Button variant="outline" onClick={closeCamera} className="w-full">
+                 <Button type="button" variant="outline" onClick={closeCamera} className="w-full">
                     <CameraOff className="mr-2 h-4 w-4" />
                     Cerrar Cámara
                 </Button>
@@ -123,7 +123,7 @@ export function CameraCapture({ onPhotoTaken }: CameraCaptureProps) {
             <div className="relative aspect-video w-full">
                  <Image src={capturedImage} alt="Foto capturada" fill objectFit="contain" className="rounded-md"/>
             </div>
-            <Button variant="outline" onClick={enableCamera} className="w-full">
+            <Button type="button" variant="outline" onClick={enableCamera} className="w-full">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Tomar otra foto
             </Button>
