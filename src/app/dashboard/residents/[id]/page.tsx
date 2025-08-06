@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail, Home } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -143,16 +143,22 @@ function ResidentProfilePageContent({ id }: { id: string }) {
              </CardHeader>
              <CardContent className="space-y-4">
                 {resident.familyContacts?.map((contact, index) => (
-                    <div key={index} className="text-sm">
+                    <div key={index} className="text-sm space-y-2">
                         <div className="font-bold text-base mb-2">{contact.name} <span className="font-normal text-muted-foreground">({contact.kinship})</span></div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <Phone size={14}/>
-                            <span>{contact.phone}</span>
+                         <div className="flex items-start gap-2 text-muted-foreground">
+                            <Home size={14} className="mt-1 shrink-0"/>
+                            <span>{contact.address}</span>
                         </div>
-                         <div className="flex items-center gap-2 text-muted-foreground">
-                            <Mail size={14}/>
+                        <div className="flex items-start gap-2 text-muted-foreground">
+                            <Mail size={14} className="mt-1 shrink-0"/>
                             <span>{contact.email}</span>
                         </div>
+                        {contact.phones?.map((phone, phoneId) => (
+                            <div key={phoneId} className="flex items-center gap-2 text-muted-foreground">
+                                <Phone size={14}/>
+                                <span>{phone.number}</span>
+                            </div>
+                        ))}
                     </div>
                 ))}
              </CardContent>
@@ -337,5 +343,3 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </Suspense>
   )
 }
-
-    

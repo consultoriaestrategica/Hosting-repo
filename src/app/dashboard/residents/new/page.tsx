@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
@@ -58,7 +58,10 @@ const residentFormSchema = z.object({
   familyContacts: z.array(z.object({
       name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
       kinship: z.string().min(2, { message: "El parentesco debe tener al menos 2 caracteres." }),
-      phone: z.string().min(7, { message: "El teléfono debe ser válido." }),
+      address: z.string().min(5, { message: "La dirección debe ser válida." }),
+      phones: z.array(z.object({
+          number: z.string().min(7, { message: "El teléfono debe ser válido." }),
+      })).min(1, "Debe haber al menos un teléfono."),
       email: z.string().email({ message: "Correo electrónico inválido." }),
   })),
 
@@ -93,7 +96,7 @@ export default function NewResidentPage() {
       allergies: "",
       medications: [{ name: "", dose: "", frequency: "" }],
       diet: "",
-      familyContacts: [{ name: "", kinship: "", phone: "", email: "" }],
+      familyContacts: [{ name: "", kinship: "", address: "", phones: [{ number: "" }], email: "" }],
       status: "Activo",
       admissionDate: new Date().toISOString().split('T')[0],
       documents: [],
@@ -179,7 +182,7 @@ export default function NewResidentPage() {
                         <CardTitle>Información del Residente</CardTitle>
                         <CardDescription>Complete los datos demográficos y administrativos.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 pt-6">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Fecha de Nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -199,7 +202,7 @@ export default function NewResidentPage() {
                         <CardTitle>Información Médica y de Cuidado</CardTitle>
                          <CardDescription>Detalle las condiciones médicas, medicamentos y necesidades del residente.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent className="space-y-6 pt-6">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <FormField control={form.control} name="bloodType" render={({ field }) => (<FormItem><FormLabel>Tipo de Sangre</FormLabel><FormControl><Input placeholder="Ej. O+" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="dependency" render={({ field }) => (<FormItem><FormLabel>Nivel de Dependencia</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un nivel" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Dependiente">Dependiente</SelectItem><SelectItem value="Independiente">Independiente</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
@@ -234,20 +237,12 @@ export default function NewResidentPage() {
                             <CardTitle>Información de Contacto Familiar</CardTitle>
                             <CardDescription>Agregue uno o más contactos de emergencia para el residente.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 pt-6">
                             {familyContactFields.map((field, index) => (
-                                <div key={field.id} className="p-4 border rounded-md space-y-4 relative">
-                                    <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeFamilyContact(index)}><Trash2 className="h-4 w-4" /></Button>
-                                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <FormField control={form.control} name={`familyContacts.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nombre del Contacto</FormLabel><FormControl><Input placeholder="Ej. Juan Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name={`familyContacts.${index}.kinship`} render={({ field }) => (<FormItem><FormLabel>Parentesco</FormLabel><FormControl><Input placeholder="Ej. Hijo" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name={`familyContacts.${index}.phone`} render={({ field }) => (<FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input placeholder="Ej. +1-202-555-0182" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name={`familyContacts.${index}.email`} render={({ field }) => (<FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input placeholder="Ej. juan.r@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    </div>
-                                </div>
+                                <FamilyContactFields key={field.id} form={form} contactIndex={index} removeContact={removeFamilyContact} />
                             ))}
-                            <Button type="button" variant="outline" size="sm" onClick={() => appendFamilyContact({ name: "", kinship: "", phone: "", email: "" })}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Agregar Contacto
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendFamilyContact({ name: "", kinship: "", address: "", phones: [{ number: "" }], email: "" })}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Agregar Contacto Familiar
                             </Button>
                         </CardContent>
                     </Card>
@@ -259,7 +254,7 @@ export default function NewResidentPage() {
                         <CardTitle>Documentos Requeridos</CardTitle>
                         <CardDescription>Cargue los documentos obligatorios del residente.</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <CardContent className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
                         {documentTypes.map((type) => (
                             <div key={type}>
                                 <FormLabel>{type}</FormLabel>
@@ -313,4 +308,52 @@ export default function NewResidentPage() {
   )
 }
 
-  
+// Sub-component for managing a single family contact's fields
+function FamilyContactFields({ form, contactIndex, removeContact }: { form: any, contactIndex: number, removeContact: (index: number) => void }) {
+    const { fields: phoneFields, append: appendPhone, remove: removePhone } = useFieldArray({
+        control: form.control,
+        name: `familyContacts.${contactIndex}.phones`
+    });
+
+    return (
+        <div className="p-4 border rounded-md space-y-4 relative">
+            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeContact(contactIndex)}>
+                <Trash2 className="h-4 w-4" />
+            </Button>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField control={form.control} name={`familyContacts.${contactIndex}.name`} render={({ field }) => (<FormItem><FormLabel>Nombre del Contacto</FormLabel><FormControl><Input placeholder="Ej. Juan Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`familyContacts.${contactIndex}.kinship`} render={({ field }) => (<FormItem><FormLabel>Parentesco</FormLabel><FormControl><Input placeholder="Ej. Hijo" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`familyContacts.${contactIndex}.email`} render={({ field }) => (<FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input placeholder="Ej. juan.r@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            </div>
+            <FormField control={form.control} name={`familyContacts.${contactIndex}.address`} render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123, Ciudad" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            
+            <div>
+                <FormLabel>Números de Teléfono</FormLabel>
+                <div className="space-y-2 mt-2">
+                    {phoneFields.map((field, phoneIndex) => (
+                        <div key={field.id} className="flex items-center gap-2">
+                           <FormField
+                                control={form.control}
+                                name={`familyContacts.${contactIndex}.phones.${phoneIndex}.number`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormControl>
+                                            <Input placeholder="Ej. +1-202-555-0182" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removePhone(phoneIndex)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+                 <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendPhone({ number: "" })}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Agregar Teléfono
+                </Button>
+            </div>
+        </div>
+    );
+}

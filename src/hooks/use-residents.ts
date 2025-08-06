@@ -3,10 +3,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+type PhoneContact = {
+    number: string;
+};
+
 type FamilyContact = {
   name: string;
   kinship: string;
-  phone: string;
+  address: string;
+  phones: PhoneContact[];
   email: string;
 };
 
@@ -62,7 +67,7 @@ const initialResidents: Resident[] = [
         { name: "Lisinopril", dose: "20mg", frequency: "Cada mañana" },
     ],
     familyContacts: [
-        { name: "Juan Rodriguez", kinship: "Hijo", phone: "+1-202-555-0182", email: "juan.r@example.com" }
+        { name: "Juan Rodriguez", kinship: "Hijo", address: "Calle Falsa 123, Ciudad", phones: [{ number: "+1-202-555-0182" }], email: "juan.r@example.com" }
     ],
     documents: [
         { type: "Cédula de Paciente", name: "cedula_maria.pdf", size: 1024 },
@@ -87,7 +92,7 @@ const initialResidents: Resident[] = [
         { name: "Lisinopril", dose: "10mg", frequency: "Diaria" },
     ],
      familyContacts: [
-        { name: "Ana Gomez", kinship: "Hija", phone: "+1-202-555-0183", email: "ana.g@example.com" }
+        { name: "Ana Gomez", kinship: "Hija", address: "Avenida Siempre Viva 742", phones: [{ number: "+1-202-555-0183" }], email: "ana.g@example.com" }
     ],
   },
 ];
@@ -147,5 +152,3 @@ export function useResidents() {
 
   return { residents, addResident, isLoading };
 }
-
-    
