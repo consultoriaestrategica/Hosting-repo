@@ -11,7 +11,7 @@ export default function LoginPage() {
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
       <div className="flex items-center justify-center p-6">
-        <div className="mx-auto grid w-[400px] gap-6">
+        <div className="mx-auto grid w-full max-w-md gap-6">
           <div className="grid gap-2 text-center">
             <h1 className="text-3xl font-bold font-headline">Ángel Guardián</h1>
             <p className="text-balance text-muted-foreground">
