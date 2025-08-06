@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -19,10 +19,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
 import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
+import NewLogForm from "./new-log-form"
 
 
 const documents = [
@@ -36,6 +45,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   const { residents, isLoading: residentsLoading } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
   const [isClient, setIsClient] = useState(false)
+  const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
 
@@ -145,39 +155,58 @@ function ResidentProfilePageContent({ id }: { id: string }) {
               {!isFamilyRole && <TabsTrigger value="documents">Documentos</TabsTrigger>}
             </TabsList>
             <TabsContent value="evolution">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Registro de Reportes</CardTitle>
-                  <CardDescription>Registro cronológico de los reportes del residente.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Detalle</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {evolutionLog.map(log => (
-                           <TableRow key={log.id}>
-                               <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
-                                <TableCell>
-                                    <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
-                                        {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
-                                        {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
-                                    </Badge>
+              <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center">
+                    <div className="grid gap-2">
+                      <CardTitle>Registro de Reportes</CardTitle>
+                      <CardDescription>Registro cronológico de los reportes del residente.</CardDescription>
+                    </div>
+                    {!isFamilyRole && (
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="ml-auto gap-1">
+                        <PlusCircle className="h-4 w-4" />
+                        Agregar Reporte
+                      </Button>
+                    </DialogTrigger>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Detalle</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {evolutionLog.map(log => (
+                            <TableRow key={log.id}>
+                                <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
+                                  <TableCell>
+                                      <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
+                                          {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
+                                          {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
+                                      </Badge>
+                                  </TableCell>
+                                <TableCell className="max-w-[200px] truncate">
+                                  {log.reportType === 'medico' ? log.evolutionNotes : log.supplyDescription}
                                 </TableCell>
-                               <TableCell className="max-w-[200px] truncate">
-                                 {log.reportType === 'medico' ? log.evolutionNotes : log.supplyDescription}
-                               </TableCell>
-                           </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+                 <DialogContent className="sm:max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Agregar Reporte Diario para {resident.name}</DialogTitle>
+                        <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
+                    </DialogHeader>
+                    <NewLogForm residentId={resident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
+                </DialogContent>
+              </Dialog>
             </TabsContent>
             <TabsContent value="profile">
               <Card>
