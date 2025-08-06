@@ -1,12 +1,13 @@
 
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, FileText, ClipboardList } from "lucide-react"
+import { PlusCircle, MoreHorizontal, FileText, ClipboardList, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -31,14 +32,16 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useResidents } from "@/hooks/use-residents"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, useMemo, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./[id]/new-log-form"
+
+const ITEMS_PER_PAGE = 8;
 
 function ResidentsPageContent() {
   const { residents, isLoading } = useResidents()
@@ -49,10 +52,31 @@ function ResidentsPageContent() {
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [selectedResident, setSelectedResident] = useState<any | null>(null);
 
+  // State for filtering and pagination
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     setIsClient(true)
   }, [])
+
+  const filteredResidents = useMemo(() => {
+    return residents.filter(resident => {
+      const nameMatch = resident.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const dateMatch = dateFilter ? resident.admissionDate.includes(dateFilter) : true;
+      return nameMatch && dateMatch;
+    });
+  }, [residents, searchTerm, dateFilter]);
+
+  const totalPages = Math.ceil(filteredResidents.length / ITEMS_PER_PAGE);
+
+  const paginatedResidents = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredResidents.slice(startIndex, endIndex);
+  }, [filteredResidents, currentPage]);
+
 
   const handleGenerateReport = (residentName: string) => {
     toast({
@@ -96,6 +120,25 @@ function ResidentsPageContent() {
           <CardDescription>
             Administre y vea los detalles de todos los residentes.
           </CardDescription>
+          <div className="flex items-center gap-4 pt-4">
+            <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Buscar por nombre..."
+                    className="pl-8 w-full"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <Input
+                type="date"
+                placeholder="Filtrar por fecha de ingreso"
+                className="w-auto"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -112,7 +155,7 @@ function ResidentsPageContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {residents.map((resident) => (
+              {paginatedResidents.map((resident) => (
                 <TableRow key={resident.id}>
                   <TableCell className="font-medium">{resident.name}</TableCell>
                   <TableCell>
@@ -129,10 +172,8 @@ function ResidentsPageContent() {
                   <TableCell>
                     <Badge
                       variant={
-                        resident.dependency === "Alta"
+                        resident.dependency === "Dependiente"
                           ? "destructive"
-                          : resident.dependency === "Media"
-                          ? "secondary"
                           : "outline"
                       }
                     >
@@ -176,6 +217,31 @@ function ResidentsPageContent() {
             </TableBody>
           </Table>
         </CardContent>
+        <CardFooter>
+            <div className="flex justify-between items-center w-full">
+                <div className="text-xs text-muted-foreground">
+                    Página {currentPage} de {totalPages}
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        Anterior
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Siguiente
+                    </Button>
+                </div>
+            </div>
+        </CardFooter>
       </Card>
       
       {selectedResident && (
@@ -201,3 +267,5 @@ export default function ResidentsPage() {
     </Suspense>
   )
 }
+
+    

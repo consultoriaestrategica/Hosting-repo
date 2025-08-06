@@ -27,7 +27,7 @@ type ResidentDocument = {
   size: number;
 };
 
-type Resident = {
+export type Resident = {
   id: string;
   name: string;
   age: number;
@@ -87,13 +87,101 @@ const initialResidents: Resident[] = [
     roomType: "Básica",
     bloodType: "A-",
     fallRisk: "Medio",
-    pathologies: ["Hipertensión"],
+    pathologies: ["Diabetes"],
     medications: [
-        { name: "Lisinopril", dose: "10mg", frequency: "Diaria" },
+        { name: "Metformina", dose: "850mg", frequency: "Diaria" },
     ],
      familyContacts: [
         { name: "Ana Gomez", kinship: "Hija", address: "Avenida Siempre Viva 742", phones: [{ number: "+1-202-555-0183" }], email: "ana.g@example.com" }
     ],
+  },
+   { 
+    id: "res-003", 
+    name: "Ana Torres", 
+    age: 85,
+    dob: "1939-11-01",
+    idNumber: "11223344",
+    dependency: "Independiente", 
+    status: "Inactivo", 
+    admissionDate: "2022-10-01", 
+    roomType: "Básica",
+  },
+   { 
+    id: "res-004", 
+    name: "Luis Fernandez", 
+    age: 75,
+    dob: "1949-07-30",
+    idNumber: "55667788",
+    dependency: "Independiente", 
+    status: "Activo", 
+    admissionDate: "2024-02-10", 
+    roomType: "Premium",
+  },
+   { 
+    id: "res-005", 
+    name: "Elena Sanchez", 
+    age: 88,
+    dob: "1936-09-05",
+    idNumber: "99887766",
+    dependency: "Dependiente", 
+    status: "Activo", 
+    admissionDate: "2023-05-18", 
+    roomType: "Premium",
+  },
+   { 
+    id: "res-006", 
+    name: "Lucelly Acevedo", 
+    age: 79,
+    dob: "1945-01-25",
+    idNumber: "12312312",
+    dependency: "Independiente", 
+    status: "Activo", 
+    admissionDate: "2023-08-01", 
+    roomType: "Básica",
+  },
+  { 
+    id: "res-007", 
+    name: "Carlos Gallo", 
+    age: 81,
+    dob: "1943-06-12",
+    idNumber: "45645645",
+    dependency: "Independiente", 
+    status: "Activo", 
+    admissionDate: "2023-09-02", 
+    roomType: "Básica",
+  },
+  { 
+    id: "res-008", 
+    name: "Marta Lucia Ramirez", 
+    age: 90,
+    dob: "1934-04-10",
+    idNumber: "78978978",
+    dependency: "Dependiente", 
+    status: "Activo", 
+    admissionDate: "2022-12-15", 
+    roomType: "Premium",
+  },
+  { 
+    id: "res-009", 
+    name: "Jorge Ivan Perez", 
+    age: 76,
+    dob: "1948-02-28",
+    idNumber: "14725836",
+    dependency: "Independiente", 
+    status: "Activo", 
+    admissionDate: "2024-01-20", 
+    roomType: "Básica",
+  },
+  { 
+    id: "res-010", 
+    name: "Sofia Vergara", 
+    age: 83,
+    dob: "1941-10-17",
+    idNumber: "36925814",
+    dependency: "Dependiente", 
+    status: "Activo", 
+    admissionDate: "2023-11-05", 
+    roomType: "Premium",
   },
 ];
 
@@ -107,7 +195,13 @@ export function useResidents() {
     try {
       const storedResidents = localStorage.getItem(RESIDENTS_STORAGE_KEY);
       if (storedResidents) {
-        setResidents(JSON.parse(storedResidents));
+        const parsedResidents = JSON.parse(storedResidents);
+        if(parsedResidents.length === 0) {
+             localStorage.setItem(RESIDENTS_STORAGE_KEY, JSON.stringify(initialResidents));
+             setResidents(initialResidents);
+        } else {
+            setResidents(parsedResidents);
+        }
       } else {
         localStorage.setItem(RESIDENTS_STORAGE_KEY, JSON.stringify(initialResidents));
         setResidents(initialResidents);
@@ -152,3 +246,5 @@ export function useResidents() {
 
   return { residents, addResident, isLoading };
 }
+
+    
