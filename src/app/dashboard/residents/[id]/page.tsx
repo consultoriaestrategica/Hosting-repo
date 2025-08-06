@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -34,12 +34,6 @@ import { useSearchParams } from "next/navigation"
 import NewLogForm from "./new-log-form"
 import LogDetailDialog from "../../logs/log-detail-dialog"
 
-
-const documents = [
-    { name: "Historia_Clinica.pdf", date: "2023-01-10" },
-    { name: "Cedula_Ciudadania.jpg", date: "2023-01-10" },
-    { name: "Consentimiento_Informado.pdf", date: "2023-01-11" },
-]
 
 function ResidentProfilePageContent({ id }: { id: string }) {
   const { toast } = useToast()
@@ -138,23 +132,30 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                 <div className="grid grid-cols-2 gap-2">
                     <div className="font-semibold">Edad</div><div>{resident.age}</div>
                     <div className="font-semibold">Género</div><div>Femenino</div>
-                    <div className="font-semibold">Cédula</div><div>12345678</div>
-                    <div className="font-semibold">F. Nacimiento</div><div>1942-05-15</div>
+                    <div className="font-semibold">Cédula</div><div>{resident.idNumber}</div>
+                    <div className="font-semibold">F. Nacimiento</div><div>{resident.dob}</div>
                 </div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader>
-              <CardTitle>Contacto Familiar</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm">
-                 <div className="grid grid-cols-2 gap-2">
-                    <div className="font-semibold">Nombre</div><div>Juan Rodriguez</div>
-                    <div className="font-semibold">Parentesco</div><div>Hijo</div>
-                    <div className="font-semibold">Teléfono</div><div>+1-202-555-0182</div>
-                    <div className="font-semibold">Correo</div><div>juan.r@example.com</div>
-                </div>
-            </CardContent>
+             <CardHeader>
+                <CardTitle>Contactos Familiares</CardTitle>
+             </CardHeader>
+             <CardContent className="space-y-4">
+                {resident.familyContacts?.map((contact, index) => (
+                    <div key={index} className="text-sm">
+                        <div className="font-bold text-base mb-2">{contact.name} <span className="font-normal text-muted-foreground">({contact.kinship})</span></div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Phone size={14}/>
+                            <span>{contact.phone}</span>
+                        </div>
+                         <div className="flex items-center gap-2 text-muted-foreground">
+                            <Mail size={14}/>
+                            <span>{contact.email}</span>
+                        </div>
+                    </div>
+                ))}
+             </CardContent>
           </Card>
         </div>
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
@@ -224,29 +225,56 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                   <CardTitle>Perfil Médico y de Cuidado</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm space-y-4">
-                  <div>
-                    <h3 className="font-semibold">Nivel de Dependencia</h3>
-                    <Badge variant={resident.dependency === "Alta" ? "destructive" : "secondary"}>{resident.dependency}</Badge>
-                  </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <h3 className="font-semibold">Nivel de Dependencia</h3>
+                            <Badge variant={resident.dependency === "Dependiente" ? "destructive" : "secondary"}>{resident.dependency}</Badge>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold">Riesgo de Caída</h3>
+                            <Badge variant={resident.fallRisk === "Alto" ? "destructive" : resident.fallRisk === "Medio" ? "secondary" : "default"}>{resident.fallRisk}</Badge>
+                        </div>
+                         <div>
+                            <h3 className="font-semibold">Tipo de Sangre</h3>
+                            <p className="text-muted-foreground">{resident.bloodType}</p>
+                        </div>
+                    </div>
                   <Separator />
                   <div>
                     <h3 className="font-semibold">Patologías Principales</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">{["Alzheimer", "Hipertensión"].map(p => <Badge key={p} variant="outline">{p}</Badge>)}</div>
+                    <div className="flex flex-wrap gap-2 mt-1">{resident.pathologies?.map(p => <Badge key={p} variant="outline">{p}</Badge>)}</div>
                   </div>
                    <Separator />
                    <div>
                     <h3 className="font-semibold">Alergias</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">{["Penicilina"].map(a => <Badge key={a} variant="destructive">{a}</Badge>)}</div>
+                     <div className="flex flex-wrap gap-2 mt-1">{resident.allergies?.map(a => <Badge key={a} variant="destructive">{a}</Badge>)}</div>
                   </div>
                    <Separator />
                    <div>
                     <h3 className="font-semibold">Medicamentos Recetados</h3>
-                    <p>Donepezilo 10mg, Lisinopril 20mg</p>
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Medicamento</TableHead>
+                                <TableHead>Dosis</TableHead>
+                                <TableHead>Frecuencia</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {resident.medications?.map((med, index) => (
+                               <TableRow key={index}>
+                                   <TableCell>{med.name}</TableCell>
+                                   <TableCell>{med.dose}</TableCell>
+                                   <TableCell>{med.frequency}</TableCell>
+                               </TableRow>
+                            ))}
+                        </TableBody>
+                     </Table>
                   </div>
                    <Separator />
                    <div>
                     <h3 className="font-semibold">Plan de Alimentación</h3>
-                    <p>Baja en sodio, alimentos blandos</p>
+                    <p className="text-muted-foreground">{resident.diet}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -256,27 +284,26 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                     <CardHeader>
                         <CardTitle>Documentos Almacenados</CardTitle>
                         <CardDescription>Historia clínica y documentos legales almacenados de forma segura.</CardDescription>
-                         <Button variant="outline" size="sm" className="h-8 gap-1 w-fit ml-auto -mt-12">
-                            <FileUp className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                              Subir Documento
-                            </span>
-                          </Button>
                     </CardHeader>
                     <CardContent>
                          <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Nombre de Archivo</TableHead>
-                                    <TableHead>Fecha de Carga</TableHead>
+                                    <TableHead>Estado</TableHead>
                                     <TableHead>Acción</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {documents.map(doc => (
-                                   <TableRow key={doc.name}>
-                                       <TableCell className="font-medium">{doc.name}</TableCell>
-                                       <TableCell>{doc.date}</TableCell>
+                                {resident.documents?.map(doc => (
+                                   <TableRow key={doc.type}>
+                                       <TableCell className="font-medium">{doc.type}</TableCell>
+                                       <TableCell>
+                                            <Badge variant="outline" className="gap-1 pl-1 text-green-600 border-green-600">
+                                                <CheckCircle className="h-3 w-3" />
+                                                Cargado
+                                            </Badge>
+                                       </TableCell>
                                        <TableCell>
                                            <Button variant="link" size="sm" className="p-0 h-auto">Descargar</Button>
                                        </TableCell>
@@ -310,3 +337,5 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </Suspense>
   )
 }
+
+    
