@@ -28,10 +28,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { useResidents } from "@/hooks/use-residents"
-import { useLogs } from "@/hooks/use-logs"
+import { useLogs, Log } from "@/hooks/use-logs"
 import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./new-log-form"
+import LogDetailDialog from "../../logs/log-detail-dialog"
 
 
 const documents = [
@@ -46,6 +47,9 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   const { logs, isLoading: logsLoading } = useLogs()
   const [isClient, setIsClient] = useState(false)
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<Log | null>(null);
+
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
 
@@ -74,6 +78,12 @@ function ResidentProfilePageContent({ id }: { id: string }) {
       description: `Se está creando un reporte en PDF para ${resident.name}.`,
     })
   }
+  
+  const handleRowClick = (log: Log) => {
+    setSelectedLog(log);
+    setIsDetailDialogOpen(true);
+  };
+
 
   return (
     <>
@@ -182,7 +192,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                       </TableHeader>
                       <TableBody>
                           {evolutionLog.map(log => (
-                            <TableRow key={log.id}>
+                            <TableRow key={log.id} onClick={() => handleRowClick(log)} className="cursor-pointer">
                                 <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
                                   <TableCell>
                                       <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
@@ -280,6 +290,14 @@ function ResidentProfilePageContent({ id }: { id: string }) {
           </Tabs>
         </div>
       </div>
+       {selectedLog && resident && (
+        <LogDetailDialog 
+            isOpen={isDetailDialogOpen} 
+            onOpenChange={setIsDetailDialogOpen} 
+            log={selectedLog}
+            residentName={resident.name}
+        />
+      )}
     </>
   )
 }

@@ -33,17 +33,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { useLogs } from "@/hooks/use-logs"
+import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useEffect, useState } from "react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { Badge } from "@/components/ui/badge"
+import LogDetailDialog from "./log-detail-dialog"
 
 export default function LogsPage() {
   const { logs, isLoading: logsLoading } = useLogs()
   const { residents, isLoading: residentsLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<Log | null>(null);
 
   useEffect(() => {
     setIsClient(true)
@@ -60,6 +63,11 @@ export default function LogsPage() {
   }
   
   const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const handleRowClick = (log: Log) => {
+    setSelectedLog(log);
+    setIsDetailDialogOpen(true);
+  };
 
   return (
     <>
@@ -108,10 +116,10 @@ export default function LogsPage() {
             </TableHeader>
             <TableBody>
               {sortedLogs.map((log) => (
-                <TableRow key={log.id}>
+                <TableRow key={log.id} onClick={() => handleRowClick(log)} className="cursor-pointer">
                   <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <Link href={`/dashboard/residents/${log.residentId}`} className="hover:underline">
+                    <Link href={`/dashboard/residents/${log.residentId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
                         {getResidentName(log.residentId)}
                     </Link>
                   </TableCell>
@@ -131,6 +139,7 @@ export default function LogsPage() {
                           aria-haspopup="true"
                           size="icon"
                           variant="ghost"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Toggle menu</span>
@@ -138,6 +147,9 @@ export default function LogsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleRowClick(log)}>
+                            Ver Detalle
+                        </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                            <Link href={`/dashboard/residents/${log.residentId}`}>Ver Perfil</Link>
                         </DropdownMenuItem>
@@ -150,6 +162,15 @@ export default function LogsPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      {selectedLog && (
+        <LogDetailDialog 
+            isOpen={isDetailDialogOpen} 
+            onOpenChange={setIsDetailDialogOpen} 
+            log={selectedLog}
+            residentName={getResidentName(selectedLog.residentId)}
+        />
+      )}
     </>
   )
 }
