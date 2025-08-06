@@ -11,8 +11,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Log } from "@/hooks/use-logs"
+import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
-import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, Image as ImageIcon } from "lucide-react"
+import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, Image as ImageIcon, FileDown } from "lucide-react"
 
 interface LogDetailDialogProps {
   isOpen: boolean
@@ -35,9 +36,18 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: stri
 }
 
 export default function LogDetailDialog({ isOpen, onOpenChange, log, residentName }: LogDetailDialogProps) {
+  const { toast } = useToast()
+  
   if (!log) return null
 
   const isMedical = log.reportType === 'medico';
+
+  const handleExportPdf = () => {
+    toast({
+        title: "Generando PDF...",
+        description: `El reporte para ${residentName} se está exportando.`
+    })
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -108,6 +118,10 @@ export default function LogDetailDialog({ isOpen, onOpenChange, log, residentNam
         </div>
 
         <DialogFooter>
+           <Button type="button" variant="outline" onClick={handleExportPdf}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Exportar a PDF
+            </Button>
           <DialogClose asChild>
             <Button type="button">Cerrar</Button>
           </DialogClose>
