@@ -53,10 +53,10 @@ import { useState } from "react"
 
 // Mock data for users - replace with actual data fetching hook later
 const initialUsers = [
-  { id: "user-1", name: "Admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo", idType: "C.C.", idNumber: "12345678", phone: "3001234567" },
-  { id: "user-2", name: "Enfermera Ana", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo", idType: "C.C.", idNumber: "87654321", phone: "3011234567" },
-  { id: "user-3", name: "Juan Rodriguez", email: "juan.r@example.com", role: "Familiar", status: "Activo", idType: "C.E.", idNumber: "11223344", phone: "3021234567" },
-  { id: "user-4", name: "Carlos Parra", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo", idType: "C.C.", idNumber: "44332211", phone: "3031234567" },
+  { id: "user-1", name: "Admin", username: "admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo", idType: "C.C.", idNumber: "12345678", phone: "3001234567" },
+  { id: "user-2", name: "Enfermera Ana", username: "anap", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo", idType: "C.C.", idNumber: "87654321", phone: "3011234567" },
+  { id: "user-3", name: "Juan Rodriguez", username: "juanr", email: "juan.r@example.com", role: "Familiar", status: "Activo", idType: "C.E.", idNumber: "11223344", phone: "3021234567" },
+  { id: "user-4", name: "Carlos Parra", username: "carlosp", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo", idType: "C.C.", idNumber: "44332211", phone: "3031234567" },
 ];
 
 
@@ -247,6 +247,7 @@ export default function SettingsPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Nombre</TableHead>
+                                    <TableHead>Nombre de Usuario</TableHead>
                                     <TableHead>Identificación</TableHead>
                                     <TableHead>Correo Electrónico</TableHead>
                                     <TableHead>Rol</TableHead>
@@ -258,6 +259,7 @@ export default function SettingsPage() {
                                 {users.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.name}</TableCell>
+                                        <TableCell>{user.username}</TableCell>
                                         <TableCell>
                                             <div className="font-medium">{`${user.idType} ${user.idNumber}`}</div>
                                         </TableCell>
@@ -298,9 +300,15 @@ export default function SettingsPage() {
                     </DialogHeader>
                     <form onSubmit={handleSaveUser}>
                         <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="user-name">Nombre Completo</Label>
-                                <Input id="user-name" name="name" defaultValue={editingUser?.name || ""} required />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user-name">Nombre Completo</Label>
+                                    <Input id="user-name" name="name" defaultValue={editingUser?.name || ""} required />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user-username">Nombre de Usuario</Label>
+                                    <Input id="user-username" name="username" defaultValue={editingUser?.username || ""} required />
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
