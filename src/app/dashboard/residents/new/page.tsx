@@ -70,7 +70,8 @@ const residentFormSchema = z.object({
   roomType: z.enum(["Básica", "Premium"]),
   documents: z.array(z.object({
     type: z.string(),
-    file: z.any(),
+    name: z.string(),
+    size: z.number(),
   })).optional(),
 })
 
@@ -144,6 +145,13 @@ export default function NewResidentPage() {
 
  function onSubmit(data: ResidentFormValues) {
     const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
+    
+    const documentsData = Object.keys(uploadedFiles).map(type => ({
+      type: type,
+      name: uploadedFiles[type].file.name,
+      size: uploadedFiles[type].file.size,
+    }));
+
     const newResident = {
         name: data.name,
         idNumber: data.idNumber,
@@ -160,7 +168,7 @@ export default function NewResidentPage() {
         medications: data.medications,
         diet: data.diet,
         familyContacts: data.familyContacts,
-        documents: Object.keys(uploadedFiles).map(type => ({ type: type, name: uploadedFiles[type].file.name, size: uploadedFiles[type].file.size })),
+        documents: documentsData,
     };
     addResident(newResident);
     toast({
@@ -296,30 +304,20 @@ export default function NewResidentPage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <FormField
-                                    control={form.control}
-                                    name={`documents`}
-                                    render={() => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <div>
-                                                    <label htmlFor={`dropzone-${type}`} className="relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-card py-6 hover:bg-muted">
-                                                        <div className=" text-center">
-                                                            <div className="mx-auto max-w-min rounded-md border p-2">
-                                                                <UploadCloud size={20} />
-                                                            </div>
-                                                            <p className="mt-2 text-sm text-gray-500">
-                                                                <span className="font-semibold">Subir archivo</span>
-                                                            </p>
-                                                            <p className="text-xs text-gray-400">PDF, DOCX o JPG de hasta 10MB</p>
-                                                        </div>
-                                                    </label>
-                                                    <Input id={`dropzone-${type}`} type="file" className="hidden" onChange={(e) => handleFileChange(e, type)} />
+                                    <div>
+                                        <label htmlFor={`dropzone-${type}`} className="relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-card py-6 hover:bg-muted">
+                                            <div className=" text-center">
+                                                <div className="mx-auto max-w-min rounded-md border p-2">
+                                                    <UploadCloud size={20} />
                                                 </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
+                                                <p className="mt-2 text-sm text-gray-500">
+                                                    <span className="font-semibold">Subir archivo</span>
+                                                </p>
+                                                <p className="text-xs text-gray-400">PDF, DOCX o JPG de hasta 10MB</p>
+                                            </div>
+                                        </label>
+                                        <Input id={`dropzone-${type}`} type="file" className="hidden" onChange={(e) => handleFileChange(e, type)} />
+                                    </div>
                                 )}
                             </div>
                         ))}
@@ -389,3 +387,5 @@ function FamilyContactFields({ form, contactIndex, removeContact }: { form: any,
         </div>
     );
 }
+
+    
