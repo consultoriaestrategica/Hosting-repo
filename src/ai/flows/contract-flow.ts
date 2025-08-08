@@ -20,7 +20,8 @@ const ContractInputSchema = z.object({
   endDate: z.string().describe('La fecha de fin del contrato (YYYY-MM-DD).'),
   contractType: z.string().describe('El tipo de contrato (Básica o Premium).'),
   roomType: z.string().describe('El tipo de habitación asignada (Básica o Premium).'),
-  dependencyLevel: z.string().describe('El nivel de dependencia del residente (Dependiente o Independiente).')
+  dependencyLevel: z.string().describe('El nivel de dependencia del residente (Dependiente o Independiente).'),
+  contractValue: z.string().describe('El valor total mensual del contrato, formateado como moneda (ej. $2,500,000 COP).'),
 });
 export type ContractInput = z.infer<typeof ContractInputSchema>;
 
@@ -47,6 +48,7 @@ const prompt = ai.definePrompt({
   *   **Plan Contratado:** Plan {{{contractType}}}
   *   **Habitación Asignada:** {{{roomType}}}
   *   **Nivel de Dependencia:** {{{dependencyLevel}}}
+  *   **Valor Mensual del Contrato:** {{{contractValue}}}
 
   **Estructura del Contrato:**
 
@@ -66,7 +68,7 @@ const prompt = ai.definePrompt({
           *   Acceso a sala de entretenimiento premium.
 
   3.  **CLÁUSULA SEGUNDA - VALOR Y FORMA DE PAGO:**
-      *   Establece el valor mensual basado en el **Plan Contratado ({{{contractType}}})**. Para el **Plan Básico, el valor es $2,000,000 COP**. Para el **Plan Premium, el valor es $3,500,000 COP**.
+      *   Establece el valor mensual del contrato usando el valor exacto proporcionado en la variable **{{{contractValue}}}**.
       *   Indica que el pago es anticipado dentro de los primeros 5 días hábiles de cada mes.
 
   4.  **CLÁUSULA TERCERA - OBLIGACIONES DE EL HOGAR:** Lista las responsabilidades del hogar.

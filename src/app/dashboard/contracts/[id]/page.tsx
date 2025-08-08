@@ -3,10 +3,11 @@ import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
 import { useContracts } from "@/hooks/use-contracts"
 import { useResidents } from "@/hooks/use-residents"
+import { useSettings } from "@/hooks/use-settings"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign } from "lucide-react"
+import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent } from "lucide-react"
 import { marked } from "marked"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 function ContractDetailPageContent({ id }: { id: string }) {
     const { contracts, updateContract, isLoading: contractsLoading } = useContracts()
     const { residents, isLoading: residentsLoading } = useResidents()
+    const { settings, isLoading: settingsLoading } = useSettings()
     const [isClient, setIsClient] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [editableDetails, setEditableDetails] = useState("")
@@ -34,7 +36,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
     
     const resident = contract ? residents.find(r => r.id === contract.residentId) : null
 
-    if (!isClient || contractsLoading || residentsLoading) {
+    if (!isClient || contractsLoading || residentsLoading || settingsLoading) {
         return <div>Cargando...</div>
     }
 
@@ -51,10 +53,23 @@ function ContractDetailPageContent({ id }: { id: string }) {
         }
     };
     
-    const getContractValue = (type: 'Básica' | 'Premium') => {
-        const value = type === 'Básica' ? 2000000 : 3500000;
-        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+    const getContractValueDetails = (type: 'Básica' | 'Premium') => {
+        const baseValue = settings.prices[type] || 0;
+        const vatRate = settings.vatEnabled ? (settings.vatRate || 0) / 100 : 0;
+        const vatValue = baseValue * vatRate;
+        const totalValue = baseValue + vatValue;
+        
+        const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+
+        return {
+            base: formatCurrency(baseValue),
+            vat: formatCurrency(vatValue),
+            total: formatCurrency(totalValue),
+            vatEnabled: settings.vatEnabled
+        }
     }
+    
+    const contractValues = getContractValueDetails(contract.contractType);
     
     const handlePrint = () => {
        const printWindow = window.open('', '_blank');
@@ -122,8 +137,18 @@ function ContractDetailPageContent({ id }: { id: string }) {
                                 <Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="font-semibold flex items-center gap-1.5"><DollarSign size={14}/>Valor Mensual:</span>
-                                <span className="font-bold">{getContractValue(contract.contractType)}</span>
+                                <span className="font-semibold flex items-center gap-1.5"><DollarSign size={14}/>Valor Base Mensual:</span>
+                                <span className="font-semibold">{contractValues.base}</span>
+                            </div>
+                            {contractValues.vatEnabled && (
+                                <div className="flex justify-between items-center text-muted-foreground pl-5">
+                                    <span className="flex items-center gap-1.5"><Percent size={12}/>IVA ({settings.vatRate}%):</span>
+                                    <span>{contractValues.vat}</span>
+                                </div>
+                            )}
+                             <div className="flex justify-between items-center text-base">
+                                <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Total Mensual:</span>
+                                <span className="font-bold">{contractValues.total}</span>
                             </div>
                              <div className="flex justify-between items-center">
                                 <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Inicio:</span>

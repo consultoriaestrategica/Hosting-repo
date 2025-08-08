@@ -22,6 +22,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { useSettings } from "@/hooks/use-settings"
 import {
   Table,
   TableBody,
@@ -62,12 +63,30 @@ const initialUsers = [
 
 export default function SettingsPage() {
   const { toast } = useToast()
+  const { settings, setSettings, isLoading } = useSettings()
   const [users, setUsers] = useState(initialUsers);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
 
+  const handlePriceChange = (plan: 'Básica' | 'Premium', value: string) => {
+    setSettings(prev => ({
+        ...prev,
+        prices: {
+            ...prev.prices,
+            [plan]: Number(value)
+        }
+    }));
+  };
+
+  const handleVatChange = (key: 'vatEnabled' | 'vatRate', value: boolean | number) => {
+    setSettings(prev => ({
+        ...prev,
+        [key]: value
+    }));
+  };
 
   const handleSaveChanges = (section: string) => {
+    // The hook already saves on change, this is just for user feedback
     toast({
       title: "Configuración Guardada",
       description: `Los cambios en la sección de ${section} han sido guardados.`,
@@ -104,6 +123,10 @@ export default function SettingsPage() {
      toast({ variant: "destructive", title: "Usuario Eliminado", description: "El usuario ha sido eliminado del sistema." });
   }
 
+  if (isLoading) {
+    return <div>Cargando configuración...</div>
+  }
+
 
   return (
     <>
@@ -112,9 +135,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="mt-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="pricing">Precios y Facturación</TabsTrigger>
           <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
           <TabsTrigger value="users">Usuarios</TabsTrigger>
         </TabsList>
@@ -184,6 +208,51 @@ export default function SettingsPage() {
             </CardContent>
             <CardFooter>
               <Button onClick={() => handleSaveChanges("Configuración General")}>Guardar Cambios</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+         <TabsContent value="pricing">
+          <Card>
+            <CardHeader>
+              <CardTitle>Precios y Facturación</CardTitle>
+              <CardDescription>
+                Defina los precios de los planes y la configuración de impuestos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div>
+                    <h3 className="text-lg font-medium mb-4">Precios de Planes Mensuales</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="price-basica">Plan Básico (COP)</Label>
+                            <Input id="price-basica" type="number" value={settings.prices['Básica']} onChange={(e) => handlePriceChange('Básica', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="price-premium">Plan Premium (COP)</Label>
+                            <Input id="price-premium" type="number" value={settings.prices['Premium']} onChange={(e) => handlePriceChange('Premium', e.target.value)} />
+                        </div>
+                    </div>
+                </div>
+                 <div>
+                    <h3 className="text-lg font-medium mb-4">Impuestos</h3>
+                     <div className="flex items-start justify-between rounded-lg border p-4">
+                        <div>
+                            <Label htmlFor="vat-enabled">Habilitar IVA</Label>
+                            <p className="text-sm text-muted-foreground">Aplicar IVA al valor total del contrato.</p>
+                        </div>
+                        <Switch id="vat-enabled" checked={settings.vatEnabled} onCheckedChange={(checked) => handleVatChange('vatEnabled', checked)} />
+                    </div>
+                     {settings.vatEnabled && (
+                        <div className="space-y-2 mt-4">
+                            <Label htmlFor="vat-rate">Porcentaje de IVA (%)</Label>
+                            <Input id="vat-rate" type="number" value={settings.vatRate} onChange={(e) => handleVatChange('vatRate', Number(e.target.value))} />
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => handleSaveChanges("Precios y Facturación")}>Guardar Cambios</Button>
             </CardFooter>
           </Card>
         </TabsContent>

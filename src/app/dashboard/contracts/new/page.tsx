@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
 import { useContracts } from "@/hooks/use-contracts"
+import { useSettings } from "@/hooks/use-settings"
 import { useState } from "react"
 import { generateContract } from "@/ai/flows/contract-flow"
 import { Loader2 } from "lucide-react"
@@ -48,6 +49,7 @@ export default function NewContractPage() {
   const router = useRouter()
   const { residents } = useResidents()
   const { addContract } = useContracts()
+  const { settings } = useSettings()
   const [isGenerating, setIsGenerating] = useState(false)
 
   const form = useForm<ContractFormValues>({
@@ -78,6 +80,11 @@ export default function NewContractPage() {
     }
 
     try {
+        const baseValue = settings.prices[data.contractType];
+        const vatRate = settings.vatEnabled ? (settings.vatRate || 0) / 100 : 0;
+        const totalValue = baseValue * (1 + vatRate);
+        const formattedTotalValue = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalValue);
+
         const contractDetails = await generateContract({
             residentName: resident.name,
             residentIdNumber: resident.idNumber,
@@ -90,6 +97,7 @@ export default function NewContractPage() {
             contractType: data.contractType,
             roomType: resident.roomType,
             dependencyLevel: resident.dependency,
+            contractValue: formattedTotalValue,
         });
 
         const newContract = {
