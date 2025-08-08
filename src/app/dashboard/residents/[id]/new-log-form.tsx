@@ -28,7 +28,7 @@ import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useState, useEffect, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
-import { Mic, MicOff, Camera, X, PlusCircle, Trash2 } from "lucide-react"
+import { Mic, MicOff, Camera, X, PlusCircle, Trash2, Upload } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const reportFormSchema = z.object({
@@ -43,14 +43,14 @@ const reportFormSchema = z.object({
   evolutionNotes: z.array(z.object({
     note: z.string().min(1, "La nota no puede estar vacía."),
   })).optional(),
-  photoEvidence: z.string().optional(),
+  photoEvidence: z.array(z.string()).optional(),
 
   // Supply fields
   supplierName: z.string().optional(),
   supplyDate: z.string().optional(),
   supplyDescription: z.string().optional(),
   supplyNotes: z.string().optional(),
-  supplyPhotoEvidence: z.string().optional(),
+  supplyPhotoEvidence: z.array(z.string()).optional(),
 })
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
@@ -67,16 +67,17 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { residents } = useResidents()
 
   // --- State and Refs ---
-  const startDateRef = useRef<string>(new Date().toISOString()); // Capture start time on component mount
+  const startDateRef = useRef<string>(new Date().toISOString());
   const [isListening, setIsListening] = useState(false);
   const [activeDictationField, setActiveDictationField] = useState<DictationField | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
@@ -85,6 +86,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       reportType: undefined,
       evolutionNotes: [{ note: "" }],
       supplyNotes: "",
+      photoEvidence: [],
+      supplyPhotoEvidence: [],
     },
   })
   
@@ -142,7 +145,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     recognition.start();
   };
 
-  // --- Camera Logic ---
+  // --- Camera & Upload Logic ---
+  const updatePhotoEvidence = (newPhotos: string[]) => {
+    setPhotoPreviews(newPhotos);
+    const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
+    form.setValue(fieldToUpdate, newPhotos);
+  };
+  
   const openCamera = async () => {
     if (isCameraOpen) return;
     setCameraError(null);
@@ -177,18 +186,42 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const photoDataUrl = canvas.toDataURL('image/jpeg');
-        setPhotoPreview(photoDataUrl);
-        const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
-        form.setValue(fieldToUpdate, photoDataUrl);
-        toast({ title: "Evidencia Capturada", description: "La foto se ha guardado correctamente." });
+        updatePhotoEvidence([...photoPreviews, photoDataUrl]);
+        toast({ title: "Evidencia Capturada", description: "La foto se ha añadido a la galería." });
     }
     closeCamera();
   };
 
-  const resetPhoto = () => {
-    setPhotoPreview(null);
-    const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
-    form.setValue(fieldToUpdate, undefined);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newPreviews: string[] = [];
+    let filesProcessed = 0;
+
+    for (const file of Array.from(files)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          newPreviews.push(e.target.result);
+        }
+        filesProcessed++;
+        if (filesProcessed === files.length) {
+            updatePhotoEvidence([...photoPreviews, ...newPreviews]);
+            toast({ title: `${files.length} imagen(es) cargada(s)`, description: "Las fotos se han añadido a la galería." });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset file input
+    if(fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+
+  const removePhoto = (index: number) => {
+    const newPhotos = [...photoPreviews];
+    newPhotos.splice(index, 1);
+    updatePhotoEvidence(newPhotos);
   }
 
   // --- Lifecycle and Submit ---
@@ -196,12 +229,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     if (residentId) {
         form.setValue("residentId", residentId);
     }
-    // Cleanup function when component unmounts
     return () => {
       recognitionRef.current?.stop();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      closeCamera();
     };
   }, [residentId, form]);
 
@@ -248,22 +278,28 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     })
     onFormSubmit();
     form.reset();
-    setPhotoPreview(null);
+    setPhotoPreviews([]);
   }
 
-  const renderPhotoEvidence = (field: any) => (
+  const renderPhotoEvidence = () => (
     <FormItem>
-      <FormLabel>{field.name === 'photoEvidence' ? 'Evidencia Fotográfica' : 'Evidencia Fotográfica del Suministro'}</FormLabel>
+      <FormLabel>Evidencia Fotográfica</FormLabel>
       <FormControl>
-        <div className="space-y-2">
-            {photoPreview ? (
-                 <div className="relative aspect-video w-full">
-                    <img src={photoPreview} alt="Vista previa de la foto" className="w-full h-full object-contain rounded-md border"/>
-                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={resetPhoto}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                 </div>
-            ) : isCameraOpen ? (
+        <div className="space-y-4">
+             {photoPreviews.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {photoPreviews.map((preview, index) => (
+                        <div key={index} className="relative aspect-square w-full">
+                            <img src={preview} alt={`Vista previa ${index + 1}`} className="w-full h-full object-cover rounded-md border"/>
+                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePhoto(index)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+             )}
+
+            {isCameraOpen ? (
                  <div className="space-y-2 rounded-md border p-2">
                     <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video rounded-md bg-muted"></video>
                     <div className="flex justify-center gap-2">
@@ -273,23 +309,36 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         </Button>
                         <Button type="button" variant="outline" onClick={closeCamera} className="w-full">
                             <X className="mr-2 h-4 w-4" />
-                            Cerrar
+                            Cerrar Cámara
                         </Button>
                     </div>
                 </div>
             ) : (
-                <>
-                <Button type="button" variant="outline" onClick={openCamera} className="w-full">
-                    <Camera className="mr-2 h-4 w-4" />
-                    Abrir Cámara
-                </Button>
-                {cameraError && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Error de Cámara</AlertTitle>
-                        <AlertDescription>{cameraError}</AlertDescription>
-                    </Alert>
-                )}
-                </>
+                 <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="outline" onClick={openCamera} className="w-full">
+                        <Camera className="mr-2 h-4 w-4" />
+                        Abrir Cámara
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full">
+                         <Upload className="mr-2 h-4 w-4" />
+                         Cargar Archivo(s)
+                    </Button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileChange}
+                    />
+                </div>
+            )}
+            
+            {cameraError && (
+                <Alert variant="destructive">
+                    <AlertTitle>Error de Cámara</AlertTitle>
+                    <AlertDescription>{cameraError}</AlertDescription>
+                </Alert>
             )}
         </div>
       </FormControl>
@@ -316,7 +365,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                                     reportType: value as "medico" | "suministro",
                                     evolutionNotes: [{ note: "" }],
                                 });
-                                setPhotoPreview(null);
+                                setPhotoPreviews([]);
                             }}
                             defaultValue={field.value}
                             className="flex items-center space-x-4"
@@ -406,7 +455,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                             <PlusCircle className="mr-2 h-4 w-4" /> Agregar Nota
                         </Button>
                     </div>
-                    <FormField control={form.control} name="photoEvidence" render={({ field }) => renderPhotoEvidence(field)} />
+                    {renderPhotoEvidence()}
                 </div>
               )}
 
@@ -418,7 +467,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     </div>
                      <FormField control={form.control} name="supplyDescription" render={({ field }) => (<FormItem><FormLabel>Descripción del Suministro</FormLabel><FormControl><Textarea placeholder="Ej. 2 cajas de guantes, 5 kits de curación" {...field} /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={form.control} name="supplyNotes" render={({ field }) => (<FormItem><FormLabel>Notas Adicionales</FormLabel><FormControl><div className="relative"><Textarea placeholder="Observaciones adicionales sobre la entrega..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'supplyNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleDictation('supplyNotes')}>{isListening && activeDictationField === 'supplyNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={form.control} name="supplyPhotoEvidence" render={({ field }) => renderPhotoEvidence(field)} />
+                     {renderPhotoEvidence()}
                  </div>
               )}
             </div>

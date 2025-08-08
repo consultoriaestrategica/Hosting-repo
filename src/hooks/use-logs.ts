@@ -19,7 +19,7 @@ type MedicalLog = BaseLog & {
   spo2?: number;
   feedingType?: string;
   evolutionNotes?: string[];
-  photoEvidenceUrl?: string;
+  photoEvidenceUrl?: string[];
 };
 
 // Supply Report
@@ -29,7 +29,7 @@ type SupplyLog = BaseLog & {
   supplyDate?: string; // YYYY-MM-DD
   supplyDescription?: string;
   supplyNotes?: string;
-  supplyPhotoEvidenceUrl?: string;
+  supplyPhotoEvidenceUrl?: string[];
 };
 
 export type Log = MedicalLog | SupplyLog;

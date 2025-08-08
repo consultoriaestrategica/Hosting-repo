@@ -8,12 +8,19 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Log } from "@/hooks/use-logs"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
-import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, Image as ImageIcon, FileDown, Clock } from "lucide-react"
+import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, ImageIcon, FileDown, Clock } from "lucide-react"
 
 interface LogDetailDialogProps {
   isOpen: boolean
@@ -34,6 +41,37 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: stri
     </div>
   )
 }
+
+function PhotoEvidenceCarousel({ photoUrls }: { photoUrls?: string[] }) {
+    if (!photoUrls || photoUrls.length === 0) return null;
+
+    return (
+        <>
+            <Separator className="my-4" />
+            <div>
+                <h4 className="font-semibold flex items-center mb-2"><ImageIcon size={16} className="mr-2"/>Evidencia Fotográfica</h4>
+                {photoUrls.length > 1 ? (
+                    <Carousel className="w-full max-w-lg mx-auto">
+                        <CarouselContent>
+                            {photoUrls.map((url, index) => (
+                                <CarouselItem key={index}>
+                                    <div className="p-1">
+                                         <img src={url} alt={`Evidencia ${index + 1}`} className="rounded-lg border w-full object-contain aspect-video" />
+                                    </div>
+                                </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                        <CarouselPrevious />
+                        <CarouselNext />
+                    </Carousel>
+                ) : (
+                    <img src={photoUrls[0]} alt="Evidencia fotográfica" className="rounded-lg border w-full object-contain aspect-video" />
+                )}
+            </div>
+        </>
+    );
+}
+
 
 export default function LogDetailDialog({ isOpen, onOpenChange, log, residentName }: LogDetailDialogProps) {
   const { toast } = useToast()
@@ -90,15 +128,7 @@ export default function LogDetailDialog({ isOpen, onOpenChange, log, residentNam
                            <p className="text-muted-foreground bg-muted p-3 rounded-md">Sin notas.</p>
                         )}
                     </div>
-                     {log.photoEvidenceUrl && (
-                        <>
-                        <Separator className="my-4" />
-                        <div>
-                             <h4 className="font-semibold flex items-center mb-2"><ImageIcon size={16} className="mr-2"/>Evidencia Fotográfica</h4>
-                            <img src={log.photoEvidenceUrl} alt="Evidencia fotográfica" className="rounded-lg border w-full object-contain" />
-                        </div>
-                        </>
-                    )}
+                    <PhotoEvidenceCarousel photoUrls={log.photoEvidenceUrl} />
                 </>
             ) : (
                 <>
@@ -117,15 +147,7 @@ export default function LogDetailDialog({ isOpen, onOpenChange, log, residentNam
                         <h4 className="font-semibold flex items-center mb-2"><StickyNote size={16} className="mr-2"/>Notas Adicionales</h4>
                         <p className="text-muted-foreground bg-muted p-3 rounded-md">{log.supplyNotes || 'Sin notas.'}</p>
                     </div>
-                    {log.supplyPhotoEvidenceUrl && (
-                        <>
-                        <Separator className="my-4" />
-                        <div>
-                             <h4 className="font-semibold flex items-center mb-2"><ImageIcon size={16} className="mr-2"/>Evidencia Fotográfica</h4>
-                            <img src={log.supplyPhotoEvidenceUrl} alt="Evidencia del suministro" className="rounded-lg border w-full object-contain" />
-                        </div>
-                        </>
-                    )}
+                    <PhotoEvidenceCarousel photoUrls={log.supplyPhotoEvidenceUrl} />
                 </>
             )}
         </div>
