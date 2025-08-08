@@ -336,7 +336,9 @@ function ResidentProfilePageContent({ id }: { id: string }) {
 }
 
 // This is the server component part
-export default function ResidentProfilePage({ params: { id } }: { params: { id: string } }) {
+export default function ResidentProfilePage({ params }: { params: { id: string } }) {
+  const { id } = use(params);
+
   return (
     <Suspense fallback={<div>Cargando...</div>}>
       <ResidentProfilePageContent id={id} />
