@@ -99,6 +99,31 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
                   <h4 className="font-semibold">Plan de Alimentación</h4>
                   <p className="text-muted-foreground">{resident.diet || 'No especificado.'}</p>
                 </div>
+                <div className="col-span-full">
+                    <h4 className="font-semibold">Medicamentos Recetados</h4>
+                     {resident.medications?.length ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Medicamento</TableHead>
+                                    <TableHead>Dosis</TableHead>
+                                    <TableHead>Frecuencia</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {resident.medications.map((med, index) => (
+                                   <TableRow key={index}>
+                                       <TableCell>{med.name}</TableCell>
+                                       <TableCell>{med.dose}</TableCell>
+                                       <TableCell>{med.frequency}</TableCell>
+                                   </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                     ) : (
+                        <p className="text-muted-foreground">No hay medicamentos recetados.</p>
+                     )}
+                </div>
             </div>
             
             <Separator className="my-4" />
