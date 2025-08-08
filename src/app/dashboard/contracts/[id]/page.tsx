@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
 import { useContracts } from "@/hooks/use-contracts"
 import { useResidents } from "@/hooks/use-residents"
@@ -145,9 +145,10 @@ function ContractDetailPageContent({ id }: { id: string }) {
 
 
 export default function ContractDetailPage({ params }: { params: { id: string } }) {
+    const { id } = use(params);
     return (
         <Suspense fallback={<div>Cargando...</div>}>
-            <ContractDetailPageContent id={params.id} />
+            <ContractDetailPageContent id={id} />
         </Suspense>
     )
 }
