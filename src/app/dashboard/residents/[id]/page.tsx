@@ -348,5 +348,3 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </Suspense>
   )
 }
-
-    
