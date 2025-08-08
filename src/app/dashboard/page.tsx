@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -23,6 +24,11 @@ const chartColors = [
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
 ];
+
+const reportTypeColors = {
+    medico: "hsl(var(--chart-1))",
+    suministro: "hsl(var(--chart-2))"
+};
 
 export default function DashboardPage() {
   const { residents, isLoading: residentsLoading } = useResidents()
@@ -132,9 +138,20 @@ export default function DashboardPage() {
         }
     });
 
-    return { ageDistributionData, pathologyData, dependencyData, dailyLogActivity };
+    const reportTypeCounts = filteredLogs.reduce((acc, log) => {
+        if(log.reportType === 'medico') acc.medico++;
+        if(log.reportType === 'suministro') acc.suministro++;
+        return acc;
+    }, { medico: 0, suministro: 0 });
 
-  }, [filteredResidents, logs]);
+    const reportTypeData = [
+        { name: 'Médico', value: reportTypeCounts.medico, fill: reportTypeColors.medico },
+        { name: 'Suministro', value: reportTypeCounts.suministro, fill: reportTypeColors.suministro },
+    ];
+
+    return { ageDistributionData, pathologyData, dependencyData, dailyLogActivity, reportTypeData };
+
+  }, [filteredResidents, logs, filteredLogs]);
   
   // --- Event Handlers ---
 
@@ -200,112 +217,142 @@ export default function DashboardPage() {
             </Button>
         </div>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Residentes Activos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.totalActive}</div>
-            <p className="text-xs text-muted-foreground">{appliedDateRange ? "En el período seleccionado" : "En total"}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Dependencia Promedio</CardTitle>
-            <Accessibility className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.mostCommonDependency}</div>
-            <p className="text-xs text-muted-foreground">Nivel más común entre residentes</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Patología Común</CardTitle>
-            <Stethoscope className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardStats.mostCommonPathology}</div>
-            <p className="text-xs text-muted-foreground">Condición más prevalente</p>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 mt-6 md:grid-cols-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>Actividad de Registros Diarios (Últimos 7 Días)</CardTitle>
-            <CardDescription>Número de registros médicos y de suministros por día.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <ChartContainer config={{}} className="h-[300px] w-full">
-              <BarChart data={chartData.dailyLogActivity} accessibilityLayer>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="date" tickLine={false} tickMargin={10} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="medico" name="Médico" fill="hsl(var(--chart-1))" radius={8} stackId="a" />
-                <Bar dataKey="suministro" name="Suministro" fill="hsl(var(--chart-2))" radius={8} stackId="a" />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 mt-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="lg:col-span-4">
-          <CardHeader>
-            <CardTitle>Distribución por Edad</CardTitle>
-            <CardDescription>Número de residentes por grupo de edad.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={{}} className="h-[300px] w-full">
-              <BarChart data={chartData.ageDistributionData} accessibilityLayer>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="range" tickLine={false} tickMargin={10} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="total" fill="hsl(var(--primary))" radius={8} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Distribución por Patología</CardTitle>
-            <CardDescription>Condiciones de salud más comunes.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <ChartContainer config={{}} className="h-[300px] w-full">
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie data={chartData.pathologyData} dataKey="value" nameKey="name" innerRadius={60}>
-                    {chartData.pathologyData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                </Pie>
-              </PieChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-         <Card className="lg:col-span-7">
-          <CardHeader>
-            <CardTitle>Distribución del Nivel de Dependencia</CardTitle>
-            <CardDescription>Porcentaje de residentes por nivel de dependencia.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-             <ChartContainer config={{}} className="h-[300px] w-full">
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie data={chartData.dependencyData} dataKey="value" nameKey="name" cy="50%">
-                    {chartData.dependencyData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                </Pie>
-              </PieChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+        <Tabs defaultValue="general">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="general">Panel General</TabsTrigger>
+                <TabsTrigger value="logs">Análisis de Registros</TabsTrigger>
+            </TabsList>
+            <TabsContent value="general" className="mt-4">
+                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total de Residentes Activos</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{dashboardStats.totalActive}</div>
+                        <p className="text-xs text-muted-foreground">{appliedDateRange ? "En el período seleccionado" : "En total"}</p>
+                    </CardContent>
+                    </Card>
+                    <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Dependencia Promedio</CardTitle>
+                        <Accessibility className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{dashboardStats.mostCommonDependency}</div>
+                        <p className="text-xs text-muted-foreground">Nivel más común entre residentes</p>
+                    </CardContent>
+                    </Card>
+                    <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Patología Común</CardTitle>
+                        <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{dashboardStats.mostCommonPathology}</div>
+                        <p className="text-xs text-muted-foreground">Condición más prevalente</p>
+                    </CardContent>
+                    </Card>
+                </div>
+                <div className="grid gap-4 mt-6 md:grid-cols-2 lg:grid-cols-7">
+                    <Card className="lg:col-span-4">
+                    <CardHeader>
+                        <CardTitle>Distribución por Edad</CardTitle>
+                        <CardDescription>Número de residentes por grupo de edad.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={{}} className="h-[300px] w-full">
+                        <BarChart data={chartData.ageDistributionData} accessibilityLayer>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="range" tickLine={false} tickMargin={10} axisLine={false} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="total" fill="hsl(var(--primary))" radius={8} />
+                        </BarChart>
+                        </ChartContainer>
+                    </CardContent>
+                    </Card>
+                    <Card className="lg:col-span-3">
+                    <CardHeader>
+                        <CardTitle>Distribución por Patología</CardTitle>
+                        <CardDescription>Condiciones de salud más comunes.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center">
+                        <ChartContainer config={{}} className="h-[300px] w-full">
+                        <PieChart>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Pie data={chartData.pathologyData} dataKey="value" nameKey="name" innerRadius={60}>
+                                {chartData.pathologyData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                        </PieChart>
+                        </ChartContainer>
+                    </CardContent>
+                    </Card>
+                    <Card className="lg:col-span-7">
+                    <CardHeader>
+                        <CardTitle>Distribución del Nivel de Dependencia</CardTitle>
+                        <CardDescription>Porcentaje de residentes por nivel de dependencia.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center">
+                        <ChartContainer config={{}} className="h-[300px] w-full">
+                        <PieChart>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Pie data={chartData.dependencyData} dataKey="value" nameKey="name" cy="50%">
+                                {chartData.dependencyData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                        </PieChart>
+                        </ChartContainer>
+                    </CardContent>
+                    </Card>
+                </div>
+            </TabsContent>
+            <TabsContent value="logs" className="mt-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Card>
+                    <CardHeader>
+                        <CardTitle>Actividad de Registros Diarios (Últimos 7 Días)</CardTitle>
+                        <CardDescription>Número de registros médicos y de suministros por día.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={{}} className="h-[300px] w-full">
+                        <BarChart data={chartData.dailyLogActivity} accessibilityLayer>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="date" tickLine={false} tickMargin={10} axisLine={false} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="medico" name="Médico" fill={reportTypeColors.medico} radius={8} stackId="a" />
+                            <Bar dataKey="suministro" name="Suministro" fill={reportTypeColors.suministro} radius={8} stackId="a" />
+                        </BarChart>
+                        </ChartContainer>
+                    </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Distribución de Tipos de Registro</CardTitle>
+                            <CardDescription>Proporción de registros médicos vs. de suministros en el período seleccionado.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex justify-center">
+                            <ChartContainer config={{}} className="h-[300px] w-full">
+                            <PieChart>
+                                <ChartTooltip content={<ChartTooltipContent />} />
+                                <Pie data={chartData.reportTypeData} dataKey="value" nameKey="name" innerRadius={60}>
+                                    {chartData.reportTypeData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                            </ChartContainer>
+                        </CardContent>
+                    </Card>
+                </div>
+            </TabsContent>
+        </Tabs>
+      
     </>
   )
 }
+
+    
