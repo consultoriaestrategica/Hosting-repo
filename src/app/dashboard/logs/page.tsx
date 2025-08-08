@@ -1,7 +1,7 @@
 
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Stethoscope, Truck } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Stethoscope, Truck, Search, FilterX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -33,9 +33,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { Badge } from "@/components/ui/badge"
 import LogDetailDialog from "./log-detail-dialog"
@@ -48,11 +49,27 @@ export default function LogsPage() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
 
+  // State for filtering
+  const [dateFilter, setDateFilter] = useState("");
+  const [appliedDateFilter, setAppliedDateFilter] = useState("");
+
   useEffect(() => {
     setIsClient(true)
   }, [])
   
   const isLoading = logsLoading || residentsLoading;
+
+  const filteredLogs = useMemo(() => {
+    let filtered = [...logs];
+    if (appliedDateFilter) {
+      filtered = filtered.filter(log => {
+        const logDate = new Date(log.endDate).toISOString().split('T')[0];
+        return logDate === appliedDateFilter;
+      });
+    }
+    return filtered.sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+  }, [logs, appliedDateFilter]);
+
 
   if (!isClient || isLoading) {
     return <div>Cargando...</div>
@@ -61,13 +78,21 @@ export default function LogsPage() {
   const getResidentName = (residentId: string) => {
     return residents.find(r => r.id === residentId)?.name || "N/A"
   }
-  
-  const sortedLogs = [...logs].sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
 
   const handleRowClick = (log: Log) => {
     setSelectedLog(log);
     setIsDetailDialogOpen(true);
   };
+  
+  const handleApplyFilter = () => {
+    setAppliedDateFilter(dateFilter);
+  };
+
+  const handleClearFilter = () => {
+    setDateFilter("");
+    setAppliedDateFilter("");
+  };
+
 
   return (
     <>
@@ -98,8 +123,21 @@ export default function LogsPage() {
         <CardHeader>
           <CardTitle>Reportes Recientes</CardTitle>
           <CardDescription>
-            Listado de los últimos reportes médicos y de suministros.
+            Listado de los últimos reportes médicos y de suministros. Use el filtro para buscar por fecha.
           </CardDescription>
+           <div className="flex items-center gap-2 pt-4">
+                <Input
+                    type="date"
+                    className="w-auto"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                />
+                <Button onClick={handleApplyFilter}>Aplicar Filtro</Button>
+                 <Button variant="outline" onClick={handleClearFilter} disabled={!appliedDateFilter}>
+                    <FilterX className="h-4 w-4 mr-2" />
+                    Limpiar
+                </Button>
+           </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -115,9 +153,9 @@ export default function LogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedLogs.map((log) => (
+              {filteredLogs.map((log) => (
                 <TableRow key={log.id} onClick={() => handleRowClick(log)} className="cursor-pointer">
-                  <TableCell className="font-medium">{new Date(log.endDate).toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">{new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
                   <TableCell>
                     <Link href={`/dashboard/residents/${log.residentId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
                         {getResidentName(log.residentId)}
