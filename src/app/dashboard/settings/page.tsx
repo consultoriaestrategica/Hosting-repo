@@ -22,9 +22,50 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import { MoreHorizontal, PlusCircle } from "lucide-react"
+import { useState } from "react"
+
+// Mock data for users - replace with actual data fetching hook later
+const initialUsers = [
+  { id: "user-1", name: "Admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo" },
+  { id: "user-2", name: "Enfermera Ana", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo" },
+  { id: "user-3", name: "Juan Rodriguez", email: "juan.r@example.com", role: "Familiar", status: "Activo" },
+  { id: "user-4", name: "Carlos Parra", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo" },
+];
+
 
 export default function SettingsPage() {
   const { toast } = useToast()
+  const [users, setUsers] = useState(initialUsers);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+
 
   const handleSaveChanges = (section: string) => {
     toast({
@@ -32,6 +73,37 @@ export default function SettingsPage() {
       description: `Los cambios en la sección de ${section} han sido guardados.`,
     })
   }
+
+  const handleOpenUserDialog = (user: any | null = null) => {
+    setEditingUser(user);
+    setIsUserDialogOpen(true);
+  }
+
+  const handleSaveUser = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const userData = Object.fromEntries(formData.entries());
+
+    if (editingUser) {
+      // Edit user logic
+      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...userData } : u));
+      toast({ title: "Usuario Actualizado", description: `Los datos de ${userData.name} han sido actualizados.` });
+    } else {
+      // Add user logic
+      const newUser = { id: `user-${Date.now()}`, ...userData };
+      setUsers([...users, newUser as any]);
+      toast({ title: "Usuario Creado", description: `El usuario ${userData.name} ha sido añadido.` });
+    }
+
+    setIsUserDialogOpen(false);
+    setEditingUser(null);
+  };
+
+  const handleDeleteUser = (userId: string) => {
+     setUsers(users.filter(u => u.id !== userId));
+     toast({ variant: "destructive", title: "Usuario Eliminado", description: "El usuario ha sido eliminado del sistema." });
+  }
+
 
   return (
     <>
@@ -154,24 +226,122 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="users">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Gestión de Usuarios</CardTitle>
-                    <CardDescription>
-                        Añada, edite o elimine usuarios del sistema.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">La gestión detallada de usuarios estará disponible en una futura actualización.</p>
-                    {/* Aquí se podría agregar una tabla de usuarios en el futuro */}
-                </CardContent>
-                 <CardFooter>
-                    <Button disabled>Añadir Usuario (Próximamente)</Button>
-                </CardFooter>
-            </Card>
+            <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+                <Card>
+                    <CardHeader className="flex flex-row items-center">
+                        <div className="grid gap-2">
+                            <CardTitle>Gestión de Usuarios</CardTitle>
+                            <CardDescription>
+                                Añada, edite o elimine usuarios del sistema.
+                            </CardDescription>
+                        </div>
+                        <DialogTrigger asChild>
+                             <Button size="sm" className="ml-auto gap-1" onClick={() => handleOpenUserDialog()}>
+                                <PlusCircle className="h-4 w-4" />
+                                Añadir Usuario
+                             </Button>
+                        </DialogTrigger>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Nombre</TableHead>
+                                    <TableHead>Correo Electrónico</TableHead>
+                                    <TableHead>Rol</TableHead>
+                                    <TableHead>Estado</TableHead>
+                                    <TableHead><span className="sr-only">Acciones</span></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {users.map((user) => (
+                                    <TableRow key={user.id}>
+                                        <TableCell className="font-medium">{user.name}</TableCell>
+                                        <TableCell>{user.email}</TableCell>
+                                        <TableCell>{user.role}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={user.status === "Activo" ? "default" : "secondary"} className={user.status === "Activo" ? "bg-green-500 text-white" : ""}>
+                                                {user.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                        <span className="sr-only">Toggle menu</span>
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                    <DropdownMenuItem onClick={() => handleOpenUserDialog(user)}>Editar</DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(user.id)}>Eliminar</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
+                        <DialogDescription>
+                           {editingUser ? "Actualice los detalles del usuario." : "Complete la información para crear una nueva cuenta."}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSaveUser}>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="user-name">Nombre</Label>
+                                <Input id="user-name" name="name" defaultValue={editingUser?.name || ""} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="user-email">Correo Electrónico</Label>
+                                <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="user-role">Rol</Label>
+                                <Select name="role" defaultValue={editingUser?.role || "Personal"}>
+                                    <SelectTrigger id="user-role">
+                                        <SelectValue placeholder="Seleccione un rol" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Admin">Admin</SelectItem>
+                                        <SelectItem value="Personal">Personal</SelectItem>
+                                        <SelectItem value="Familiar">Familiar</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="user-status">Estado</Label>
+                                <Select name="status" defaultValue={editingUser?.status || "Activo"}>
+                                    <SelectTrigger id="user-status">
+                                        <SelectValue placeholder="Seleccione un estado" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Activo">Activo</SelectItem>
+                                        <SelectItem value="Inactivo">Inactivo</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">Cancelar</Button>
+                            </DialogClose>
+                            <Button type="submit">Guardar Cambios</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </TabsContent>
 
       </Tabs>
     </>
   )
 }
+
+    
