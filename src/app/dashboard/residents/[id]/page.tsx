@@ -53,7 +53,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   }, [])
 
   const resident = residents.find(r => r.id === id)
-  const evolutionLog = [...logs].filter(log => log.residentId === id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const evolutionLog = [...logs].filter(log => log.residentId === id).sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
 
   if (!isClient || residentsLoading || logsLoading) {
     return <div>Cargando...</div>
@@ -200,7 +200,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                       <TableBody>
                           {evolutionLog.map(log => (
                             <TableRow key={log.id} onClick={() => handleRowClick(log)} className="cursor-pointer">
-                                <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
+                                <TableCell className="font-medium">{new Date(log.endDate).toLocaleDateString()}</TableCell>
                                   <TableCell>
                                       <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
                                           {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}

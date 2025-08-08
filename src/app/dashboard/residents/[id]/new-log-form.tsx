@@ -33,7 +33,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
-  date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha inválida." }),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
 
   // Medical fields
@@ -66,6 +65,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { residents } = useResidents()
 
   // --- State and Refs ---
+  const startDateRef = useRef<string>(new Date().toISOString()); // Capture start time on component mount
   const [isListening, setIsListening] = useState(false);
   const [activeDictationField, setActiveDictationField] = useState<DictationField | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -80,7 +80,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     resolver: zodResolver(reportFormSchema),
     defaultValues: {
       residentId: residentId || "",
-      date: new Date().toISOString().substring(0, 16),
       reportType: undefined,
       evolutionNotes: "",
       supplyNotes: "",
@@ -208,7 +207,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     
     const baseLog = {
       residentId: data.residentId,
-      date: new Date(data.date).toISOString(),
+      startDate: startDateRef.current,
+      endDate: new Date().toISOString(),
       reportType: data.reportType,
     }
 
@@ -355,19 +355,10 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         )}
                     />
                     )}
-                    <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Fecha del Registro</FormLabel>
-                        <FormControl>
-                            <Input type="datetime-local" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                     <div className="p-2 bg-muted rounded-md col-span-full lg:col-span-2">
+                        <p className="text-sm font-medium text-muted-foreground">Fecha y Hora de Registro</p>
+                        <p className="text-sm">{new Date(startDateRef.current).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</p>
+                    </div>
                 </div>
               )}
 

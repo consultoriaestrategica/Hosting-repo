@@ -7,7 +7,8 @@ import { useState, useEffect, useCallback } from 'react';
 type BaseLog = {
   id: string;
   residentId: string;
-  date: string; // ISO string
+  startDate: string; // ISO string for when the report was started
+  endDate: string; // ISO string for when the report was submitted
 };
 
 // Medical Report
@@ -37,7 +38,8 @@ const initialLogs: Log[] = [
     { 
       id: "log-001", 
       residentId: "res-001", 
-      date: new Date(2024, 6, 20, 10, 0).toISOString(), 
+      startDate: new Date(2024, 6, 20, 9, 55).toISOString(), 
+      endDate: new Date(2024, 6, 20, 10, 0).toISOString(), 
       reportType: 'medico',
       heartRate: 80,
       respiratoryRate: 18,
@@ -48,7 +50,8 @@ const initialLogs: Log[] = [
     { 
       id: "log-002", 
       residentId: "res-001", 
-      date: new Date(2024, 6, 19, 15, 30).toISOString(), 
+      startDate: new Date(2024, 6, 19, 15, 25).toISOString(), 
+      endDate: new Date(2024, 6, 19, 15, 30).toISOString(), 
       reportType: 'medico',
       heartRate: 85,
       respiratoryRate: 20,
@@ -59,7 +62,8 @@ const initialLogs: Log[] = [
     { 
       id: "log-003", 
       residentId: "res-002", 
-      date: new Date(2024, 6, 20, 11, 0).toISOString(), 
+      startDate: new Date(2024, 6, 20, 10, 58).toISOString(), 
+      endDate: new Date(2024, 6, 20, 11, 0).toISOString(), 
       reportType: 'suministro',
       supplierName: 'Farmacia Central',
       supplyDate: '2024-07-20',

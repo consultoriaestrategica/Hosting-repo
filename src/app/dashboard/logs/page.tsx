@@ -62,7 +62,7 @@ export default function LogsPage() {
     return residents.find(r => r.id === residentId)?.name || "N/A"
   }
   
-  const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sortedLogs = [...logs].sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
 
   const handleRowClick = (log: Log) => {
     setSelectedLog(log);
@@ -117,7 +117,7 @@ export default function LogsPage() {
             <TableBody>
               {sortedLogs.map((log) => (
                 <TableRow key={log.id} onClick={() => handleRowClick(log)} className="cursor-pointer">
-                  <TableCell className="font-medium">{new Date(log.date).toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">{new Date(log.endDate).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Link href={`/dashboard/residents/${log.residentId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
                         {getResidentName(log.residentId)}

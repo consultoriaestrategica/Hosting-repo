@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Log } from "@/hooks/use-logs"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
-import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, Image as ImageIcon, FileDown } from "lucide-react"
+import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, Image as ImageIcon, FileDown, Clock } from "lucide-react"
 
 interface LogDetailDialogProps {
   isOpen: boolean
@@ -58,11 +58,18 @@ export default function LogDetailDialog({ isOpen, onOpenChange, log, residentNam
              Detalle del Reporte {isMedical ? 'Médico' : 'de Suministro'}
           </DialogTitle>
           <DialogDescription>
-            Reporte para {residentName} del {new Date(log.date).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}.
+            Reporte para {residentName} del {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}.
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+            <h3 className="font-semibold text-lg flex items-center mb-2"><Clock size={16} className="mr-2"/>Intervalo del Registro</h3>
+            <div className="text-sm text-muted-foreground space-y-1 bg-muted p-3 rounded-md">
+                <p><strong>Inicio:</strong> {new Date(log.startDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</p>
+                <p><strong>Fin:</strong> {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</p>
+            </div>
+             <Separator className="my-4" />
+
             {isMedical ? (
                 <>
                     <h3 className="font-semibold text-lg mb-2">Signos Vitales y Observaciones</h3>
