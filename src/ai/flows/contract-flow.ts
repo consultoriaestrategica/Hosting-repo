@@ -62,7 +62,7 @@ const prompt = ai.definePrompt({
   6.  **OBLIGACIONES DE LAS PARTES:** Detalla las obligaciones tanto del hogar geriátrico como del residente/familiares.
   7.  **FIRMAS:** Deja espacios para las firmas del representante legal del hogar y del contratante.
 
-  Formatea el resultado final en **Markdown**, utilizando encabezados (`#`, `##`), negritas (`**`) y listas (`*`).
+  Formatea el resultado final en **Markdown**, utilizando encabezados (#, ##), negritas (**) y listas (*).
   NO incluyas ninguna explicación o texto introductorio antes del contrato. El resultado debe empezar directamente con el título del contrato.
   `,
 });
