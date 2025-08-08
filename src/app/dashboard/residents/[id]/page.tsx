@@ -32,7 +32,7 @@ import { useLogs, Log } from "@/hooks/use-logs"
 import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./new-log-form"
-import LogDetailDialog from "../../logs/log-detail-dialog"
+import LogDetailDialog from "../../components/log-detail-dialog"
 
 
 function ResidentProfilePageContent({ id }: { id: string }) {
