@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Resident, useResidents } from "@/hooks/use-residents"
+import { Resident } from "@/hooks/use-residents"
 import { Log, useLogs } from "@/hooks/use-logs"
 import { User, Stethoscope, Truck } from "lucide-react"
 import LogDetailDialog from "../components/log-detail-dialog"
@@ -31,6 +31,13 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<Log | null>(null)
   const [currentPage, setCurrentPage] = useState(1);
+  
+  useEffect(() => {
+    // Reset page to 1 when dialog opens or resident changes
+    if (isOpen) {
+      setCurrentPage(1);
+    }
+  }, [isOpen, resident]);
 
 
   const residentLogs = useMemo(() => {
