@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Eye } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Eye, FilterX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -24,6 +24,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useContracts, Contract } from "@/hooks/use-contracts"
 import { useResidents } from "@/hooks/use-residents"
@@ -34,6 +41,7 @@ function ContractsPageContent() {
   const { contracts, isLoading: contractsLoading } = useContracts()
   const { residents, isLoading: residentsLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
+  const [residentFilter, setResidentFilter] = useState<string>("")
   
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
@@ -44,9 +52,13 @@ function ContractsPageContent() {
   
   const isLoading = contractsLoading || residentsLoading;
 
-  const sortedContracts = useMemo(() => {
-     return [...contracts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [contracts]);
+  const filteredAndSortedContracts = useMemo(() => {
+     let filtered = [...contracts];
+     if (residentFilter) {
+       filtered = filtered.filter(c => c.residentId === residentFilter);
+     }
+     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [contracts, residentFilter]);
 
   if (!isClient || isLoading) {
     return <div>Cargando...</div>
@@ -86,8 +98,26 @@ function ContractsPageContent() {
         <CardHeader>
           <CardTitle>Contratos Recientes</CardTitle>
           <CardDescription>
-            Listado de los últimos contratos generados para los residentes.
+            Listado de los últimos contratos generados para los residentes. Use el filtro para ver los contratos de un residente específico.
           </CardDescription>
+           <div className="flex items-center gap-2 pt-4">
+              <Select onValueChange={setResidentFilter} value={residentFilter}>
+                <SelectTrigger className="w-full max-w-xs">
+                    <SelectValue placeholder="Filtrar por residente..." />
+                </SelectTrigger>
+                <SelectContent>
+                    {residents.map((resident) => (
+                    <SelectItem key={resident.id} value={resident.id}>
+                        {resident.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+             </Select>
+             <Button variant="outline" onClick={() => setResidentFilter("")} disabled={!residentFilter}>
+                <FilterX className="h-4 w-4 mr-2" />
+                Limpiar
+            </Button>
+           </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -103,47 +133,55 @@ function ContractsPageContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedContracts.map((contract) => (
-                <TableRow key={contract.id}>
-                  <TableCell className="font-medium">{new Date(contract.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <Link href={`/dashboard/residents/${contract.residentId}?role=${role}`} className="hover:underline">
-                        {getResidentName(contract.residentId)}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    Contrato de Servicios {contract.contractType}
-                  </TableCell>
-                  <TableCell>
-                     <Badge variant={getStatusVariant(contract.status)}>
-                        {contract.status}
-                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                           <Link href={`/dashboard/contracts/${contract.id}?role=${role}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Detalle
-                           </Link>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+              {filteredAndSortedContracts.length > 0 ? (
+                filteredAndSortedContracts.map((contract) => (
+                  <TableRow key={contract.id}>
+                    <TableCell className="font-medium">{new Date(contract.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Link href={`/dashboard/residents/${contract.residentId}?role=${role}`} className="hover:underline">
+                          {getResidentName(contract.residentId)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      Contrato de Servicios {contract.contractType}
+                    </TableCell>
+                    <TableCell>
+                       <Badge variant={getStatusVariant(contract.status)}>
+                          {contract.status}
+                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                             <Link href={`/dashboard/contracts/${contract.id}?role=${role}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver Detalle
+                             </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                 <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        No se encontraron contratos con los filtros actuales.
+                    </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -159,4 +197,3 @@ export default function ContractsPage() {
     </Suspense>
   )
 }
-
