@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs, Log } from "@/hooks/use-logs"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./new-log-form"
 import LogDetailDialog from "../../logs/log-detail-dialog"
@@ -336,10 +336,10 @@ function ResidentProfilePageContent({ id }: { id: string }) {
 }
 
 // This is the server component part
-export default function ResidentProfilePage({ params }: { params: { id: string } }) {
+export default function ResidentProfilePage({ params: { id } }: { params: { id: string } }) {
   return (
     <Suspense fallback={<div>Cargando...</div>}>
-      <ResidentProfilePageContent id={params.id} />
+      <ResidentProfilePageContent id={id} />
     </Suspense>
   )
 }
