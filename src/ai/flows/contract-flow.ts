@@ -66,7 +66,7 @@ const prompt = ai.definePrompt({
           *   Acceso a sala de entretenimiento premium.
 
   3.  **CLÁUSULA SEGUNDA - VALOR Y FORMA DE PAGO:**
-      *   Establece el valor mensual. Para el **Plan Básico, usa $2,000,000 COP**. Para el **Plan Premium, usa $3,500,000 COP**.
+      *   Establece el valor mensual basado en el **Plan Contratado ({{{contractType}}})**. Para el **Plan Básico, el valor es $2,000,000 COP**. Para el **Plan Premium, el valor es $3,500,000 COP**.
       *   Indica que el pago es anticipado dentro de los primeros 5 días hábiles de cada mes.
 
   4.  **CLÁUSULA TERCERA - OBLIGACIONES DE EL HOGAR:** Lista las responsabilidades del hogar.
