@@ -53,6 +53,7 @@ export default function DashboardPage() {
   const filteredLogs = useMemo(() => {
     if (!appliedDateRange?.from) return logs;
     return logs.filter(log => {
+        if (!log.endDate || isNaN(new Date(log.endDate).getTime())) return false;
         const logDate = new Date(log.endDate);
         const fromDate = appliedDateRange.from;
         const toDate = appliedDateRange.to ? new Date(appliedDateRange.to) : new Date(fromDate);
@@ -118,7 +119,12 @@ export default function DashboardPage() {
     
     const dailyLogActivity = last7Days.map(date => {
         const dateStr = format(date, 'yyyy-MM-dd');
-        const logsForDay = logs.filter(log => format(new Date(log.endDate), 'yyyy-MM-dd') === dateStr);
+        const logsForDay = logs.filter(log => {
+          if (!log.endDate || isNaN(new Date(log.endDate).getTime())) {
+            return false;
+          }
+          return format(new Date(log.endDate), 'yyyy-MM-dd') === dateStr
+        });
         return {
             date: format(date, 'MMM d', { locale: es }),
             medico: logsForDay.filter(l => l.reportType === 'medico').length,
@@ -303,5 +309,3 @@ export default function DashboardPage() {
     </>
   )
 }
-
-    
