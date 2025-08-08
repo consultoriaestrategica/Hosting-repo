@@ -24,10 +24,14 @@ interface ResidentPreviewDialogProps {
   resident: Resident | null
 }
 
+const ITEMS_PER_PAGE = 7;
+
 export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }: ResidentPreviewDialogProps) {
   const { logs } = useLogs()
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<Log | null>(null)
+  const [currentPage, setCurrentPage] = useState(1);
+
 
   const residentLogs = useMemo(() => {
     if (!resident) return []
@@ -35,6 +39,14 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
       .filter(log => log.residentId === resident.id)
       .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
   }, [logs, resident])
+
+  const totalPages = Math.ceil(residentLogs.length / ITEMS_PER_PAGE);
+
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return residentLogs.slice(startIndex, endIndex);
+  }, [residentLogs, currentPage]);
 
   const handleLogClick = (log: Log) => {
     setSelectedLog(log)
@@ -95,7 +107,7 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
                       </TableRow>
                   </TableHeader>
                   <TableBody>
-                      {residentLogs.length > 0 ? residentLogs.map((log) => (
+                      {paginatedLogs.length > 0 ? paginatedLogs.map((log) => (
                           <TableRow key={log.id} onClick={() => handleLogClick(log)} className="cursor-pointer">
                               <TableCell>{new Date(log.endDate).toLocaleDateString()}</TableCell>
                               <TableCell>
@@ -116,6 +128,31 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
                   </TableBody>
                 </Table>
             </div>
+             {totalPages > 1 && (
+                <div className="flex justify-between items-center w-full pt-4">
+                    <div className="text-xs text-muted-foreground">
+                        Página {currentPage} de {totalPages}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                        >
+                            Anterior
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                        >
+                            Siguiente
+                        </Button>
+                    </div>
+                </div>
+             )}
           </div>
 
           <DialogFooter>
