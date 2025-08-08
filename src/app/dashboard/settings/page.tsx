@@ -53,10 +53,10 @@ import { useState } from "react"
 
 // Mock data for users - replace with actual data fetching hook later
 const initialUsers = [
-  { id: "user-1", name: "Admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo" },
-  { id: "user-2", name: "Enfermera Ana", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo" },
-  { id: "user-3", name: "Juan Rodriguez", email: "juan.r@example.com", role: "Familiar", status: "Activo" },
-  { id: "user-4", name: "Carlos Parra", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo" },
+  { id: "user-1", name: "Admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo", idType: "C.C.", idNumber: "12345678", phone: "3001234567" },
+  { id: "user-2", name: "Enfermera Ana", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo", idType: "C.C.", idNumber: "87654321", phone: "3011234567" },
+  { id: "user-3", name: "Juan Rodriguez", email: "juan.r@example.com", role: "Familiar", status: "Activo", idType: "C.E.", idNumber: "11223344", phone: "3021234567" },
+  { id: "user-4", name: "Carlos Parra", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo", idType: "C.C.", idNumber: "44332211", phone: "3031234567" },
 ];
 
 
@@ -247,6 +247,7 @@ export default function SettingsPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Nombre</TableHead>
+                                    <TableHead>Identificación</TableHead>
                                     <TableHead>Correo Electrónico</TableHead>
                                     <TableHead>Rol</TableHead>
                                     <TableHead>Estado</TableHead>
@@ -257,6 +258,9 @@ export default function SettingsPage() {
                                 {users.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.name}</TableCell>
+                                        <TableCell>
+                                            <div className="font-medium">{`${user.idType} ${user.idNumber}`}</div>
+                                        </TableCell>
                                         <TableCell>{user.email}</TableCell>
                                         <TableCell>{user.role}</TableCell>
                                         <TableCell>
@@ -285,7 +289,7 @@ export default function SettingsPage() {
                         </Table>
                     </CardContent>
                 </Card>
-                <DialogContent>
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
                         <DialogDescription>
@@ -295,37 +299,65 @@ export default function SettingsPage() {
                     <form onSubmit={handleSaveUser}>
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="user-name">Nombre</Label>
+                                <Label htmlFor="user-name">Nombre Completo</Label>
                                 <Input id="user-name" name="name" defaultValue={editingUser?.name || ""} required />
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="user-email">Correo Electrónico</Label>
-                                <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                     <Label htmlFor="user-idType">Tipo de Identificación</Label>
+                                    <Select name="idType" defaultValue={editingUser?.idType || "C.C."}>
+                                        <SelectTrigger id="user-idType">
+                                            <SelectValue placeholder="Seleccione" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="C.C.">Cédula de Ciudadanía</SelectItem>
+                                            <SelectItem value="C.E.">Cédula de Extranjería</SelectItem>
+                                            <SelectItem value="Pasaporte">Pasaporte</SelectItem>
+                                            <SelectItem value="Otro">Otro</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user-idNumber">Número de Identificación</Label>
+                                    <Input id="user-idNumber" name="idNumber" defaultValue={editingUser?.idNumber || ""} required />
+                                </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="user-role">Rol</Label>
-                                <Select name="role" defaultValue={editingUser?.role || "Personal"}>
-                                    <SelectTrigger id="user-role">
-                                        <SelectValue placeholder="Seleccione un rol" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Admin">Admin</SelectItem>
-                                        <SelectItem value="Personal">Personal</SelectItem>
-                                        <SelectItem value="Familiar">Familiar</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user-phone">Teléfono</Label>
+                                    <Input id="user-phone" name="phone" type="tel" defaultValue={editingUser?.phone || ""} required />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user-email">Correo Electrónico</Label>
+                                    <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
+                                </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="user-status">Estado</Label>
-                                <Select name="status" defaultValue={editingUser?.status || "Activo"}>
-                                    <SelectTrigger id="user-status">
-                                        <SelectValue placeholder="Seleccione un estado" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Activo">Activo</SelectItem>
-                                        <SelectItem value="Inactivo">Inactivo</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                             <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user-role">Rol</Label>
+                                    <Select name="role" defaultValue={editingUser?.role || "Personal"}>
+                                        <SelectTrigger id="user-role">
+                                            <SelectValue placeholder="Seleccione un rol" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Admin">Admin</SelectItem>
+                                            <SelectItem value="Personal">Personal</SelectItem>
+                                            <SelectItem value="Familiar">Familiar</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user-status">Estado</Label>
+                                    <Select name="status" defaultValue={editingUser?.status || "Activo"}>
+                                        <SelectTrigger id="user-status">
+                                            <SelectValue placeholder="Seleccione un estado" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Activo">Activo</SelectItem>
+                                            <SelectItem value="Inactivo">Inactivo</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>
@@ -343,5 +375,3 @@ export default function SettingsPage() {
     </>
   )
 }
-
-    
