@@ -211,7 +211,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                                       </Badge>
                                   </TableCell>
                                 <TableCell className="max-w-[200px] truncate">
-                                  {log.reportType === 'medico' ? log.evolutionNotes : log.supplyDescription}
+                                  {log.reportType === 'medico' ? log.evolutionNotes?.[0] : log.supplyDescription}
                                 </TableCell>
                             </TableRow>
                           ))}

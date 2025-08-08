@@ -20,7 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
@@ -28,7 +28,7 @@ import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useState, useEffect, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
-import { Mic, MicOff, Camera, RefreshCw, X } from "lucide-react"
+import { Mic, MicOff, Camera, X, PlusCircle, Trash2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const reportFormSchema = z.object({
@@ -40,7 +40,9 @@ const reportFormSchema = z.object({
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
   feedingType: z.string().optional(),
-  evolutionNotes: z.string().optional(),
+  evolutionNotes: z.array(z.object({
+    note: z.string().min(1, "La nota no puede estar vacía."),
+  })).optional(),
   photoEvidence: z.string().optional(),
 
   // Supply fields
@@ -52,7 +54,7 @@ const reportFormSchema = z.object({
 })
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
-type DictationField = "evolutionNotes" | "supplyNotes";
+type DictationField = `evolutionNotes.${number}.note` | "supplyNotes";
 
 interface NewReportFormProps {
     residentId?: string;
@@ -81,12 +83,16 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     defaultValues: {
       residentId: residentId || "",
       reportType: undefined,
-      evolutionNotes: "",
+      evolutionNotes: [{ note: "" }],
       supplyNotes: "",
     },
   })
   
   const reportType = form.watch("reportType");
+  const { fields: evolutionNoteFields, append: appendEvolutionNote, remove: removeEvolutionNote } = useFieldArray({
+    control: form.control,
+    name: "evolutionNotes",
+  });
 
   // --- Dictation Logic ---
   const handleToggleDictation = (field: DictationField) => {
@@ -221,7 +227,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         respiratoryRate: data.respiratoryRate,
         spo2: data.spo2,
         feedingType: data.feedingType,
-        evolutionNotes: data.evolutionNotes,
+        evolutionNotes: data.evolutionNotes?.map(n => n.note).filter(Boolean),
         photoEvidenceUrl: data.photoEvidence,
       };
     } else { // suministro
@@ -308,6 +314,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                                 form.reset({
                                     ...form.getValues(),
                                     reportType: value as "medico" | "suministro",
+                                    evolutionNotes: [{ note: "" }],
                                 });
                                 setPhotoPreview(null);
                             }}
@@ -370,7 +377,35 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         <FormField control={form.control} name="spo2" render={({ field }) => (<FormItem><FormLabel>Saturación de Oxígeno (SPO2 %)</FormLabel><FormControl><Input type="number" placeholder="97" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="feedingType" render={({ field }) => (<FormItem><FormLabel>Alimentación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Vía Oral">Vía Oral</SelectItem><SelectItem value="Parental">Parental</SelectItem><SelectItem value="Sonda">Sonda</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                     </div>
-                    <FormField control={form.control} name="evolutionNotes" render={({ field }) => (<FormItem><FormLabel>Notas de Evolución</FormLabel><FormControl><div className="relative"><Textarea placeholder="Describa cualquier observación relevante..." {...field} /><Button type="button" size="icon" variant={isListening && activeDictationField === 'evolutionNotes' ? "destructive" : "outline"} className="absolute bottom-2 right-2 h-7 w-7" onClick={() => handleToggleDictation('evolutionNotes')}>{isListening && activeDictationField === 'evolutionNotes' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado de voz</span></Button></div></FormControl><FormMessage /></FormItem>)} />
+                    <div>
+                        <FormLabel>Notas de Evolución</FormLabel>
+                        <div className="space-y-2 mt-2">
+                        {evolutionNoteFields.map((field, index) => (
+                            <FormField
+                            key={field.id}
+                            control={form.control}
+                            name={`evolutionNotes.${index}.note`}
+                            render={({ field: noteField }) => (
+                                <FormItem>
+                                <FormControl>
+                                    <div className="relative flex items-center gap-2">
+                                        <Textarea placeholder={`Nota de evolución #${index + 1}...`} {...noteField} />
+                                        <div className="flex flex-col gap-1">
+                                            <Button type="button" size="icon" variant={isListening && activeDictationField === `evolutionNotes.${index}.note` ? "destructive" : "outline"} className="h-7 w-7" onClick={() => handleToggleDictation(`evolutionNotes.${index}.note`)}>{isListening && activeDictationField === `evolutionNotes.${index}.note` ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}<span className="sr-only">Dictado</span></Button>
+                                            {evolutionNoteFields.length > 1 && <Button type="button" variant="destructive" size="icon" className="h-7 w-7" onClick={() => removeEvolutionNote(index)}><Trash2 className="h-4 w-4" /></Button>}
+                                        </div>
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                        ))}
+                        </div>
+                        <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendEvolutionNote({ note: "" })}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Agregar Nota
+                        </Button>
+                    </div>
                     <FormField control={form.control} name="photoEvidence" render={({ field }) => renderPhotoEvidence(field)} />
                 </div>
               )}

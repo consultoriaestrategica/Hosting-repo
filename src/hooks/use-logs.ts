@@ -18,7 +18,7 @@ type MedicalLog = BaseLog & {
   respiratoryRate?: number;
   spo2?: number;
   feedingType?: string;
-  evolutionNotes?: string;
+  evolutionNotes?: string[];
   photoEvidenceUrl?: string;
 };
 
@@ -45,7 +45,7 @@ const initialLogs: Log[] = [
       respiratoryRate: 18,
       spo2: 98,
       feedingType: 'Vía Oral',
-      evolutionNotes: "Participó en la musicoterapia matutina, se mostró contenta.",
+      evolutionNotes: ["Participó en la musicoterapia matutina, se mostró contenta."],
     },
     { 
       id: "log-002", 
@@ -57,7 +57,7 @@ const initialLogs: Log[] = [
       respiratoryRate: 20,
       spo2: 97,
       feedingType: 'Vía Oral',
-      evolutionNotes: "Experimentó algo de confusión por la tarde, se le brindó apoyo.",
+      evolutionNotes: ["Experimentó algo de confusión por la tarde, se le brindó apoyo."],
     },
     { 
       id: "log-003", 

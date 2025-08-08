@@ -225,7 +225,7 @@ function LogsPageContent() {
                     </Badge>
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
-                    {log.reportType === 'medico' ? log.evolutionNotes : log.supplyDescription}
+                     {log.reportType === 'medico' ? log.evolutionNotes?.[0] : log.supplyDescription}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
