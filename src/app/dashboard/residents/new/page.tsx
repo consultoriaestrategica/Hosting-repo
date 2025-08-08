@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
 import { useState, useEffect } from "react"
-import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2 } from "lucide-react"
+import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2, CalendarDays, Weight } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
@@ -76,12 +76,17 @@ const residentFormSchema = z.object({
 
 type ResidentFormValues = z.infer<typeof residentFormSchema>
 
+type UploadedFile = {
+    file: File;
+    uploadDate: Date;
+};
+
 export default function NewResidentPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { addResident, isLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({})
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({})
 
   useEffect(() => {
     setIsClient(true)
@@ -117,7 +122,7 @@ export default function NewResidentPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      setUploadedFiles(prev => ({...prev, [type]: file}));
+      setUploadedFiles(prev => ({...prev, [type]: { file, uploadDate: new Date() } }));
     }
   }
   
@@ -127,6 +132,14 @@ export default function NewResidentPage() {
         delete newState[type];
         return newState;
     });
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
  function onSubmit(data: ResidentFormValues) {
@@ -147,7 +160,7 @@ export default function NewResidentPage() {
         medications: data.medications,
         diet: data.diet,
         familyContacts: data.familyContacts,
-        documents: Object.keys(uploadedFiles).map(type => ({ type: type, name: uploadedFiles[type].name, size: uploadedFiles[type].size })),
+        documents: Object.keys(uploadedFiles).map(type => ({ type: type, name: uploadedFiles[type].file.name, size: uploadedFiles[type].file.size })),
     };
     addResident(newResident);
     toast({
@@ -254,36 +267,55 @@ export default function NewResidentPage() {
                         <CardTitle>Documentos Requeridos</CardTitle>
                         <CardDescription>Cargue los documentos obligatorios del residente.</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
+                    <CardContent className="grid sm:grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                         {documentTypes.map((type) => (
-                            <div key={type}>
-                                <FormLabel>{type}</FormLabel>
+                            <div key={type} className="space-y-2">
+                                <h4 className="font-semibold text-base">{type}</h4>
                                 {uploadedFiles[type] ? (
-                                <div className="flex items-center justify-between p-2 mt-2 rounded-md bg-muted">
-                                        <div className="flex items-center gap-2">
-                                            <FileIcon className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm truncate max-w-28">{uploadedFiles[type].name}</span>
+                                    <div className="p-3 rounded-lg border bg-muted/50 space-y-2 text-sm">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-start gap-3">
+                                                <FileIcon className="w-5 h-5 mt-1 text-muted-foreground" />
+                                                <div className="flex-1">
+                                                    <p className="font-medium break-all">{uploadedFiles[type].file.name}</p>
+                                                    <div className="flex items-center gap-4 text-muted-foreground mt-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Weight className="w-3.5 h-3.5" />
+                                                            <span>{formatFileSize(uploadedFiles[type].file.size)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                           <CalendarDays className="w-3.5 h-3.5" />
+                                                           <span>{uploadedFiles[type].uploadDate.toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeFile(type)}>
+                                                <X className="w-4 h-4" />
+                                            </Button>
                                         </div>
-                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(type)}>
-                                            <X className="w-4 h-4" />
-                                        </Button>
                                     </div>
                                 ) : (
                                     <FormField
                                     control={form.control}
                                     name={`documents`}
-                                    render={({ field }) => (
+                                    render={() => (
                                         <FormItem>
                                             <FormControl>
-                                                <div className="flex flex-col items-center justify-center w-full mt-2">
-                                                    <label htmlFor={`dropzone-${type}`} className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
-                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                            <UploadCloud className="w-6 h-6 mb-2 text-muted-foreground" />
-                                                            <p className="text-xs text-muted-foreground text-center">Subir archivo</p>
+                                                <div>
+                                                    <label htmlFor={`dropzone-${type}`} className="relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-card py-6 hover:bg-muted">
+                                                        <div className=" text-center">
+                                                            <div className="mx-auto max-w-min rounded-md border p-2">
+                                                                <UploadCloud size={20} />
+                                                            </div>
+                                                            <p className="mt-2 text-sm text-gray-500">
+                                                                <span className="font-semibold">Subir archivo</span>
+                                                            </p>
+                                                            <p className="text-xs text-gray-400">PDF, DOCX o JPG de hasta 10MB</p>
                                                         </div>
-                                                        <Input id={`dropzone-${type}`} type="file" className="hidden" onChange={(e) => handleFileChange(e, type)} />
                                                     </label>
-                                                </div> 
+                                                    <Input id={`dropzone-${type}`} type="file" className="hidden" onChange={(e) => handleFileChange(e, type)} />
+                                                </div>
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
