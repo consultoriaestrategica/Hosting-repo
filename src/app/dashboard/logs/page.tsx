@@ -1,7 +1,7 @@
 
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Stethoscope, Truck, Search, FilterX } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Stethoscope, Truck, FilterX, Calendar as CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -33,13 +33,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useEffect, useState, useMemo } from "react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { Badge } from "@/components/ui/badge"
 import LogDetailDialog from "./log-detail-dialog"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import type { DateRange } from "react-day-picker"
 
 export default function LogsPage() {
   const { logs, isLoading: logsLoading } = useLogs()
@@ -50,8 +59,8 @@ export default function LogsPage() {
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
 
   // State for filtering
-  const [dateFilter, setDateFilter] = useState("");
-  const [appliedDateFilter, setAppliedDateFilter] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
     setIsClient(true)
@@ -61,17 +70,24 @@ export default function LogsPage() {
 
   const filteredLogs = useMemo(() => {
     let filtered = [...logs];
-    if (appliedDateFilter) {
+    if (appliedDateRange?.from) {
       filtered = filtered.filter(log => {
         if (!log.endDate || isNaN(new Date(log.endDate).getTime())) {
           return false;
         }
-        const logDate = new Date(log.endDate).toISOString().split('T')[0];
-        return logDate === appliedDateFilter;
+        const logDate = new Date(log.endDate);
+        const fromDate = appliedDateRange.from;
+        // Set 'to' date to the end of the day if it exists, otherwise use fromDate
+        const toDate = appliedDateRange.to ? new Date(appliedDateRange.to) : new Date(fromDate);
+        if (appliedDateRange.to) {
+            toDate.setHours(23, 59, 59, 999); // End of the selected day
+        }
+        
+        return logDate >= fromDate && logDate <= toDate;
       });
     }
     return filtered.sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
-  }, [logs, appliedDateFilter]);
+  }, [logs, appliedDateRange]);
 
 
   if (!isClient || isLoading) {
@@ -88,12 +104,12 @@ export default function LogsPage() {
   };
   
   const handleApplyFilter = () => {
-    setAppliedDateFilter(dateFilter);
+    setAppliedDateRange(dateRange);
   };
 
   const handleClearFilter = () => {
-    setDateFilter("");
-    setAppliedDateFilter("");
+    setDateRange(undefined);
+    setAppliedDateRange(undefined);
   };
 
 
@@ -129,14 +145,45 @@ export default function LogsPage() {
             Listado de los últimos reportes médicos y de suministros. Use el filtro para buscar por fecha.
           </CardDescription>
            <div className="flex items-center gap-2 pt-4">
-                <Input
-                    type="date"
-                    className="w-auto"
-                    value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value)}
-                />
-                <Button onClick={handleApplyFilter}>Aplicar Filtro</Button>
-                 <Button variant="outline" onClick={handleClearFilter} disabled={!appliedDateFilter}>
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                        "w-[260px] justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                        dateRange.to ? (
+                            <>
+                            {format(dateRange.from, "LLL dd, y", { locale: es })} -{" "}
+                            {format(dateRange.to, "LLL dd, y", { locale: es })}
+                            </>
+                        ) : (
+                            format(dateRange.from, "LLL dd, y", { locale: es })
+                        )
+                        ) : (
+                        <span>Seleccione un rango</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={2}
+                        locale={es}
+                    />
+                    </PopoverContent>
+                </Popover>
+                <Button onClick={handleApplyFilter} disabled={!dateRange}>Aplicar Filtro</Button>
+                 <Button variant="outline" onClick={handleClearFilter} disabled={!appliedDateRange}>
                     <FilterX className="h-4 w-4 mr-2" />
                     Limpiar
                 </Button>
