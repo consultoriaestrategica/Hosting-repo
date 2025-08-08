@@ -6,14 +6,18 @@ import { useResidents } from "@/hooks/use-residents"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Printer, User, FileText, Calendar, AlertTriangle } from "lucide-react"
+import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save } from "lucide-react"
 import { marked } from "marked"
 import { useToast } from "@/hooks/use-toast"
+import { Textarea } from "@/components/ui/textarea"
 
 function ContractDetailPageContent({ id }: { id: string }) {
-    const { contracts, isLoading: contractsLoading } = useContracts()
+    const { contracts, updateContract, isLoading: contractsLoading } = useContracts()
     const { residents, isLoading: residentsLoading } = useResidents()
     const [isClient, setIsClient] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
+    const [editableDetails, setEditableDetails] = useState("")
+
     const { toast } = useToast()
 
     useEffect(() => {
@@ -21,6 +25,13 @@ function ContractDetailPageContent({ id }: { id: string }) {
     }, [])
 
     const contract = contracts.find(c => c.id === id)
+
+    useEffect(() => {
+        if (contract) {
+            setEditableDetails(contract.details)
+        }
+    }, [contract])
+    
     const resident = contract ? residents.find(r => r.id === contract.residentId) : null
 
     if (!isClient || contractsLoading || residentsLoading) {
@@ -56,6 +67,11 @@ function ContractDetailPageContent({ id }: { id: string }) {
        }
     }
 
+    const handleSave = () => {
+        updateContract(id, { details: editableDetails });
+        setIsEditing(false);
+        toast({ title: "Contrato Actualizado", description: "Los cambios se han guardado exitosamente." });
+    }
 
     return (
         <>
@@ -64,7 +80,18 @@ function ContractDetailPageContent({ id }: { id: string }) {
                     Detalle del Contrato
                 </h1>
                 <div className="hidden items-center gap-2 md:ml-auto md:flex">
-                    <Button variant="outline" onClick={handlePrint}>
+                    {isEditing ? (
+                        <Button onClick={handleSave}>
+                            <Save className="mr-2 h-4 w-4" />
+                            Guardar Cambios
+                        </Button>
+                    ) : (
+                         <Button variant="outline" onClick={() => setIsEditing(true)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar Contrato
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={handlePrint} disabled={isEditing}>
                         <Printer className="mr-2 h-4 w-4" />
                         Imprimir / Guardar PDF
                     </Button>
@@ -131,10 +158,22 @@ function ContractDetailPageContent({ id }: { id: string }) {
                     <Card>
                         <CardHeader>
                             <CardTitle>Contenido del Contrato</CardTitle>
-                            <CardDescription>Este es el texto completo del contrato generado. Revíselo cuidadosamente.</CardDescription>
+                            <CardDescription>
+                                {isEditing
+                                ? "Edite el contenido del contrato en formato Markdown. Guarde los cambios para actualizar."
+                                : "Este es el texto completo del contrato generado. Revíselo cuidadosamente."}
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <div className="prose prose-sm max-w-none border rounded-md p-4 bg-muted/50 overflow-y-auto max-h-[60vh]" dangerouslySetInnerHTML={{ __html: marked.parse(contract.details) as string }}></div>
+                           {isEditing ? (
+                                <Textarea 
+                                    value={editableDetails}
+                                    onChange={(e) => setEditableDetails(e.target.value)}
+                                    className="min-h-[60vh] font-mono text-sm"
+                                />
+                           ) : (
+                                <div className="prose prose-sm max-w-none border rounded-md p-4 bg-muted/50 overflow-y-auto max-h-[60vh]" dangerouslySetInnerHTML={{ __html: marked.parse(contract.details) as string }}></div>
+                           )}
                         </CardContent>
                     </Card>
                 </div>

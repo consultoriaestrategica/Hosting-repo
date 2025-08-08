@@ -69,5 +69,24 @@ export function useContracts() {
     return contractWithId;
   }, []);
 
-  return { contracts, addContract, isLoading };
+  const updateContract = useCallback((contractId: string, updatedDetails: Partial<Contract>) => {
+    const storedContracts = JSON.parse(localStorage.getItem(CONTRACTS_STORAGE_KEY) || '[]');
+    const updatedContracts = storedContracts.map((contract: Contract) => {
+        if (contract.id === contractId) {
+            return { ...contract, ...updatedDetails };
+        }
+        return contract;
+    });
+    try {
+        localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify(updatedContracts));
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: CONTRACTS_STORAGE_KEY,
+            newValue: JSON.stringify(updatedContracts),
+        }));
+    } catch (error) {
+        console.error("Failed to save to localStorage", error);
+    }
+  }, []);
+
+  return { contracts, addContract, updateContract, isLoading };
 }
