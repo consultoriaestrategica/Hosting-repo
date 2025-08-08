@@ -12,10 +12,15 @@ import { z } from 'zod';
 const ContractInputSchema = z.object({
   residentName: z.string().describe('El nombre completo del residente.'),
   residentIdNumber: z.string().describe('El número de cédula del residente.'),
+  responsiblePartyName: z.string().describe('El nombre completo del familiar o acudiente responsable.'),
+  responsiblePartyIdNumber: z.string().describe('El número de cédula del familiar o acudiente responsable.'),
+  responsiblePartyKinship: z.string().describe('El parentesco del responsable con el residente (ej. Hijo, Sobrina).'),
+  responsiblePartyAddress: z.string().describe('La dirección de residencia del responsable.'),
   startDate: z.string().describe('La fecha de inicio del contrato (YYYY-MM-DD).'),
   endDate: z.string().describe('La fecha de fin del contrato (YYYY-MM-DD).'),
   contractType: z.string().describe('El tipo de contrato (Básica o Premium).'),
   roomType: z.string().describe('El tipo de habitación asignada (Básica o Premium).'),
+  dependencyLevel: z.string().describe('El nivel de dependencia del residente (Dependiente o Independiente).')
 });
 export type ContractInput = z.infer<typeof ContractInputSchema>;
 
@@ -29,41 +34,54 @@ const prompt = ai.definePrompt({
   input: { schema: ContractInputSchema },
   output: { format: 'text' },
   prompt: `
-  Eres un asistente legal experto en la redacción de contratos de servicios para hogares geriátricos.
-  Tu tarea es generar el texto completo de un contrato de prestación de servicios en formato Markdown.
-  El tono debe ser formal, claro y profesional.
-  
-  Utiliza los siguientes datos para personalizar el contrato:
-  - **Residente (El Contratante):** {{{residentName}}}
-  - **Cédula del Residente:** {{{residentIdNumber}}}
-  - **Fecha de Inicio:** {{{startDate}}}
-  - **Fecha de Fin:** {{{endDate}}}
-  - **Plan de Servicios Contratado:** Plan {{{contractType}}}
-  - **Tipo de Habitación Asignada:** {{{roomType}}}
+  Eres un asistente legal experto en la redacción de contratos de servicios para hogares geriátricos en Colombia.
+  Tu tarea es generar el texto completo de un contrato de prestación de servicios en formato Markdown, siguiendo la estructura y el tono formal del modelo proporcionado.
 
-  El contrato debe incluir las siguientes cláusulas, adaptando el contenido según el plan contratado:
+  **Utiliza los siguientes datos para personalizar el contrato:**
 
-  1.  **PARTES:** Identifica al hogar geriátrico "Hogar Geriátrico Ángel Guardián" (El Contratista) y al residente (El Contratante) con su nombre y cédula.
-  2.  **OBJETO:** Describe el objeto del contrato, que es la prestación de servicios de cuidado y asistencia al adulto mayor.
-  3.  **SERVICIOS INCLUIDOS:** Detalla los servicios incluidos. Debe haber una lista base y servicios adicionales para el plan Premium.
-      *   **Servicios Base (para ambos planes):**
-          *   Alojamiento en habitación (especificar si es Básica o Premium).
-          *   Alimentación completa (desayuno, almuerzo, cena y dos refrigerios).
-          *   Cuidados de enfermería básicos 24/7.
-          *   Actividades recreativas y terapéuticas grupales.
-          *   Servicio de lavandería para ropa de cama y toallas.
-      *   **Servicios Adicionales (SOLO para el Plan Premium):**
+  *   **Hogar Geriátrico:** "Hogar Geriátrico Ángel Guardián" con NIT "900.123.456-7", ubicado en "Calle de la Serenidad 123, Bogotá D.C.", representado por "Dr. Ana María Rojas".
+  *   **Residente:** {{{residentName}}} (C.C. {{{residentIdNumber}}}).
+  *   **Responsable Solidario:** {{{responsiblePartyName}}} (C.C. {{{responsiblePartyIdNumber}}}), con domicilio en {{{responsiblePartyAddress}}}, en calidad de {{{responsiblePartyKinship}}}.
+  *   **Fecha de Inicio:** {{{startDate}}}
+  *   **Fecha de Fin:** {{{endDate}}}
+  *   **Plan Contratado:** Plan {{{contractType}}}
+  *   **Habitación Asignada:** {{{roomType}}}
+  *   **Nivel de Dependencia:** {{{dependencyLevel}}}
+
+  **Estructura del Contrato:**
+
+  **Título:** CONTRATO DE PRESTACIÓN DE SERVICIOS DE CUIDADO Y BIENESTAR PARA EL ADULTO MAYOR
+
+  1.  **PARTES:** Identifica a "EL HOGAR" (Hogar Geriátrico Ángel Guardián), "EL RESPONSABLE" (con su nombre, cédula, parentesco y domicilio) y "EL RESIDENTE" (con su nombre y cédula).
+
+  2.  **CLÁUSULA PRIMERA - OBJETO:** Describe la prestación de servicios integrales. Detalla los servicios incluidos según el plan contratado.
+      *   **Alojamiento:** Especifica el tipo de habitación ({{{roomType}}}).
+      *   **Alimentación:** Cinco comidas diarias.
+      *   **Cuidado y Asistencia:** Supervisión 24/7 para actividades de la vida diaria, adaptado al nivel de dependencia ({{{dependencyLevel}}}).
+      *   **Administración de Medicamentos.**
+      *   **Actividades Terapéuticas y Recreativas.**
+      *   **Servicios Adicionales (SOLO para Plan Premium):**
           *   Atención médica especializada mensual.
           *   Sesiones de fisioterapia personalizadas (2 por semana).
-          *   Servicio de lavandería para ropa personal.
           *   Acceso a sala de entretenimiento premium.
-  4.  **DURACIÓN:** Especifica la duración del contrato usando la fecha de inicio y fin.
-  5.  **VALOR Y FORMA DE PAGO:** Establece un valor mensual ficticio. Para el plan Básico, usa $2,000,000 COP. Para el plan Premium, usa $3,500,000 COP. Menciona que el pago debe realizarse los primeros 5 días de cada mes.
-  6.  **OBLIGACIONES DE LAS PARTES:** Detalla las obligaciones tanto del hogar geriátrico como del residente/familiares.
-  7.  **FIRMAS:** Deja espacios para las firmas del representante legal del hogar y del contratante.
 
-  Formatea el resultado final en **Markdown**, utilizando encabezados (#, ##), negritas (**) y listas (*).
-  NO incluyas ninguna explicación o texto introductorio antes del contrato. El resultado debe empezar directamente con el título del contrato.
+  3.  **CLÁUSULA SEGUNDA - VALOR Y FORMA DE PAGO:**
+      *   Establece el valor mensual. Para el **Plan Básico, usa $2,000,000 COP**. Para el **Plan Premium, usa $3,500,000 COP**.
+      *   Indica que el pago es anticipado dentro de los primeros 5 días hábiles de cada mes.
+
+  4.  **CLÁUSULA TERCERA - OBLIGACIONES DE EL HOGAR:** Lista las responsabilidades del hogar.
+
+  5.  **CLÁUSULA CUARTA - OBLIGACIONES DE EL RESPONSABLE:** Lista las responsabilidades del acudiente, incluyendo el suministro de medicamentos y elementos de uso personal.
+
+  6.  **CLÁUSULA QUINTA - DURACIÓN:** Especifica la duración del contrato usando la fecha de inicio y fin proporcionadas.
+
+  7.  **CLÁUSULA SEXTA - FIRMAS:** Deja espacios para las firmas de "EL HOGAR" (Representante Legal), "EL RESPONSABLE" y "EL RESIDENTE".
+
+  **Instrucciones Finales:**
+  *   Formatea el resultado final en **Markdown**, utilizando encabezados (#, ##), negritas (**) y listas (*).
+  *   NO incluyas ninguna explicación o texto introductorio antes del contrato.
+  *   El resultado debe empezar directamente con el título "CONTRATO DE PRESTACIÓN DE SERVICIOS...".
+  *   Mantén un lenguaje formal y legal apropiado para Colombia.
   `,
 });
 

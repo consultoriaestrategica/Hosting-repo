@@ -70,14 +70,26 @@ export default function NewContractPage() {
       return;
     }
     
+    const responsibleParty = resident.familyContacts?.[0];
+    if(!responsibleParty) {
+        toast({ variant: "destructive", title: "Error", description: "El residente no tiene un contacto familiar principal asignado." });
+        setIsGenerating(false);
+        return;
+    }
+
     try {
         const contractDetails = await generateContract({
             residentName: resident.name,
             residentIdNumber: resident.idNumber,
+            responsiblePartyName: responsibleParty.name,
+            responsiblePartyIdNumber: "N/A", // This should be added to the resident model
+            responsiblePartyKinship: responsibleParty.kinship,
+            responsiblePartyAddress: responsibleParty.address,
             startDate: data.startDate,
             endDate: data.endDate,
             contractType: data.contractType,
             roomType: resident.roomType,
+            dependencyLevel: resident.dependency,
         });
 
         const newContract = {
@@ -135,9 +147,10 @@ export default function NewContractPage() {
                                     <SelectTrigger><SelectValue placeholder="Seleccione un residente" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {residents.filter(r => r.status === 'Activo').map(r => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
+                                    {residents.filter(r => r.status === 'Activo' && r.familyContacts && r.familyContacts.length > 0).map(r => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
                                 </SelectContent>
                                 </Select>
+                                 <FormDescription>Solo se muestran residentes con un contacto familiar.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                             )}
