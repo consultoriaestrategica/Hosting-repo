@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // This is to allow cross-origin requests in development.
+    // The preview environment uses a dynamic URL, so we allow any origin
+    // that ends with cloudworkstations.dev.
+    allowedDevOrigins: ["*.cloudworkstations.dev"],
+  },
 };
 
 export default nextConfig;
