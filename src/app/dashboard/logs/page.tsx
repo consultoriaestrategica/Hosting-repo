@@ -63,6 +63,9 @@ export default function LogsPage() {
     let filtered = [...logs];
     if (appliedDateFilter) {
       filtered = filtered.filter(log => {
+        if (!log.endDate || isNaN(new Date(log.endDate).getTime())) {
+          return false;
+        }
         const logDate = new Date(log.endDate).toISOString().split('T')[0];
         return logDate === appliedDateFilter;
       });
