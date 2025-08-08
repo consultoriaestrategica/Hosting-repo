@@ -1,10 +1,10 @@
 
 "use client"
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import type { DateRange } from "react-day-picker"
-import { format } from "date-fns"
+import { format, subDays } from "date-fns"
 import { es } from "date-fns/locale"
-import { Calendar as CalendarIcon, Users, Accessibility, Stethoscope, FilterX } from "lucide-react"
+import { Calendar as CalendarIcon, Users, Accessibility, Stethoscope, FilterX, Activity, Truck } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -13,31 +13,124 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
+import { useResidents } from "@/hooks/use-residents"
+import { useLogs } from "@/hooks/use-logs"
 
-
-const ageDistributionData = [
-  { range: '70-75', total: 5 },
-  { range: '76-80', total: 8 },
-  { range: '81-85', total: 12 },
-  { range: '85+', total: 6 },
-];
-
-const pathologyData = [
-  { name: 'Hipertensión', value: 15, fill: "hsl(var(--chart-1))" },
-  { name: 'Diabetes', value: 10, fill: "hsl(var(--chart-2))" },
-  { name: 'Alzheimer', value: 7, fill: "hsl(var(--chart-3))" },
-  { name: 'Artritis', value: 9, fill: "hsl(var(--chart-4))" },
-];
-
-const dependencyData = [
-  { name: 'Bajo', value: 10, fill: "hsl(var(--chart-1))" },
-  { name: 'Medio', value: 15, fill: "hsl(var(--chart-2))" },
-  { name: 'Alto', value: 6, fill: "hsl(var(--chart-3))" },
+const chartColors = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
 ];
 
 export default function DashboardPage() {
+  const { residents, isLoading: residentsLoading } = useResidents()
+  const { logs, isLoading: logsLoading } = useLogs()
+  const [isClient, setIsClient] = useState(false)
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>()
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+  
+  const isLoading = residentsLoading || logsLoading;
+
+  // --- Data Processing Memos ---
+
+  const filteredResidents = useMemo(() => {
+    if (!appliedDateRange?.from) return residents;
+    return residents.filter(resident => {
+        const admissionDate = new Date(resident.admissionDate);
+        const fromDate = appliedDateRange.from;
+        const toDate = appliedDateRange.to ? new Date(appliedDateRange.to) : new Date(fromDate);
+        if (appliedDateRange.to) toDate.setHours(23, 59, 59, 999);
+        return admissionDate >= fromDate && admissionDate <= toDate;
+    });
+  }, [residents, appliedDateRange]);
+
+  const filteredLogs = useMemo(() => {
+    if (!appliedDateRange?.from) return logs;
+    return logs.filter(log => {
+        const logDate = new Date(log.endDate);
+        const fromDate = appliedDateRange.from;
+        const toDate = appliedDateRange.to ? new Date(appliedDateRange.to) : new Date(fromDate);
+        if (appliedDateRange.to) toDate.setHours(23, 59, 59, 999);
+        return logDate >= fromDate && logDate <= toDate;
+    });
+  }, [logs, appliedDateRange]);
+
+  const dashboardStats = useMemo(() => {
+    const activeResidents = filteredResidents.filter(r => r.status === 'Activo');
+    
+    const pathologyCounts = activeResidents.flatMap(r => r.pathologies || []).reduce((acc, path) => {
+        acc[path] = (acc[path] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const mostCommonPathology = Object.entries(pathologyCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+    const dependencyCounts = activeResidents.reduce((acc, res) => {
+        acc[res.dependency] = (acc[res.dependency] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const mostCommonDependency = Object.entries(dependencyCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+    return {
+        totalActive: activeResidents.length,
+        mostCommonPathology,
+        mostCommonDependency
+    };
+  }, [filteredResidents]);
+
+  const chartData = useMemo(() => {
+    const activeResidents = filteredResidents.filter(r => r.status === 'Activo');
+
+    const ageDistribution = activeResidents.reduce((acc, res) => {
+        if (res.age >= 70 && res.age <= 75) acc['70-75']++;
+        else if (res.age >= 76 && res.age <= 80) acc['76-80']++;
+        else if (res.age >= 81 && res.age <= 85) acc['81-85']++;
+        else if (res.age > 85) acc['85+']++;
+        return acc;
+    }, { '70-75': 0, '76-80': 0, '81-85': 0, '85+': 0 });
+
+    const ageDistributionData = Object.entries(ageDistribution).map(([range, total]) => ({ range, total }));
+
+    const pathologyCounts = activeResidents.flatMap(r => r.pathologies || []).reduce((acc, path) => {
+        acc[path] = (acc[path] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const pathologyData = Object.entries(pathologyCounts).map(([name, value], i) => ({ name, value, fill: chartColors[i % chartColors.length] }));
+
+    const dependencyCounts = activeResidents.reduce((acc, res) => {
+        acc[res.dependency] = (acc[res.dependency] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+    
+    const dependencyData = Object.entries(dependencyCounts).map(([name, value], i) => ({ name, value, fill: chartColors[i % chartColors.length] }));
+    
+    // Last 7 days log activity
+    const today = new Date();
+    const last7Days = Array.from({ length: 7 }, (_, i) => subDays(today, i)).reverse();
+    
+    const dailyLogActivity = last7Days.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const logsForDay = logs.filter(log => format(new Date(log.endDate), 'yyyy-MM-dd') === dateStr);
+        return {
+            date: format(date, 'MMM d', { locale: es }),
+            medico: logsForDay.filter(l => l.reportType === 'medico').length,
+            suministro: logsForDay.filter(l => l.reportType === 'suministro').length,
+        }
+    });
+
+    return { ageDistributionData, pathologyData, dependencyData, dailyLogActivity };
+
+  }, [filteredResidents, logs]);
+  
+  // --- Event Handlers ---
 
   const handleApplyFilter = () => {
     setAppliedDateRange(dateRange);
@@ -48,6 +141,9 @@ export default function DashboardPage() {
     setAppliedDateRange(undefined);
   };
 
+  if (!isClient || isLoading) {
+    return <div>Cargando...</div>;
+  }
 
   return (
     <>
@@ -99,15 +195,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Residentes</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Residentes Activos</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">31</div>
-            <p className="text-xs text-muted-foreground">+2 desde el mes pasado</p>
+            <div className="text-2xl font-bold">{dashboardStats.totalActive}</div>
+            <p className="text-xs text-muted-foreground">{appliedDateRange ? "En el período seleccionado" : "En total"}</p>
           </CardContent>
         </Card>
         <Card>
@@ -116,8 +212,8 @@ export default function DashboardPage() {
             <Accessibility className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Media</div>
-            <p className="text-xs text-muted-foreground">Basado en evaluaciones actuales</p>
+            <div className="text-2xl font-bold">{dashboardStats.mostCommonDependency}</div>
+            <p className="text-xs text-muted-foreground">Nivel más común entre residentes</p>
           </CardContent>
         </Card>
         <Card>
@@ -126,8 +222,27 @@ export default function DashboardPage() {
             <Stethoscope className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Hipertensión</div>
+            <div className="text-2xl font-bold">{dashboardStats.mostCommonPathology}</div>
             <p className="text-xs text-muted-foreground">Condición más prevalente</p>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="grid gap-4 mt-6 md:grid-cols-1">
+        <Card>
+          <CardHeader>
+            <CardTitle>Actividad de Registros Diarios (Últimos 7 Días)</CardTitle>
+            <CardDescription>Número de registros médicos y de suministros por día.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <ChartContainer config={{}} className="h-[300px] w-full">
+              <BarChart data={chartData.dailyLogActivity} accessibilityLayer>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="date" tickLine={false} tickMargin={10} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="medico" name="Médico" fill="hsl(var(--chart-1))" radius={8} stackId="a" />
+                <Bar dataKey="suministro" name="Suministro" fill="hsl(var(--chart-2))" radius={8} stackId="a" />
+              </BarChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
@@ -139,7 +254,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={{}} className="h-[300px] w-full">
-              <BarChart data={ageDistributionData} accessibilityLayer>
+              <BarChart data={chartData.ageDistributionData} accessibilityLayer>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="range" tickLine={false} tickMargin={10} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
@@ -157,8 +272,8 @@ export default function DashboardPage() {
             <ChartContainer config={{}} className="h-[300px] w-full">
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie data={pathologyData} dataKey="value" nameKey="name" innerRadius={60}>
-                    {pathologyData.map((entry, index) => (
+                <Pie data={chartData.pathologyData} dataKey="value" nameKey="name" innerRadius={60}>
+                    {chartData.pathologyData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                 </Pie>
@@ -175,8 +290,8 @@ export default function DashboardPage() {
              <ChartContainer config={{}} className="h-[300px] w-full">
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie data={dependencyData} dataKey="value" nameKey="name" cy="50%">
-                    {dependencyData.map((entry, index) => (
+                <Pie data={chartData.dependencyData} dataKey="value" nameKey="name" cy="50%">
+                    {chartData.dependencyData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                 </Pie>
@@ -188,3 +303,5 @@ export default function DashboardPage() {
     </>
   )
 }
+
+    
