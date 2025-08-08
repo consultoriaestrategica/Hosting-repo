@@ -1,8 +1,19 @@
+
 "use client"
+import { useState } from "react"
+import type { DateRange } from "react-day-picker"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { Calendar as CalendarIcon, Users, Accessibility, Stethoscope } from "lucide-react"
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts"
-import { Users, Accessibility, Stethoscope } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
+
 
 const ageDistributionData = [
   { range: '70-75', total: 5 },
@@ -25,9 +36,51 @@ const dependencyData = [
 ];
 
 export default function DashboardPage() {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+
   return (
     <>
-      <h1 className="text-3xl font-bold font-headline mb-6">Panel de Control</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h1 className="text-3xl font-bold font-headline">Panel de Control</h1>
+        <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                "w-[260px] justify-start text-left font-normal",
+                !dateRange && "text-muted-foreground"
+                )}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                dateRange.to ? (
+                    <>
+                    {format(dateRange.from, "LLL dd, y", { locale: es })} -{" "}
+                    {format(dateRange.to, "LLL dd, y", { locale: es })}
+                    </>
+                ) : (
+                    format(dateRange.from, "LLL dd, y", { locale: es })
+                )
+                ) : (
+                <span>Seleccione un rango</span>
+                )}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+                locale={es}
+            />
+            </PopoverContent>
+        </Popover>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
