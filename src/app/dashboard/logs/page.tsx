@@ -41,7 +41,7 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, Suspense } from "react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { Badge } from "@/components/ui/badge"
 import LogDetailDialog from "./log-detail-dialog"
@@ -49,14 +49,20 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
+import { useSearchParams } from "next/navigation"
 
-export default function LogsPage() {
+
+function LogsPageContent() {
   const { logs, isLoading: logsLoading } = useLogs()
   const { residents, isLoading: residentsLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
+
+  const searchParams = useSearchParams()
+  const role = searchParams.get('role') || 'admin';
+
 
   // State for filtering
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -67,6 +73,7 @@ export default function LogsPage() {
   }, [])
   
   const isLoading = logsLoading || residentsLoading;
+  const isStaffRole = role === 'staff';
 
   const filteredLogs = useMemo(() => {
     let filtered = [...logs];
@@ -207,7 +214,7 @@ export default function LogsPage() {
                 <TableRow key={log.id} onClick={() => handleRowClick(log)} className="cursor-pointer">
                   <TableCell className="font-medium">{new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
                   <TableCell>
-                    <Link href={`/dashboard/residents/${log.residentId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                    <Link href={`/dashboard/residents/${log.residentId}?role=${role}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
                         {getResidentName(log.residentId)}
                     </Link>
                   </TableCell>
@@ -238,9 +245,11 @@ export default function LogsPage() {
                         <DropdownMenuItem onClick={() => handleRowClick(log)}>
                             Ver Detalle
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                           <Link href={`/dashboard/residents/${log.residentId}`}>Ver Perfil</Link>
-                        </DropdownMenuItem>
+                        {!isStaffRole && (
+                            <DropdownMenuItem asChild>
+                               <Link href={`/dashboard/residents/${log.residentId}?role=${role}`}>Ver Perfil</Link>
+                            </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -260,5 +269,13 @@ export default function LogsPage() {
         />
       )}
     </>
+  )
+}
+
+export default function LogsPage() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <LogsPageContent />
+    </Suspense>
   )
 }
