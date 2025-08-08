@@ -6,7 +6,7 @@ import { useResidents } from "@/hooks/use-residents"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save } from "lucide-react"
+import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign } from "lucide-react"
 import { marked } from "marked"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
@@ -50,6 +50,11 @@ function ContractDetailPageContent({ id }: { id: string }) {
             default: return 'outline';
         }
     };
+    
+    const getContractValue = (type: 'Básica' | 'Premium') => {
+        const value = type === 'Básica' ? 2000000 : 3500000;
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+    }
     
     const handlePrint = () => {
        const printWindow = window.open('', '_blank');
@@ -115,6 +120,10 @@ function ContractDetailPageContent({ id }: { id: string }) {
                             <div className="flex justify-between">
                                 <span className="font-semibold">Estado:</span>
                                 <Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="font-semibold flex items-center gap-1.5"><DollarSign size={14}/>Valor Mensual:</span>
+                                <span className="font-bold">{getContractValue(contract.contractType)}</span>
                             </div>
                              <div className="flex justify-between items-center">
                                 <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Inicio:</span>
