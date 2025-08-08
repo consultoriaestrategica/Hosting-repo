@@ -138,7 +138,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                 </div>
             </CardContent>
           </Card>
-          {!isStaffRole && (
+          {(role === 'admin' || role === 'family') && (
              <Card>
              <CardHeader>
                 <CardTitle>Contactos Familiares</CardTitle>
