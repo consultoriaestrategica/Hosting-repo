@@ -4,7 +4,7 @@ import { useState } from "react"
 import type { DateRange } from "react-day-picker"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Calendar as CalendarIcon, Users, Accessibility, Stethoscope } from "lucide-react"
+import { Calendar as CalendarIcon, Users, Accessibility, Stethoscope, FilterX } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -37,48 +37,66 @@ const dependencyData = [
 
 export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>()
+
+  const handleApplyFilter = () => {
+    setAppliedDateRange(dateRange);
+  };
+
+  const handleClearFilter = () => {
+    setDateRange(undefined);
+    setAppliedDateRange(undefined);
+  };
+
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold font-headline">Panel de Control</h1>
-        <Popover>
-            <PopoverTrigger asChild>
-            <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                "w-[260px] justify-start text-left font-normal",
-                !dateRange && "text-muted-foreground"
-                )}
-            >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                dateRange.to ? (
-                    <>
-                    {format(dateRange.from, "LLL dd, y", { locale: es })} -{" "}
-                    {format(dateRange.to, "LLL dd, y", { locale: es })}
-                    </>
-                ) : (
-                    format(dateRange.from, "LLL dd, y", { locale: es })
-                )
-                ) : (
-                <span>Seleccione un rango</span>
-                )}
+        <div className="flex items-center gap-2">
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                    "w-[260px] justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                    )}
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                    dateRange.to ? (
+                        <>
+                        {format(dateRange.from, "LLL dd, y", { locale: es })} -{" "}
+                        {format(dateRange.to, "LLL dd, y", { locale: es })}
+                        </>
+                    ) : (
+                        format(dateRange.from, "LLL dd, y", { locale: es })
+                    )
+                    ) : (
+                    <span>Seleccione un rango</span>
+                    )}
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                    locale={es}
+                />
+                </PopoverContent>
+            </Popover>
+            <Button onClick={handleApplyFilter} disabled={!dateRange}>Aplicar Filtro</Button>
+            <Button variant="outline" onClick={handleClearFilter} disabled={!appliedDateRange}>
+                <FilterX className="h-4 w-4 mr-2" />
+                Limpiar
             </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={2}
-                locale={es}
-            />
-            </PopoverContent>
-        </Popover>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
