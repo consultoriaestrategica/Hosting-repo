@@ -1,7 +1,7 @@
 
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, FileText, ClipboardList, Search } from "lucide-react"
+import { PlusCircle, MoreHorizontal, FileText, ClipboardList, Search, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -35,11 +35,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useResidents } from "@/hooks/use-residents"
+import { useResidents, Resident } from "@/hooks/use-residents"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./[id]/new-log-form"
+import ResidentPreviewDialog from "./resident-preview-dialog"
 
 const ITEMS_PER_PAGE = 8;
 
@@ -50,7 +51,8 @@ function ResidentsPageContent() {
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
-  const [selectedResident, setSelectedResident] = useState<any | null>(null);
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
 
   // State for filtering and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,9 +87,14 @@ function ResidentsPageContent() {
     })
   }
   
-  const handleAddLogClick = (resident: any) => {
+  const handleAddLogClick = (resident: Resident) => {
     setSelectedResident(resident);
     setIsLogDialogOpen(true);
+  }
+
+  const handlePreviewClick = (resident: Resident) => {
+    setSelectedResident(resident);
+    setIsPreviewDialogOpen(true);
   }
 
   if (!isClient || isLoading) {
@@ -95,13 +102,14 @@ function ResidentsPageContent() {
   }
 
   const isFamilyRole = role === 'family';
+  const isStaffRole = role === 'staff';
 
   return (
     <>
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Residentes</h1>
         <div className="ml-auto flex items-center gap-2">
-          {!isFamilyRole && (
+          {!isFamilyRole && !isStaffRole && (
             <Button size="sm" className="h-8 gap-1" asChild>
               <Link href={`/dashboard/residents/new?role=${role}`}>
                 <PlusCircle className="h-3.5 w-3.5" />
@@ -194,20 +202,29 @@ function ResidentsPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                           <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>Ver Perfil</Link>
-                        </DropdownMenuItem>
+                        {isStaffRole ? (
+                           <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Ficha
+                            </DropdownMenuItem>
+                        ) : (
+                             <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>Ver Perfil</Link>
+                             </DropdownMenuItem>
+                        )}
                         {!isFamilyRole && (
                           <>
                             <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
                               <ClipboardList className="mr-2 h-4 w-4" />
                               Agregar Evolución
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
+                          </>
+                        )}
+                         {role === 'admin' && (
+                             <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
                               <FileText className="mr-2 h-4 w-4" />
                               Generar Reporte
                             </DropdownMenuItem>
-                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -254,6 +271,14 @@ function ResidentsPageContent() {
                 <NewLogForm residentId={selectedResident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
             </DialogContent>
         </Dialog>
+      )}
+
+      {selectedResident && (
+        <ResidentPreviewDialog 
+            isOpen={isPreviewDialogOpen} 
+            onOpenChange={setIsPreviewDialogOpen} 
+            resident={selectedResident}
+        />
       )}
     </>
   )

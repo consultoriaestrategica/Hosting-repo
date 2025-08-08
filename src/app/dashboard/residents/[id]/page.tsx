@@ -64,6 +64,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   }
 
   const isFamilyRole = role === 'family';
+  const isStaffRole = role === 'staff';
 
 
   const handleGenerateReport = () => {
@@ -85,7 +86,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
         <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold font-headline tracking-tight sm:grow-0">
           Perfil de {resident.name}
         </h1>
-        {!isFamilyRole && (
+        {role === 'admin' && (
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
             <Button variant="outline" size="sm" onClick={handleGenerateReport}>
               <FileText className="h-4 w-4 mr-2" />
@@ -137,7 +138,8 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                 </div>
             </CardContent>
           </Card>
-          <Card>
+          {!isStaffRole && (
+             <Card>
              <CardHeader>
                 <CardTitle>Contactos Familiares</CardTitle>
              </CardHeader>
@@ -163,13 +165,14 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                 ))}
              </CardContent>
           </Card>
+          )}
         </div>
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
            <Tabs defaultValue="evolution">
             <TabsList>
               <TabsTrigger value="evolution">Historial de Reportes</TabsTrigger>
               <TabsTrigger value="profile">Perfil Completo</TabsTrigger>
-              {!isFamilyRole && <TabsTrigger value="documents">Documentos</TabsTrigger>}
+              {!isFamilyRole && !isStaffRole && <TabsTrigger value="documents">Documentos</TabsTrigger>}
             </TabsList>
             <TabsContent value="evolution">
               <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
@@ -345,3 +348,5 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </Suspense>
   )
 }
+
+    
