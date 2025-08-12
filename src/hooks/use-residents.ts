@@ -33,6 +33,16 @@ type DischargeDetails = {
     observations: string;
 };
 
+export type AgendaEvent = {
+  id: string;
+  date: string; // ISO String for date and time
+  type: 'Cita Médica' | 'Gestión Personal' | 'Otro';
+  title: string;
+  description?: string;
+  status: 'Pendiente' | 'Completado' | 'Cancelado';
+};
+
+
 export type Resident = {
   id: string;
   name: string;
@@ -53,6 +63,7 @@ export type Resident = {
   diet?: string;
   documents?: ResidentDocument[];
   dischargeDetails?: DischargeDetails;
+  agendaEvents?: AgendaEvent[];
 };
 
 const initialResidents: Resident[] = [
@@ -83,6 +94,10 @@ const initialResidents: Resident[] = [
         { type: "Historia Clínica", name: "historia_clinica_maria.pdf", size: 2048 },
     ],
     diet: "Baja en sodio, alimentos blandos",
+    agendaEvents: [
+        { id: "evt-001", date: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), type: 'Cita Médica', title: 'Cita con cardiólogo', description: 'Revisión anual con el Dr. Martínez.', status: 'Pendiente' },
+        { id: "evt-002", date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(), type: 'Gestión Personal', title: 'Visita de la nieta', description: 'Viene Sofía a visitarla por la tarde.', status: 'Completado' },
+    ]
   },
    { 
     id: "res-002", 
@@ -104,6 +119,7 @@ const initialResidents: Resident[] = [
      familyContacts: [
         { name: "Ana Gomez", kinship: "Hija", address: "Avenida Siempre Viva 742", phones: [{ number: "+1-202-555-0183" }], email: "ana.g@example.com" }
     ],
+    agendaEvents: [],
   },
    { 
     id: "res-003", 
@@ -202,7 +218,7 @@ const initialResidents: Resident[] = [
 
 const RESIDENTS_STORAGE_KEY = 'residents';
 
-export function useResidents() {
+function useResidents() {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -244,16 +260,19 @@ export function useResidents() {
     };
   }, [loadResidents]);
 
+  const triggerStorageEvent = () => {
+     window.dispatchEvent(new StorageEvent('storage', {
+        key: RESIDENTS_STORAGE_KEY,
+        newValue: localStorage.getItem(RESIDENTS_STORAGE_KEY),
+    }));
+  }
 
   const addResident = useCallback((newResident: Omit<Resident, 'id'>) => {
     const residentWithId = { ...newResident, id: `res-${Date.now()}` };
     const updatedResidents = [...residents, residentWithId];
     try {
         localStorage.setItem(RESIDENTS_STORAGE_KEY, JSON.stringify(updatedResidents));
-         window.dispatchEvent(new StorageEvent('storage', {
-            key: RESIDENTS_STORAGE_KEY,
-            newValue: JSON.stringify(updatedResidents),
-        }));
+         triggerStorageEvent();
     } catch (error) {
         console.error("Failed to save to localStorage", error);
     }
@@ -269,14 +288,42 @@ export function useResidents() {
     });
     try {
         localStorage.setItem(RESIDENTS_STORAGE_KEY, JSON.stringify(updatedResidents));
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: RESIDENTS_STORAGE_KEY,
-            newValue: JSON.stringify(updatedResidents),
-        }));
+        triggerStorageEvent();
     } catch (error) {
         console.error("Failed to save resident update to localStorage", error);
     }
   }, []);
 
-  return { residents, addResident, updateResident, isLoading };
+  const addAgendaEvent = useCallback((residentId: string, eventData: Omit<AgendaEvent, 'id'>) => {
+    updateResident(residentId, {
+      agendaEvents: [
+        ...(residents.find(r => r.id === residentId)?.agendaEvents || []),
+        { ...eventData, id: `evt-${Date.now()}` }
+      ]
+    });
+  }, [residents, updateResident]);
+
+  const updateAgendaEvent = useCallback((residentId: string, eventId: string, eventData: Partial<AgendaEvent>) => {
+    const resident = residents.find(r => r.id === residentId);
+    if (!resident) return;
+
+    const updatedEvents = (resident.agendaEvents || []).map(event => 
+      event.id === eventId ? { ...event, ...eventData } : event
+    );
+    
+    updateResident(residentId, { agendaEvents: updatedEvents });
+  }, [residents, updateResident]);
+
+  const deleteAgendaEvent = useCallback((residentId: string, eventId: string) => {
+    const resident = residents.find(r => r.id === residentId);
+    if (!resident) return;
+
+    const updatedEvents = (resident.agendaEvents || []).filter(event => event.id !== eventId);
+    updateResident(residentId, { agendaEvents: updatedEvents });
+  }, [residents, updateResident]);
+
+
+  return { residents, addResident, updateResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, isLoading };
 }
+
+export { useResidents };
