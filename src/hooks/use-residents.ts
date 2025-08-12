@@ -38,7 +38,8 @@ export type Resident = {
   dependency: "Dependiente" | "Independiente";
   status: "Activo" | "Inactivo";
   admissionDate: string;
-  roomType: "Básica" | "Premium";
+  roomType: "Habitación compartida" | "Habitación individual";
+  roomNumber?: string;
   bloodType?: string;
   fallRisk?: "Bajo" | "Medio" | "Alto";
   familyContacts?: FamilyContact[];
@@ -57,7 +58,8 @@ const initialResidents: Resident[] = [
     dependency: "Dependiente", 
     status: "Activo", 
     admissionDate: "2023-01-15", 
-    roomType: "Premium",
+    roomType: "Habitación individual",
+    roomNumber: "101",
     bloodType: "O+",
     fallRisk: "Alto",
     pathologies: ["Alzheimer", "Hipertensión"],
@@ -84,7 +86,8 @@ const initialResidents: Resident[] = [
     dependency: "Independiente", 
     status: "Activo", 
     admissionDate: "2023-03-20", 
-    roomType: "Básica",
+    roomType: "Habitación compartida",
+    roomNumber: "205-A",
     bloodType: "A-",
     fallRisk: "Medio",
     pathologies: ["Diabetes"],
@@ -104,7 +107,7 @@ const initialResidents: Resident[] = [
     dependency: "Independiente", 
     status: "Inactivo", 
     admissionDate: "2022-10-01", 
-    roomType: "Básica",
+    roomType: "Habitación compartida",
   },
    { 
     id: "res-004", 
@@ -115,7 +118,7 @@ const initialResidents: Resident[] = [
     dependency: "Independiente", 
     status: "Activo", 
     admissionDate: "2024-02-10", 
-    roomType: "Premium",
+    roomType: "Habitación individual",
   },
    { 
     id: "res-005", 
@@ -126,7 +129,7 @@ const initialResidents: Resident[] = [
     dependency: "Dependiente", 
     status: "Activo", 
     admissionDate: "2023-05-18", 
-    roomType: "Premium",
+    roomType: "Habitación individual",
   },
    { 
     id: "res-006", 
@@ -137,7 +140,7 @@ const initialResidents: Resident[] = [
     dependency: "Independiente", 
     status: "Activo", 
     admissionDate: "2023-08-01", 
-    roomType: "Básica",
+    roomType: "Habitación compartida",
   },
   { 
     id: "res-007", 
@@ -148,7 +151,7 @@ const initialResidents: Resident[] = [
     dependency: "Independiente", 
     status: "Activo", 
     admissionDate: "2023-09-02", 
-    roomType: "Básica",
+    roomType: "Habitación compartida",
   },
   { 
     id: "res-008", 
@@ -159,7 +162,7 @@ const initialResidents: Resident[] = [
     dependency: "Dependiente", 
     status: "Activo", 
     admissionDate: "2022-12-15", 
-    roomType: "Premium",
+    roomType: "Habitación individual",
   },
   { 
     id: "res-009", 
@@ -170,7 +173,7 @@ const initialResidents: Resident[] = [
     dependency: "Independiente", 
     status: "Activo", 
     admissionDate: "2024-01-20", 
-    roomType: "Básica",
+    roomType: "Habitación compartida",
   },
   { 
     id: "res-010", 
@@ -181,7 +184,7 @@ const initialResidents: Resident[] = [
     dependency: "Dependiente", 
     status: "Activo", 
     admissionDate: "2023-11-05", 
-    roomType: "Premium",
+    roomType: "Habitación individual",
   },
 ];
 

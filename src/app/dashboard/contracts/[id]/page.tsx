@@ -1,3 +1,4 @@
+
 "use client"
 import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
@@ -183,7 +184,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
                             </div>
                              <div className="flex justify-between">
                                 <span className="font-semibold">Habitación:</span>
-                                <Badge variant={resident.roomType === "Premium" ? "default" : "secondary"}>{resident.roomType}</Badge>
+                                <Badge variant={resident.roomType === "Habitación individual" ? "default" : "secondary"}>{resident.roomType} {resident.roomNumber}</Badge>
                             </div>
                         </CardContent>
                     </Card>
@@ -225,3 +226,5 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
         </Suspense>
     )
 }
+
+    

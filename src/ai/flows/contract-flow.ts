@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Un agente de IA para la generación de contratos de servicios.
@@ -19,7 +20,7 @@ const ContractInputSchema = z.object({
   startDate: z.string().describe('La fecha de inicio del contrato (YYYY-MM-DD).'),
   endDate: z.string().describe('La fecha de fin del contrato (YYYY-MM-DD).'),
   contractType: z.string().describe('El tipo de contrato (Básica o Premium).'),
-  roomType: z.string().describe('El tipo de habitación asignada (Básica o Premium).'),
+  roomType: z.string().describe('El tipo de habitación asignada (Habitación compartida o Habitación individual).'),
   dependencyLevel: z.string().describe('El nivel de dependencia del residente (Dependiente o Independiente).'),
   contractValue: z.string().describe('El valor total mensual del contrato, formateado como moneda (ej. $2,500,000 COP).'),
 });
@@ -98,3 +99,5 @@ const generateContractFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

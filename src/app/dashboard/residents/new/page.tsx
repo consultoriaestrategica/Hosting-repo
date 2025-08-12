@@ -67,7 +67,8 @@ const residentFormSchema = z.object({
 
   // Admin Info
   admissionDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de ingreso inválida." }),
-  roomType: z.enum(["Básica", "Premium"]),
+  roomType: z.enum(["Habitación compartida", "Habitación individual"]),
+  roomNumber: z.string().optional(),
   documents: z.array(z.object({
     type: z.string(),
     name: z.string(),
@@ -106,6 +107,7 @@ export default function NewResidentPage() {
       status: "Activo",
       admissionDate: new Date().toISOString().split('T')[0],
       documents: [],
+      roomNumber: ""
     },
   })
 
@@ -161,6 +163,7 @@ export default function NewResidentPage() {
         status: data.status,
         admissionDate: data.admissionDate,
         roomType: data.roomType,
+        roomNumber: data.roomNumber,
         bloodType: data.bloodType,
         fallRisk: data.fallRisk,
         pathologies: data.pathologies?.split(',').map(p => p.trim()).filter(Boolean),
@@ -210,7 +213,8 @@ export default function NewResidentPage() {
                             <FormField control={form.control} name="idNumber" render={({ field }) => (<FormItem><FormLabel>Nº de Cédula</FormLabel><FormControl><Input placeholder="Ej. 12345678" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Género</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un género" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Femenino">Femenino</SelectItem><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="admissionDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Básica">Habitación Básica</SelectItem><SelectItem value="Premium">Habitación Premium</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="roomNumber" render={({ field }) => (<FormItem><FormLabel>Número de Habitación</FormLabel><FormControl><Input placeholder="Ej. 101A" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Estado</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione el estado" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Activo">Activo</SelectItem><SelectItem value="Inactivo">Inactivo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
                     </CardContent>

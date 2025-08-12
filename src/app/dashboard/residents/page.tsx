@@ -167,7 +167,7 @@ function ResidentsPageContent() {
                 <TableRow key={resident.id}>
                   <TableCell className="font-medium">{resident.name}</TableCell>
                   <TableCell>
-                     <Badge variant={resident.roomType === "Premium" ? "default" : "secondary"}>
+                     <Badge variant={resident.roomType === "Habitación individual" ? "default" : "secondary"}>
                       {resident.roomType}
                     </Badge>
                   </TableCell>
@@ -293,3 +293,5 @@ export default function ResidentsPage() {
     </Suspense>
   )
 }
+
+    
