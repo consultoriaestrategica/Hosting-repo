@@ -27,6 +27,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useResidents, AgendaEvent } from "@/hooks/use-residents"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useEffect, useState, Suspense, use, useMemo } from "react"
