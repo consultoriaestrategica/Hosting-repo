@@ -414,8 +414,13 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                     </div>
                   <Separator />
                   <div>
-                    <h3 className="font-semibold">Patologías Principales</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">{resident.pathologies?.map(p => <Badge key={p} variant="outline">{p}</Badge>)}</div>
+                    <h3 className="font-semibold">Antecedentes Médicos</h3>
+                    <div className="flex flex-wrap gap-2 mt-1">{resident.medicalHistory?.map(p => <Badge key={p} variant="outline">{p}</Badge>)}</div>
+                  </div>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold">Antecedentes Quirúrgicos</h3>
+                    <div className="flex flex-wrap gap-2 mt-1">{resident.surgicalHistory?.map(p => <Badge key={p} variant="outline">{p}</Badge>)}</div>
                   </div>
                    <Separator />
                    <div>

@@ -71,12 +71,12 @@ export default function DashboardPage() {
   const dashboardStats = useMemo(() => {
     const activeResidents = filteredResidents.filter(r => r.status === 'Activo');
     
-    const pathologyCounts = activeResidents.flatMap(r => r.pathologies || []).reduce((acc, path) => {
+    const medicalHistoryCounts = activeResidents.flatMap(r => r.medicalHistory || []).reduce((acc, path) => {
         acc[path] = (acc[path] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
-    const mostCommonPathology = Object.entries(pathologyCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || "N/A";
+    const mostCommonMedicalHistory = Object.entries(medicalHistoryCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || "N/A";
 
     const dependencyCounts = activeResidents.reduce((acc, res) => {
         acc[res.dependency] = (acc[res.dependency] || 0) + 1;
@@ -87,7 +87,7 @@ export default function DashboardPage() {
 
     return {
         totalActive: activeResidents.length,
-        mostCommonPathology,
+        mostCommonMedicalHistory,
         mostCommonDependency
     };
   }, [filteredResidents]);
@@ -105,12 +105,12 @@ export default function DashboardPage() {
 
     const ageDistributionData = Object.entries(ageDistribution).map(([range, total]) => ({ range, total }));
 
-    const pathologyCounts = activeResidents.flatMap(r => r.pathologies || []).reduce((acc, path) => {
+    const medicalHistoryCounts = activeResidents.flatMap(r => r.medicalHistory || []).reduce((acc, path) => {
         acc[path] = (acc[path] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
-    const pathologyData = Object.entries(pathologyCounts).map(([name, value], i) => ({ name, value, fill: chartColors[i % chartColors.length] }));
+    const medicalHistoryData = Object.entries(medicalHistoryCounts).map(([name, value], i) => ({ name, value, fill: chartColors[i % chartColors.length] }));
 
     const dependencyCounts = activeResidents.reduce((acc, res) => {
         acc[res.dependency] = (acc[res.dependency] || 0) + 1;
@@ -149,7 +149,7 @@ export default function DashboardPage() {
         { name: 'Suministro', value: reportTypeCounts.suministro, fill: reportTypeColors.suministro },
     ];
 
-    return { ageDistributionData, pathologyData, dependencyData, dailyLogActivity, reportTypeData };
+    return { ageDistributionData, medicalHistoryData, dependencyData, dailyLogActivity, reportTypeData };
 
   }, [filteredResidents, logs, filteredLogs]);
   
@@ -246,11 +246,11 @@ export default function DashboardPage() {
                     </Card>
                     <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Patología Común</CardTitle>
+                        <CardTitle className="text-sm font-medium">Antecedente Médico Común</CardTitle>
                         <Stethoscope className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{dashboardStats.mostCommonPathology}</div>
+                        <div className="text-2xl font-bold">{dashboardStats.mostCommonMedicalHistory}</div>
                         <p className="text-xs text-muted-foreground">Condición más prevalente</p>
                     </CardContent>
                     </Card>
@@ -274,15 +274,15 @@ export default function DashboardPage() {
                     </Card>
                     <Card className="lg:col-span-3">
                     <CardHeader>
-                        <CardTitle>Distribución por Patología</CardTitle>
+                        <CardTitle>Distribución por Antecedentes</CardTitle>
                         <CardDescription>Condiciones de salud más comunes.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex justify-center">
                         <ChartContainer config={{}} className="h-[300px] w-full">
                         <PieChart>
                             <ChartTooltip content={<ChartTooltipContent />} />
-                            <Pie data={chartData.pathologyData} dataKey="value" nameKey="name" innerRadius={60}>
-                                {chartData.pathologyData.map((entry, index) => (
+                            <Pie data={chartData.medicalHistoryData} dataKey="value" nameKey="name" innerRadius={60}>
+                                {chartData.medicalHistoryData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.fill} />
                                 ))}
                             </Pie>
@@ -354,5 +354,3 @@ export default function DashboardPage() {
     </>
   )
 }
-
-    

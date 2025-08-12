@@ -49,7 +49,8 @@ export type Resident = {
   age: number;
   dob: string;
   idNumber: string;
-  pathologies?: string[];
+  medicalHistory?: string[];
+  surgicalHistory?: string[];
   allergies?: string[];
   dependency: "Dependiente" | "Independiente";
   status: "Activo" | "Inactivo";
@@ -80,7 +81,8 @@ const initialResidents: Resident[] = [
     roomNumber: "101",
     bloodType: "O+",
     fallRisk: "Alto",
-    pathologies: ["Alzheimer", "Hipertensión"],
+    medicalHistory: ["Alzheimer", "Hipertensión"],
+    surgicalHistory: ["Reemplazo de cadera"],
     allergies: ["Penicilina"],
     medications: [
         { name: "Donepezilo", dose: "10mg", frequency: "Cada noche" },
@@ -112,7 +114,7 @@ const initialResidents: Resident[] = [
     roomNumber: "205-A",
     bloodType: "A-",
     fallRisk: "Medio",
-    pathologies: ["Diabetes"],
+    medicalHistory: ["Diabetes"],
     medications: [
         { name: "Metformina", dose: "850mg", frequency: "Diaria" },
     ],

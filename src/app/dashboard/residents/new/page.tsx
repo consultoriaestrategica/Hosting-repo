@@ -44,7 +44,8 @@ const residentFormSchema = z.object({
   // Medical Info
   bloodType: z.string().min(1, { message: "Campo requerido."}),
   fallRisk: z.enum(["Bajo", "Medio", "Alto"]),
-  pathologies: z.string().optional(),
+  medicalHistory: z.string().optional(),
+  surgicalHistory: z.string().optional(),
   allergies: z.string().optional(),
   medications: z.array(z.object({
     name: z.string().min(1, "El nombre no puede estar vacío."),
@@ -99,7 +100,8 @@ export default function NewResidentPage() {
     defaultValues: {
       name: "",
       idNumber: "",
-      pathologies: "",
+      medicalHistory: "",
+      surgicalHistory: "",
       allergies: "",
       medications: [{ name: "", dose: "", frequency: "" }],
       diet: "",
@@ -166,7 +168,8 @@ export default function NewResidentPage() {
         roomNumber: data.roomNumber,
         bloodType: data.bloodType,
         fallRisk: data.fallRisk,
-        pathologies: data.pathologies?.split(',').map(p => p.trim()).filter(Boolean),
+        medicalHistory: data.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
+        surgicalHistory: data.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         allergies: data.allergies?.split(',').map(a => a.trim()).filter(Boolean),
         medications: data.medications,
         diet: data.diet,
@@ -234,7 +237,8 @@ export default function NewResidentPage() {
                             <FormField control={form.control} name="fallRisk" render={({ field }) => (<FormItem><FormLabel>Riesgo de Caída</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un riesgo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Bajo">Bajo</SelectItem><SelectItem value="Medio">Medio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
                         <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-6">
-                            <FormField control={form.control} name="pathologies" render={({ field }) => (<FormItem><FormLabel>Patologías Principales</FormLabel><FormControl><Textarea placeholder="Ej. Alzheimer, Hipertensión (separadas por comas)" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="medicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Médicos</FormLabel><FormControl><Textarea placeholder="Ej. Alzheimer, Hipertensión (separados por comas)" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="surgicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Quirúrgicos</FormLabel><FormControl><Textarea placeholder="Ej. Reemplazo de cadera (separados por comas)" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="allergies" render={({ field }) => (<FormItem><FormLabel>Alergias Conocidas</FormLabel><FormControl><Textarea placeholder="Ej. Penicilina, Mariscos (separadas por comas)" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                         <FormField control={form.control} name="diet" render={({ field }) => (<FormItem className="lg:col-span-2"><FormLabel>Plan de Alimentación</FormLabel><FormControl><Textarea placeholder="Ej. Baja en sodio, alimentos blandos" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -391,5 +395,3 @@ function FamilyContactFields({ form, contactIndex, removeContact }: { form: any,
         </div>
     );
 }
-
-    
