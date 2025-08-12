@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail, Home } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail, Home, LogOut, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -33,14 +33,16 @@ import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./new-log-form"
 import LogDetailDialog from "../../components/log-detail-dialog"
+import DischargeForm from "./discharge-form"
 
 
 function ResidentProfilePageContent({ id }: { id: string }) {
   const { toast } = useToast()
-  const { residents, isLoading: residentsLoading } = useResidents()
+  const { residents, isLoading: residentsLoading, updateResident } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
   const [isClient, setIsClient] = useState(false)
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
+  const [isDischargeDialogOpen, setIsDischargeDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
 
@@ -88,6 +90,37 @@ function ResidentProfilePageContent({ id }: { id: string }) {
         </h1>
         {role === 'admin' && (
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
+             <Dialog open={isDischargeDialogOpen} onOpenChange={setIsDischargeDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={resident.status === 'Inactivo'}>
+                       <LogOut className="h-4 w-4 mr-2" />
+                       Dar de Baja
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Formulario de Salida del Residente</DialogTitle>
+                        <DialogDescription>
+                            Complete la información para registrar la salida de {resident.name}. Esta acción cambiará su estado a "Inactivo".
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DischargeForm
+                        resident={resident}
+                        onSubmit={(data) => {
+                            updateResident(resident.id, {
+                                status: 'Inactivo',
+                                dischargeDetails: {
+                                    dischargeDate: data.dischargeDate,
+                                    reason: data.reason,
+                                    observations: data.observations || '',
+                                }
+                            });
+                            toast({ title: "Residente Dado de Baja", description: `${resident.name} ha sido marcado como inactivo.` });
+                            setIsDischargeDialogOpen(false);
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
             <Button variant="outline" size="sm" onClick={handleGenerateReport}>
               <FileText className="h-4 w-4 mr-2" />
               Generar Reporte
@@ -123,6 +156,24 @@ function ResidentProfilePageContent({ id }: { id: string }) {
           </div>
         )}
       </div>
+
+       {resident.status === 'Inactivo' && resident.dischargeDetails && (
+            <Card className="mt-4 bg-amber-50 border-amber-200">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-amber-900"><Info size={20}/>Información de Salida</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-3 text-amber-800">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                         <p><strong>Fecha de Salida:</strong> {new Date(resident.dischargeDetails.dischargeDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</p>
+                         <p><strong>Motivo:</strong> {resident.dischargeDetails.reason}</p>
+                    </div>
+                    {resident.dischargeDetails.observations && (
+                         <p><strong>Observaciones:</strong> {resident.dischargeDetails.observations}</p>
+                    )}
+                </CardContent>
+            </Card>
+        )}
+
       <div className="grid flex-1 items-start gap-4 lg:grid-cols-3 lg:gap-8 mt-4">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-1 lg:gap-8">
           <Card>
@@ -131,6 +182,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
             </CardHeader>
             <CardContent className="text-sm">
                 <div className="grid grid-cols-2 gap-2">
+                    <div className="font-semibold">Estado</div><div> <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>{resident.status}</Badge></div>
                     <div className="font-semibold">Edad</div><div>{resident.age}</div>
                     <div className="font-semibold">Género</div><div>Femenino</div>
                     <div className="font-semibold">Cédula</div><div>{resident.idNumber}</div>
@@ -184,7 +236,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                     </div>
                     {!isFamilyRole && (
                     <DialogTrigger asChild>
-                      <Button size="sm" className="ml-auto gap-1">
+                      <Button size="sm" className="ml-auto gap-1" disabled={resident.status === 'Inactivo'}>
                         <PlusCircle className="h-4 w-4" />
                         Agregar Reporte
                       </Button>

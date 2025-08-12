@@ -27,6 +27,12 @@ type ResidentDocument = {
   size: number;
 };
 
+type DischargeDetails = {
+    dischargeDate: string; // YYYY-MM-DD
+    reason: 'Traslado' | 'Regreso a casa' | 'Fallecimiento';
+    observations: string;
+};
+
 export type Resident = {
   id: string;
   name: string;
@@ -46,6 +52,7 @@ export type Resident = {
   medications?: Medication[];
   diet?: string;
   documents?: ResidentDocument[];
+  dischargeDetails?: DischargeDetails;
 };
 
 const initialResidents: Resident[] = [
@@ -108,6 +115,11 @@ const initialResidents: Resident[] = [
     status: "Inactivo", 
     admissionDate: "2022-10-01", 
     roomType: "Habitación compartida",
+    dischargeDetails: {
+        dischargeDate: "2023-12-15",
+        reason: "Regreso a casa",
+        observations: "La familia se encargará del cuidado en su domicilio."
+    }
   },
    { 
     id: "res-004", 
@@ -247,7 +259,24 @@ export function useResidents() {
     }
   }, [residents]);
 
-  return { residents, addResident, isLoading };
-}
+  const updateResident = useCallback((residentId: string, updatedDetails: Partial<Resident>) => {
+    const storedResidents = JSON.parse(localStorage.getItem(RESIDENTS_STORAGE_KEY) || '[]');
+    const updatedResidents = storedResidents.map((resident: Resident) => {
+        if (resident.id === residentId) {
+            return { ...resident, ...updatedDetails };
+        }
+        return resident;
+    });
+    try {
+        localStorage.setItem(RESIDENTS_STORAGE_KEY, JSON.stringify(updatedResidents));
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: RESIDENTS_STORAGE_KEY,
+            newValue: JSON.stringify(updatedResidents),
+        }));
+    } catch (error) {
+        console.error("Failed to save resident update to localStorage", error);
+    }
+  }, []);
 
-    
+  return { residents, addResident, updateResident, isLoading };
+}
