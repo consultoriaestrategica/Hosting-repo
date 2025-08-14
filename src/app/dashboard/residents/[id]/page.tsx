@@ -1,7 +1,8 @@
 
 "use client"
-import { useResidents, Resident, FamilyContact, Medication } from "@/hooks/use-residents";
+import { useResidents, Resident, FamilyContact, Medication, Visit } from "@/hooks/use-residents";
 import { useLogs, Log } from "@/hooks/use-logs";
+import { useContracts as useResidentContracts } from "@/hooks/use-contracts";
 import { Badge } from "@/components/ui/badge";
 import { 
   Card, 
@@ -31,12 +32,16 @@ import {
     Stethoscope, 
     Truck, 
     Pill,
-    Utensils,
     AlertTriangle,
-    CheckCircle2
+    CheckCircle2,
+    BookUser,
+    Car,
+    Eye
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -45,7 +50,7 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
     if (!value) return null;
     return (
         <TableRow>
-            <TableCell className="font-medium">{label}</TableCell>
+            <TableCell className="font-medium w-1/3">{label}</TableCell>
             <TableCell>{value}</TableCell>
         </TableRow>
     );
@@ -54,8 +59,12 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
 export default function ResidentProfilePage({ params }: { params: { id: string } }) {
   
   const residentId = params.id;
+  const searchParams = useSearchParams();
+  const role = searchParams.get('role') || 'admin';
   const { residents, isLoading: residentsLoading } = useResidents();
   const { logs, isLoading: logsLoading } = useLogs();
+  const { contracts: residentContracts, isLoading: contractsLoading } = useResidentContracts();
+
 
   const [isClient, setIsClient] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
@@ -67,6 +76,12 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
   }, []);
 
   const resident = residents.find(r => r.id === residentId);
+
+  const filteredContracts = useMemo(() => {
+    return residentContracts
+        .filter(c => c.residentId === residentId)
+        .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [residentContracts, residentId]);
 
   const residentLogs = useMemo(() => {
     if (!resident) return [];
@@ -87,11 +102,11 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     setIsDetailDialogOpen(true);
   };
 
-  const isLoading = residentsLoading || logsLoading;
+  const isLoading = residentsLoading || logsLoading || contractsLoading;
 
   if (!isClient || isLoading) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <h1 className="text-3xl font-bold font-headline">Cargando perfil...</h1>
       </div>
     );
@@ -99,7 +114,7 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
 
   if (!resident) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <h1 className="text-3xl font-bold font-headline text-destructive">Error</h1>
         <p className="text-lg text-muted-foreground">Residente no encontrado.</p>
       </div>
@@ -132,10 +147,12 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
             </div>
             
             <Tabs defaultValue="general">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5">
                     <TabsTrigger value="general">Perfil General</TabsTrigger>
-                    <TabsTrigger value="contacts">Contactos Familiares</TabsTrigger>
-                    <TabsTrigger value="logs">Registros Diarios</TabsTrigger>
+                    <TabsTrigger value="contacts">Contactos</TabsTrigger>
+                    <TabsTrigger value="contracts">Contratos</TabsTrigger>
+                    <TabsTrigger value="visits">Visitas</TabsTrigger>
+                    <TabsTrigger value="logs">Registros</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="general" className="mt-4">
@@ -254,6 +271,89 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
                         </CardContent>
                      </Card>
                 </TabsContent>
+                
+                <TabsContent value="contracts" className="mt-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><BookUser />Historial de Contratos</CardTitle>
+                            <CardDescription>Todos los contratos de servicios para {resident.name}.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Fecha Creación</TableHead>
+                                        <TableHead>Tipo de Contrato</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead><span className="sr-only">Acciones</span></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredContracts.length > 0 ? (
+                                        filteredContracts.map(c => (
+                                            <TableRow key={c.id}>
+                                                <TableCell>{new Date(c.createdAt).toLocaleDateString('es-ES')}</TableCell>
+                                                <TableCell>Servicios ({c.contractType})</TableCell>
+                                                <TableCell><Badge variant={getStatusVariant(c.status)}>{c.status}</Badge></TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button asChild variant="outline" size="sm">
+                                                        <Link href={`/dashboard/contracts/${c.id}?role=${role}&type=resident`}>
+                                                            <Eye className="mr-2 h-4 w-4"/> Ver Detalle
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="h-24 text-center">No se encontraron contratos.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="visits" className="mt-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Car />Historial de Visitas</CardTitle>
+                            <CardDescription>Todas las visitas registradas para {resident.name}.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Fecha y Hora</TableHead>
+                                        <TableHead>Visitante</TableHead>
+                                        <TableHead>Parentesco</TableHead>
+                                        <TableHead>Notas</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {resident.visits && resident.visits.length > 0 ? (
+                                        [...resident.visits].sort((a,b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()).map(visit => (
+                                            <TableRow key={visit.id}>
+                                                <TableCell>{new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
+                                                <TableCell>
+                                                     <div>{visit.visitorName}</div>
+                                                     <div className="text-xs text-muted-foreground">{visit.visitorIdNumber}</div>
+                                                </TableCell>
+                                                <TableCell>{visit.kinship}</TableCell>
+                                                <TableCell>{visit.notes || 'N/A'}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="h-24 text-center">No se han registrado visitas.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
                 <TabsContent value="logs" className="mt-4">
                      <Card>
@@ -337,4 +437,3 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </>
   );
 }
-

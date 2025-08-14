@@ -8,7 +8,7 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle, // CORRECCIÓN: 'Cardtittle' a 'CardTitle'
+  CardTitle,
 } from "@/components/ui/card"
 import {
   Table,
@@ -162,7 +162,11 @@ function ResidentsPageContent() {
             <TableBody>
               {paginatedResidents.map((resident) => (
                 <TableRow key={resident.id}>
-                  <TableCell className="font-medium">{resident.name}</TableCell>
+                  <TableCell className="font-medium">
+                     <Link href={`/dashboard/residents/${resident.id}?role=${role}`} className="hover:underline">
+                        {resident.name}
+                     </Link>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={resident.roomType === "Habitación individual" ? "default" : "secondary"}>
                       {resident.roomType}
@@ -190,12 +194,11 @@ function ResidentsPageContent() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         
-                        {/* AÑADIDO: Opción para navegar a la página de perfil completo */}
                         <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Ver Perfil Completo
-                          </Link>
+                           <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                                <FileText className="mr-2 h-4 w-4" />
+                                Ver Perfil
+                           </Link>
                         </DropdownMenuItem>
 
                         {isStaffRole && (
