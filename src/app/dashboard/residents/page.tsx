@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge"
 import { useResidents, Resident } from "@/hooks/use-residents"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import NewLogForm from "./[id]/new-log-form"
 import ResidentPreviewDialog from "./resident-preview-dialog"
 
@@ -46,6 +46,7 @@ const ITEMS_PER_PAGE = 8;
 
 function ResidentsPageContent() {
   const { residents, isLoading } = useResidents()
+  const router = useRouter()
   const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -209,12 +210,8 @@ function ResidentsPageContent() {
                             </DropdownMenuItem>
                         )}
                         {!isStaffRole && (
-                            <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
-                                    <span className="flex items-center">
-                                        <Eye className="mr-2 h-4 w-4" /> Ver Perfil
-                                    </span>
-                                </Link>
+                            <DropdownMenuItem onClick={() => router.push(`/dashboard/residents/${resident.id}?role=${role}`)}>
+                                <Eye className="mr-2 h-4 w-4" /> Ver Perfil
                             </DropdownMenuItem>
                         )}
                         {!isFamilyRole && (
