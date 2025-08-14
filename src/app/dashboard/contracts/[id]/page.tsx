@@ -2,47 +2,63 @@
 "use client"
 import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
-import { useContracts } from "@/hooks/use-contracts"
+import { useContracts as useResidentContracts } from "@/hooks/use-contracts"
+import { useStaffContracts } from "@/hooks/use-staff-contracts"
 import { useResidents } from "@/hooks/use-residents"
+import { useStaff } from "@/hooks/use-staff"
 import { useSettings } from "@/hooks/use-settings"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent } from "lucide-react"
+import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent, Briefcase } from "lucide-react"
 import { marked } from "marked"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 
 function ContractDetailPageContent({ id }: { id: string }) {
-    const { contracts, updateContract, isLoading: contractsLoading } = useContracts()
+    const searchParams = useSearchParams()
+    const contractType = searchParams.get('type') || 'resident';
+
+    // Hooks
+    const { contracts: residentContracts, updateContract: updateResidentContract, isLoading: residentContractsLoading } = useResidentContracts()
+    const { contracts: staffContracts, updateContract: updateStaffContract, isLoading: staffContractsLoading } = useStaffContracts()
     const { residents, isLoading: residentsLoading } = useResidents()
+    const { staff, isLoading: staffLoading } = useStaff()
     const { settings, isLoading: settingsLoading } = useSettings()
+    const { toast } = useToast()
+
+    // State
     const [isClient, setIsClient] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [editableDetails, setEditableDetails] = useState("")
 
-    const { toast } = useToast()
-
     useEffect(() => {
         setIsClient(true)
     }, [])
+    
+    // Data selection based on contract type
+    const contract = contractType === 'resident' 
+        ? residentContracts.find(c => c.id === id) 
+        : staffContracts.find(c => c.id === id);
 
-    const contract = contracts.find(c => c.id === id)
+    const person = contractType === 'resident'
+        ? residents.find(r => r.id === (contract as any)?.residentId)
+        : staff.find(s => s.id === (contract as any)?.staffId);
 
     useEffect(() => {
         if (contract) {
             setEditableDetails(contract.details)
         }
     }, [contract])
-    
-    const resident = contract ? residents.find(r => r.id === contract.residentId) : null
 
-    if (!isClient || contractsLoading || residentsLoading || settingsLoading) {
+    const isLoading = residentsLoading || staffLoading || residentContractsLoading || staffContractsLoading || settingsLoading;
+
+    if (!isClient || isLoading) {
         return <div>Cargando...</div>
     }
 
-    if (!contract || !resident) {
-        return <div className="text-center text-destructive flex items-center gap-2"><AlertTriangle/>No se encontró el contrato o el residente asociado.</div>
+    if (!contract || !person) {
+        return <div className="text-center text-destructive flex items-center gap-2"><AlertTriangle/>No se encontró el contrato o la persona asociada.</div>
     }
 
     const getStatusVariant = (status: string) => {
@@ -54,7 +70,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
         }
     };
     
-    const getContractValueDetails = (type: 'Habitación compartida' | 'Habitación individual') => {
+    const getResidentContractValueDetails = (type: 'Habitación compartida' | 'Habitación individual') => {
         const baseValue = settings.prices[type] || 0;
         const vatRate = settings.vatEnabled ? (settings.vatRate || 0) / 100 : 0;
         const vatValue = baseValue * vatRate;
@@ -70,8 +86,9 @@ function ContractDetailPageContent({ id }: { id: string }) {
         }
     }
     
-    const contractValues = getContractValueDetails(contract.contractType);
-    
+    const contractValues = contractType === 'resident' ? getResidentContractValueDetails((contract as any).contractType) : null;
+    const staffSalaryFormatted = contractType === 'staff' ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((contract as any).salary) : null;
+
     const handlePrint = () => {
        const printWindow = window.open('', '_blank');
        if(printWindow) {
@@ -89,7 +106,11 @@ function ContractDetailPageContent({ id }: { id: string }) {
     }
 
     const handleSave = () => {
-        updateContract(id, { details: editableDetails });
+        if (contractType === 'resident') {
+            updateResidentContract(id, { details: editableDetails });
+        } else {
+            updateStaffContract(id, { details: editableDetails });
+        }
         setIsEditing(false);
         toast({ title: "Contrato Actualizado", description: "Los cambios se han guardado exitosamente." });
     }
@@ -129,28 +150,38 @@ function ContractDetailPageContent({ id }: { id: string }) {
                                 <span className="font-semibold">ID Contrato:</span>
                                 <span>{contract.id}</span>
                             </div>
-                             <div className="flex justify-between">
+                            <div className="flex justify-between">
                                 <span className="font-semibold">Tipo:</span>
-                                <span>Contrato de Servicios ({contract.contractType})</span>
+                                <span>{contractType === 'resident' ? `Contrato de Servicios (${(contract as any).contractType})` : 'Contrato Laboral'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="font-semibold">Estado:</span>
                                 <Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="font-semibold flex items-center gap-1.5"><DollarSign size={14}/>Valor Base Mensual:</span>
-                                <span className="font-semibold">{contractValues.base}</span>
-                            </div>
-                            {contractValues.vatEnabled && (
-                                <div className="flex justify-between items-center text-muted-foreground pl-5">
-                                    <span className="flex items-center gap-1.5"><Percent size={12}/>IVA ({settings.vatRate}%):</span>
-                                    <span>{contractValues.vat}</span>
+                            {contractValues && (
+                                <>
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-semibold flex items-center gap-1.5"><DollarSign size={14}/>Valor Base Mensual:</span>
+                                        <span className="font-semibold">{contractValues.base}</span>
+                                    </div>
+                                    {contractValues.vatEnabled && (
+                                        <div className="flex justify-between items-center text-muted-foreground pl-5">
+                                            <span className="flex items-center gap-1.5"><Percent size={12}/>IVA ({settings.vatRate}%):</span>
+                                            <span>{contractValues.vat}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center text-base">
+                                        <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Total Mensual:</span>
+                                        <span className="font-bold">{contractValues.total}</span>
+                                    </div>
+                                </>
+                            )}
+                            {staffSalaryFormatted && (
+                                 <div className="flex justify-between items-center text-base">
+                                    <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Salario Mensual:</span>
+                                    <span className="font-bold">{staffSalaryFormatted}</span>
                                 </div>
                             )}
-                             <div className="flex justify-between items-center text-base">
-                                <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Total Mensual:</span>
-                                <span className="font-bold">{contractValues.total}</span>
-                            </div>
                              <div className="flex justify-between items-center">
                                 <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Inicio:</span>
                                 <span>{new Date(contract.startDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
@@ -167,25 +198,38 @@ function ContractDetailPageContent({ id }: { id: string }) {
                     </Card>
                      <Card>
                         <CardHeader>
-                             <CardTitle className="flex items-center gap-2"><User/>Información del Residente</CardTitle>
+                             <CardTitle className="flex items-center gap-2">
+                                {contractType === 'resident' ? <User/> : <Briefcase />}
+                                Información d{contractType === 'resident' ? 'el Residente' : 'el Empleado'}
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="text-sm space-y-3">
                             <div className="flex justify-between">
                                 <span className="font-semibold">Nombre:</span>
-                                <span>{resident.name}</span>
+                                <span>{person.name}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="font-semibold">Cédula:</span>
-                                <span>{resident.idNumber}</span>
+                                <span>{person.idNumber}</span>
                             </div>
-                             <div className="flex justify-between">
-                                <span className="font-semibold">Edad:</span>
-                                <span>{resident.age}</span>
-                            </div>
-                             <div className="flex justify-between">
-                                <span className="font-semibold">Habitación:</span>
-                                <Badge variant={resident.roomType === "Habitación individual" ? "default" : "secondary"}>{resident.roomType} {resident.roomNumber}</Badge>
-                            </div>
+                            {contractType === 'resident' && (
+                                <>
+                                    <div className="flex justify-between">
+                                        <span className="font-semibold">Edad:</span>
+                                        <span>{(person as any).age}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="font-semibold">Habitación:</span>
+                                        <Badge variant={(person as any).roomType === "Habitación individual" ? "default" : "secondary"}>{(person as any).roomType} {(person as any).roomNumber}</Badge>
+                                    </div>
+                                </>
+                            )}
+                            {contractType === 'staff' && (
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Cargo:</span>
+                                    <span>{(person as any).role}</span>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

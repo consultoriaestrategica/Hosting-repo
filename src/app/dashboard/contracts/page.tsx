@@ -1,6 +1,7 @@
+
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Eye, FilterX } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Eye, FilterX, User, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -32,16 +33,22 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { useContracts, Contract } from "@/hooks/use-contracts"
+import { useContracts as useResidentContracts } from "@/hooks/use-contracts"
+import { useStaffContracts } from "@/hooks/use-staff-contracts"
 import { useResidents } from "@/hooks/use-residents"
+import { useStaff } from "@/hooks/use-staff"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 
 function ContractsPageContent() {
-  const { contracts, isLoading: contractsLoading } = useContracts()
+  const { contracts: residentContracts, isLoading: residentContractsLoading } = useResidentContracts()
+  const { contracts: staffContracts, isLoading: staffContractsLoading } = useStaffContracts()
   const { residents, isLoading: residentsLoading } = useResidents()
+  const { staff, isLoading: staffLoading } = useStaff()
+  
   const [isClient, setIsClient] = useState(false)
-  const [residentFilter, setResidentFilter] = useState<string>("")
+  const [personFilter, setPersonFilter] = useState<string>("")
+  const [typeFilter, setTypeFilter] = useState<string>("all")
   
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
@@ -50,22 +57,48 @@ function ContractsPageContent() {
     setIsClient(true)
   }, [])
   
-  const isLoading = contractsLoading || residentsLoading;
+  const isLoading = residentContractsLoading || staffContractsLoading || residentsLoading || staffLoading;
+
+  const combinedContracts = useMemo(() => {
+    const residentsWithContracts = residentContracts.map(c => ({...c, contractPartyType: 'resident'}));
+    const staffWithContracts = staffContracts.map(c => ({...c, contractPartyType: 'staff'}));
+    return [...residentsWithContracts, ...staffWithContracts];
+  }, [residentContracts, staffContracts]);
 
   const filteredAndSortedContracts = useMemo(() => {
-     let filtered = [...contracts];
-     if (residentFilter) {
-       filtered = filtered.filter(c => c.residentId === residentFilter);
+     let filtered = combinedContracts;
+
+     if (typeFilter !== 'all') {
+        filtered = filtered.filter(c => c.contractPartyType === typeFilter);
+     }
+
+     if (personFilter) {
+       const [type, id] = personFilter.split('-');
+       if(type === 'resident') {
+          filtered = filtered.filter(c => c.contractPartyType === 'resident' && (c as any).residentId === id);
+       } else if (type === 'staff') {
+            filtered = filtered.filter(c => c.contractPartyType === 'staff' && (c as any).staffId === id);
+       }
      }
      return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [contracts, residentFilter]);
+  }, [combinedContracts, personFilter, typeFilter]);
 
   if (!isClient || isLoading) {
     return <div>Cargando...</div>
   }
 
-  const getResidentName = (residentId: string) => {
-    return residents.find(r => r.id === residentId)?.name || "N/A"
+  const getPersonName = (contract: any) => {
+    if (contract.contractPartyType === 'resident') {
+        return residents.find(r => r.id === contract.residentId)?.name || "N/A"
+    }
+    return staff.find(s => s.id === contract.staffId)?.name || "N/A"
+  }
+
+  const getPersonLink = (contract: any) => {
+    if (contract.contractPartyType === 'resident') {
+        return `/dashboard/residents/${contract.residentId}?role=${role}`
+    }
+    return `/dashboard/staff/${contract.staffId}?role=${role}`
   }
   
   const getStatusVariant = (status: string) => {
@@ -77,7 +110,6 @@ function ContractsPageContent() {
     }
   }
 
-
   return (
     <>
       <div className="flex items-center">
@@ -87,7 +119,7 @@ function ContractsPageContent() {
                 <Link href={`/dashboard/contracts/new?role=${role}`}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Generar Contrato
+                        Generar Contrato Residente
                     </span>
                 </Link>
             </Button>
@@ -98,22 +130,42 @@ function ContractsPageContent() {
         <CardHeader>
           <CardTitle>Contratos Recientes</CardTitle>
           <CardDescription>
-            Listado de los últimos contratos generados para los residentes. Use el filtro para ver los contratos de un residente específico.
+            Listado de todos los contratos generados. Use los filtros para buscar.
           </CardDescription>
-           <div className="flex items-center gap-2 pt-4">
-              <Select onValueChange={setResidentFilter} value={residentFilter}>
-                <SelectTrigger className="w-full max-w-xs">
-                    <SelectValue placeholder="Filtrar por residente..." />
+           <div className="flex flex-wrap items-center gap-2 pt-4">
+              <Select onValueChange={setTypeFilter} value={typeFilter}>
+                <SelectTrigger className="w-full sm:w-auto">
+                    <SelectValue placeholder="Filtrar por tipo..." />
                 </SelectTrigger>
                 <SelectContent>
-                    {residents.map((resident) => (
-                    <SelectItem key={resident.id} value={resident.id}>
-                        {resident.name}
-                    </SelectItem>
-                    ))}
+                    <SelectItem value="all">Todos los Tipos</SelectItem>
+                    <SelectItem value="resident">Residente</SelectItem>
+                    <SelectItem value="staff">Personal</SelectItem>
                 </SelectContent>
              </Select>
-             <Button variant="outline" onClick={() => setResidentFilter("")} disabled={!residentFilter}>
+              <Select onValueChange={setPersonFilter} value={personFilter}>
+                <SelectTrigger className="w-full sm:w-auto flex-1 max-w-xs">
+                    <SelectValue placeholder="Filtrar por persona..." />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">Todas las Personas</SelectItem>
+                    <optgroup label="Residentes">
+                        {residents.map((resident) => (
+                        <SelectItem key={`resident-${resident.id}`} value={`resident-${resident.id}`}>
+                            {resident.name}
+                        </SelectItem>
+                        ))}
+                    </optgroup>
+                    <optgroup label="Personal">
+                         {staff.map((member) => (
+                        <SelectItem key={`staff-${member.id}`} value={`staff-${member.id}`}>
+                            {member.name}
+                        </SelectItem>
+                        ))}
+                    </optgroup>
+                </SelectContent>
+             </Select>
+             <Button variant="outline" onClick={() => { setPersonFilter(""); setTypeFilter("all");}} disabled={!personFilter && typeFilter === 'all'}>
                 <FilterX className="h-4 w-4 mr-2" />
                 Limpiar
             </Button>
@@ -123,8 +175,8 @@ function ContractsPageContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fecha de Creación</TableHead>
-                <TableHead>Residente</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Nombre</TableHead>
                 <TableHead>Tipo de Contrato</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>
@@ -138,12 +190,15 @@ function ContractsPageContent() {
                   <TableRow key={contract.id}>
                     <TableCell className="font-medium">{new Date(contract.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Link href={`/dashboard/residents/${contract.residentId}?role=${role}`} className="hover:underline">
-                          {getResidentName(contract.residentId)}
+                      <Link href={getPersonLink(contract)} className="hover:underline">
+                          {getPersonName(contract)}
                       </Link>
                     </TableCell>
                     <TableCell>
-                      Contrato de Servicios {contract.contractType}
+                      <Badge variant="outline" className="gap-2">
+                        {contract.contractPartyType === 'resident' ? <User className="h-3 w-3"/> : <Briefcase className="h-3 w-3"/>}
+                        {contract.contractPartyType === 'resident' ? `Servicios (${(contract as any).contractType})` : 'Laboral'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                        <Badge variant={getStatusVariant(contract.status)}>
@@ -165,7 +220,7 @@ function ContractsPageContent() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                             <Link href={`/dashboard/contracts/${contract.id}?role=${role}`}>
+                             <Link href={`/dashboard/contracts/${contract.id}?role=${role}&type=${contract.contractPartyType}`}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   Ver Detalle
                              </Link>
