@@ -96,10 +96,6 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
                       <div className="flex flex-wrap gap-1 mt-1">{resident.allergies?.length ? resident.allergies.map(a => <Badge key={a} variant="destructive">{a}</Badge>) : <p className="text-muted-foreground">Ninguna</p>}</div>
                   </div>
                 <div className="col-span-full">
-                  <h4 className="font-semibold">Plan de Alimentación</h4>
-                  <p className="text-muted-foreground">{resident.diet || 'No especificado.'}</p>
-                </div>
-                <div className="col-span-full">
                     <h4 className="font-semibold">Medicamentos Recetados</h4>
                      {resident.medications?.length ? (
                         <Table>
@@ -123,6 +119,10 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
                      ) : (
                         <p className="text-muted-foreground">No hay medicamentos recetados.</p>
                      )}
+                </div>
+                <div className="col-span-full">
+                  <h4 className="font-semibold">Plan de Alimentación</h4>
+                  <p className="text-muted-foreground">{resident.diet || 'No especificado.'}</p>
                 </div>
             </div>
             
