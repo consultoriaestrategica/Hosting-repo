@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { BarChart3, Users, ClipboardList, FileText, Settings, BookUser, HardHat } from "lucide-react"
+import { BarChart3, Users, ClipboardList, FileText, Settings, BookUser, HardHat, Car } from "lucide-react"
 
 import {
   SidebarMenu,
@@ -24,6 +24,7 @@ export function DashboardNav() {
     { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['admin', 'family', 'staff'] },
     { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['admin'] },
     { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['admin', 'staff'] },
+    { href: "/dashboard/visitors", label: "Visitantes", icon: <Car />, roles: ['admin', 'staff'] },
     { href: "/dashboard/contracts", label: "Contratos", icon: <BookUser />, roles: ['admin'] },
     { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['admin'] },
     { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['admin'] },

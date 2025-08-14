@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail, Home, LogOut, Info, CalendarPlus, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail, Home, LogOut, Info, CalendarPlus, MoreHorizontal, Edit, Trash2, Eye, Car } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -33,7 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useResidents, AgendaEvent } from "@/hooks/use-residents"
+import { useResidents, AgendaEvent, Visit } from "@/hooks/use-residents"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useContracts, Contract } from "@/hooks/use-contracts"
 import { useEffect, useState, Suspense, use, useMemo } from "react"
@@ -48,7 +48,7 @@ import ContractPreviewDialog from "../../components/contract-preview-dialog"
 
 function ResidentProfilePageContent({ id }: { id: string }) {
   const { toast } = useToast()
-  const { residents, isLoading: residentsLoading, updateResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent } = useResidents()
+  const { residents, isLoading: residentsLoading, updateResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent } from useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
   const { contracts, isLoading: contractsLoading } = useContracts()
   const [isClient, setIsClient] = useState(false)
@@ -87,6 +87,10 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   const sortedAgendaEvents = useMemo(() => 
     [...(resident?.agendaEvents || [])].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   , [resident?.agendaEvents]);
+  
+  const sortedVisits = useMemo(() => 
+    [...(resident?.visits || [])].sort((a,b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime())
+  , [resident?.visits]);
 
 
   if (!isClient || residentsLoading || logsLoading || contractsLoading) {
@@ -297,9 +301,10 @@ function ResidentProfilePageContent({ id }: { id: string }) {
         </div>
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
            <Tabs defaultValue="evolution">
-            <TabsList>
-              <TabsTrigger value="evolution">Historial de Reportes</TabsTrigger>
+            <TabsList className="flex-wrap h-auto">
+              <TabsTrigger value="evolution">Reportes</TabsTrigger>
               <TabsTrigger value="agenda">Agenda</TabsTrigger>
+              <TabsTrigger value="visits">Visitas</TabsTrigger>
               <TabsTrigger value="profile">Perfil Completo</TabsTrigger>
               {role === 'admin' && <TabsTrigger value="contracts">Contratos</TabsTrigger>}
               {!isFamilyRole && !isStaffRole && <TabsTrigger value="documents">Documentos</TabsTrigger>}
@@ -357,6 +362,40 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                     <NewLogForm residentId={resident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
                 </DialogContent>
               </Dialog>
+            </TabsContent>
+             <TabsContent value="visits">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Historial de Visitas</CardTitle>
+                    <CardDescription>Registro de todas las personas que han visitado al residente.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha y Hora</TableHead>
+                          <TableHead>Visitante</TableHead>
+                          <TableHead>Cédula</TableHead>
+                          <TableHead>Parentesco</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {sortedVisits.length > 0 ? sortedVisits.map(visit => (
+                            <TableRow key={visit.id}>
+                                <TableCell className="font-medium">{new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
+                                <TableCell>{visit.visitorName}</TableCell>
+                                <TableCell>{visit.visitorIdNumber}</TableCell>
+                                <TableCell>{visit.kinship}</TableCell>
+                            </TableRow>
+                          )) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center h-24">No hay visitas registradas.</TableCell>
+                            </TableRow>
+                          )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
             </TabsContent>
             <TabsContent value="agenda">
                 <Card>

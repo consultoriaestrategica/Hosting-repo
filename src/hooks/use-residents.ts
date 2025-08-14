@@ -42,6 +42,15 @@ export type AgendaEvent = {
   status: 'Pendiente' | 'Completado' | 'Cancelado';
 };
 
+export type Visit = {
+    id: string;
+    visitorName: string;
+    visitorIdNumber: string;
+    kinship: string;
+    visitDate: string; // ISO string
+    notes?: string;
+};
+
 
 export type Resident = {
   id: string;
@@ -65,6 +74,7 @@ export type Resident = {
   documents?: ResidentDocument[];
   dischargeDetails?: DischargeDetails;
   agendaEvents?: AgendaEvent[];
+  visits?: Visit[];
 };
 
 const initialResidents: Resident[] = [
@@ -99,6 +109,10 @@ const initialResidents: Resident[] = [
     agendaEvents: [
         { id: "evt-001", date: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), type: 'Cita Médica', title: 'Cita con cardiólogo', description: 'Revisión anual con el Dr. Martínez.', status: 'Pendiente' },
         { id: "evt-002", date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(), type: 'Gestión Personal', title: 'Visita de la nieta', description: 'Viene Sofía a visitarla por la tarde.', status: 'Completado' },
+    ],
+    visits: [
+        { id: "visit-001", visitorName: "Juan Rodriguez", visitorIdNumber: "11223344", kinship: "Hijo", visitDate: new Date(2024, 6, 18, 16, 0).toISOString(), notes: "Le trajo flores y galletas." },
+        { id: "visit-002", visitorName: "Sofia Rodriguez", visitorIdNumber: "55667788", kinship: "Nieta", visitDate: new Date(2024, 6, 15, 15, 30).toISOString() }
     ]
   },
    { 
@@ -122,6 +136,7 @@ const initialResidents: Resident[] = [
         { name: "Ana Gomez", kinship: "Hija", address: "Avenida Siempre Viva 742", phones: [{ number: "+1-202-555-0183" }], email: "ana.g@example.com" }
     ],
     agendaEvents: [],
+    visits: [],
   },
    { 
     id: "res-003", 
@@ -324,8 +339,20 @@ function useResidents() {
     updateResident(residentId, { agendaEvents: updatedEvents });
   }, [residents, updateResident]);
 
+  const addVisit = useCallback((residentId: string, visitData: Omit<Visit, 'id'>) => {
+    const resident = residents.find(r => r.id === residentId);
+    if (!resident) return;
 
-  return { residents, addResident, updateResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, isLoading };
+     const updatedVisits = [
+        ...(resident.visits || []),
+        { ...visitData, id: `visit-${Date.now()}`, visitDate: new Date().toISOString() }
+     ];
+    
+    updateResident(residentId, { visits: updatedVisits });
+  }, [residents, updateResident]);
+
+
+  return { residents, addResident, updateResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, addVisit, isLoading };
 }
 
 export { useResidents };
