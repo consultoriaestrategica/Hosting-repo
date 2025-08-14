@@ -127,11 +127,10 @@ export default function SettingsPage() {
      setUsers(users.filter(u => u.id !== userId));
      toast({ variant: "destructive", title: "Usuario Eliminado", description: "El usuario ha sido eliminado del sistema." });
   };
-
+  
   if (isLoading) {
     return <div>Cargando configuración...</div>
   }
-
 
   return (
     <>
@@ -146,74 +145,73 @@ export default function SettingsPage() {
         <TabsContent value="contracts">
           <Card>
             <CardHeader>
-              <CardTitle>Configuración de Contratos</CardTitle>
-              <CardDescription>
-                Ajuste los precios de los planes, impuestos y la plantilla base para la generación de contratos.
-              </CardDescription>
+                <CardTitle>Configuración de Contratos</CardTitle>
+                <CardDescription>Ajuste los precios base, el IVA y la plantilla para la generación de contratos.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-8">
-              <div>
-                <h3 className="text-lg font-medium mb-4">Precios de Planes Mensuales</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="price-basic">Plan Servicios Básicos (COP)</Label>
-                    <Input
-                      id="price-basic"
-                      type="number"
-                      value={settings.prices['Básica']}
-                      onChange={(e) => handlePriceChange('Básica', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price-premium">Plan Servicios Premium (COP)</Label>
-                    <Input
-                      id="price-premium"
-                      type="number"
-                      value={settings.prices['Premium']}
-                      onChange={(e) => handlePriceChange('Premium', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium mb-4">Impuestos</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="vat-enabled"
-                      checked={settings.vatEnabled}
-                      onCheckedChange={(checked) => handleVatChange('vatEnabled', checked)}
-                    />
-                    <Label htmlFor="vat-enabled">Habilitar IVA</Label>
-                  </div>
-                  {settings.vatEnabled && (
-                    <div className="space-y-2 max-w-xs">
-                      <Label htmlFor="vat-rate">Tasa de IVA (%)</Label>
+            <CardContent className="space-y-8 pt-6">
+              <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Precios de los Planes</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                      <Label htmlFor="price-basic">Valor Plan Básico (COP)</Label>
                       <Input
-                        id="vat-rate"
-                        type="number"
-                        value={settings.vatRate}
-                        onChange={(e) => handleVatChange('vatRate', Number(e.target.value))}
+                          id="price-basic"
+                          type="number"
+                          value={settings.prices['Básica']}
+                          onChange={(e) => handlePriceChange('Básica', e.target.value)}
+                          placeholder="2000000"
                       />
-                    </div>
-                  )}
-                </div>
+                      </div>
+                      <div className="grid gap-2">
+                      <Label htmlFor="price-premium">Valor Plan Premium (COP)</Label>
+                      <Input
+                          id="price-premium"
+                          type="number"
+                          value={settings.prices['Premium']}
+                          onChange={(e) => handlePriceChange('Premium', e.target.value)}
+                          placeholder="3500000"
+                      />
+                      </div>
+                  </div>
               </div>
-
-              <div>
-                <h3 className="text-lg font-medium mb-4">Plantilla de Contrato (Markdown)</h3>
-                <Textarea
-                  value={settings.contractTemplate}
-                  onChange={(e) => handleContractTemplateChange(e.target.value)}
-                  className="min-h-[400px] font-mono text-sm"
-                  placeholder="Escriba aquí la plantilla del contrato usando variables como {{{residentName}}}..."
-                />
-                 <p className="text-sm text-muted-foreground mt-2">
-                  Use variables como `{{{residentName}}}`, `{{{contractValue}}}`, etc., para insertar datos dinámicamente.
-                </p>
+              <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Impuestos</h3>
+                  <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                          <Switch
+                              id="vat-enabled"
+                              checked={settings.vatEnabled}
+                              onCheckedChange={(checked) => handleVatChange('vatEnabled', checked)}
+                          />
+                          <Label htmlFor="vat-enabled">Habilitar IVA</Label>
+                      </div>
+                      {settings.vatEnabled && (
+                      <div className="grid gap-2 w-40">
+                          <Label htmlFor="vat-rate">Tasa de IVA (%)</Label>
+                          <Input
+                              id="vat-rate"
+                              type="number"
+                              value={settings.vatRate}
+                              onChange={(e) => handleVatChange('vatRate', Number(e.target.value))}
+                              placeholder="19"
+                          />
+                      </div>
+                      )}
+                  </div>
               </div>
-
+              <div className="space-y-2">
+                  <h3 className="text-lg font-medium">Plantilla de Contrato (Markdown)</h3>
+                  <Textarea 
+                      value={settings.contractTemplate}
+                      onChange={(e) => handleContractTemplateChange(e.target.value)}
+                      className="min-h-[400px] font-mono text-sm"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                      Edite la plantilla base para los contratos. Use variables como 
+                      <code className="text-xs bg-muted p-1 rounded-sm">{'{{{residentName}}}'}</code>
+                      para insertar datos dinámicos.
+                  </p>
+              </div>
             </CardContent>
             <CardFooter>
               <Button onClick={() => handleSaveChanges("Contratos")}>Guardar Cambios de Contratos</Button>
