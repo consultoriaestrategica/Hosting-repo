@@ -78,23 +78,11 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
           
           <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2 text-sm">
             <h3 className="font-semibold text-base mb-2">Información de Cuidado</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 p-4 border rounded-lg">
-                <div>
-                    <h4 className="font-semibold">Nivel de Dependencia</h4>
-                    <Badge variant={resident.dependency === "Dependiente" ? "destructive" : "secondary"}>{resident.dependency}</Badge>
-                </div>
-                <div>
-                    <h4 className="font-semibold">Riesgo de Caída</h4>
-                    <Badge variant={resident.fallRisk === "Alto" ? "destructive" : resident.fallRisk === "Medio" ? "secondary" : "default"}>{resident.fallRisk}</Badge>
-                </div>
-                  <div>
-                    <h4 className="font-semibold">Tipo de Sangre</h4>
-                    <p className="text-muted-foreground">{resident.bloodType}</p>
-                </div>
-                 <div className="col-span-full">
+            <div className="grid grid-cols-1 gap-4 p-4 border rounded-lg">
+                <div className="col-span-full">
                     <h4 className="font-semibold">Alergias</h4>
                       <div className="flex flex-wrap gap-1 mt-1">{resident.allergies?.length ? resident.allergies.map(a => <Badge key={a} variant="destructive">{a}</Badge>) : <p className="text-muted-foreground">Ninguna</p>}</div>
-                  </div>
+                </div>
                 <div className="col-span-full">
                     <h4 className="font-semibold">Medicamentos Recetados</h4>
                      {resident.medications?.length ? (
@@ -123,6 +111,21 @@ export default function ResidentPreviewDialog({ isOpen, onOpenChange, resident }
                 <div className="col-span-full">
                   <h4 className="font-semibold">Plan de Alimentación</h4>
                   <p className="text-muted-foreground">{resident.diet || 'No especificado.'}</p>
+                </div>
+                <Separator/>
+                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <h4 className="font-semibold">Nivel de Dependencia</h4>
+                        <Badge variant={resident.dependency === "Dependiente" ? "destructive" : "secondary"}>{resident.dependency}</Badge>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold">Riesgo de Caída</h4>
+                        <Badge variant={resident.fallRisk === "Alto" ? "destructive" : resident.fallRisk === "Medio" ? "secondary" : "default"}>{resident.fallRisk}</Badge>
+                    </div>
+                      <div>
+                        <h4 className="font-semibold">Tipo de Sangre</h4>
+                        <p className="text-muted-foreground">{resident.bloodType}</p>
+                    </div>
                 </div>
             </div>
             
