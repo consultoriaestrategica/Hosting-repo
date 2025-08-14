@@ -138,13 +138,90 @@ export default function SettingsPage() {
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Configuración</h1>
       </div>
-      <Tabs defaultValue="users" className="mt-6">
+      <Tabs defaultValue="contracts" className="mt-6">
         <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="contracts">Contratos</TabsTrigger>
             <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>
         </TabsList>
-      
-      <TabsContent value="users">
-        <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <TabsContent value="contracts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuración de Contratos</CardTitle>
+              <CardDescription>
+                Ajuste los precios de los planes, impuestos y la plantilla base para la generación de contratos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div>
+                <h3 className="text-lg font-medium mb-4">Precios de Planes Mensuales</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="price-basic">Plan Servicios Básicos (COP)</Label>
+                    <Input
+                      id="price-basic"
+                      type="number"
+                      value={settings.prices['Básica']}
+                      onChange={(e) => handlePriceChange('Básica', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price-premium">Plan Servicios Premium (COP)</Label>
+                    <Input
+                      id="price-premium"
+                      type="number"
+                      value={settings.prices['Premium']}
+                      onChange={(e) => handlePriceChange('Premium', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-medium mb-4">Impuestos</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="vat-enabled"
+                      checked={settings.vatEnabled}
+                      onCheckedChange={(checked) => handleVatChange('vatEnabled', checked)}
+                    />
+                    <Label htmlFor="vat-enabled">Habilitar IVA</Label>
+                  </div>
+                  {settings.vatEnabled && (
+                    <div className="space-y-2 max-w-xs">
+                      <Label htmlFor="vat-rate">Tasa de IVA (%)</Label>
+                      <Input
+                        id="vat-rate"
+                        type="number"
+                        value={settings.vatRate}
+                        onChange={(e) => handleVatChange('vatRate', Number(e.target.value))}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-medium mb-4">Plantilla de Contrato (Markdown)</h3>
+                <Textarea
+                  value={settings.contractTemplate}
+                  onChange={(e) => handleContractTemplateChange(e.target.value)}
+                  className="min-h-[400px] font-mono text-sm"
+                  placeholder="Escriba aquí la plantilla del contrato usando variables como {{{residentName}}}..."
+                />
+                 <p className="text-sm text-muted-foreground mt-2">
+                  Use variables como `{{{residentName}}}`, `{{{contractValue}}}`, etc., para insertar datos dinámicamente.
+                </p>
+              </div>
+
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => handleSaveChanges("Contratos")}>Guardar Cambios de Contratos</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="users">
+          <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
             <Card>
             <CardHeader className="flex flex-row items-center">
                 <div className="grid gap-2">
@@ -295,9 +372,11 @@ export default function SettingsPage() {
                 </DialogFooter>
             </form>
             </DialogContent>
-        </Dialog>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </>
   )
 }
+
+    
