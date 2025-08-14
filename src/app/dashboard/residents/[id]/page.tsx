@@ -511,7 +511,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
 
 
 export default function ResidentProfilePage({ params }: { params: { id: string } }) {
-    const id = use(params.id);
+    const id = use(params).id;
     return (
       <Suspense fallback={<div>Cargando...</div>}>
         <ResidentProfilePageContent id={id} />
