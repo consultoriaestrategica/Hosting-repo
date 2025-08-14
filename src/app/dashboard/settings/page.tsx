@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -86,8 +85,14 @@ export default function SettingsPage() {
     }));
   };
 
-  const handleContractTemplateChange = (value: string) => {
-    setSettings(prev => ({ ...prev, contractTemplate: value }));
+  const handleContractTemplateChange = (type: 'resident' | 'staff', value: string) => {
+    setSettings(prev => ({ 
+        ...prev, 
+        contractTemplates: {
+            ...prev.contractTemplates,
+            [type]: value
+        } 
+    }));
   };
 
   const handleSaveChanges = (section: string) => {
@@ -145,8 +150,8 @@ export default function SettingsPage() {
         <TabsContent value="contracts">
           <Card>
             <CardHeader>
-                <CardTitle>Configuración de Contratos</CardTitle>
-                <CardDescription>Ajuste los precios base, el IVA y la plantilla para la generación de contratos.</CardDescription>
+                <CardTitle>Configuración de Contratos de Residentes</CardTitle>
+                <CardDescription>Ajuste los precios base, el IVA y la plantilla para la generación de contratos para residentes.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 pt-6">
               <div className="space-y-4">
@@ -200,21 +205,41 @@ export default function SettingsPage() {
                   </div>
               </div>
               <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Plantilla de Contrato (Markdown)</h3>
+                  <h3 className="text-lg font-medium">Plantilla de Contrato de Residente (Markdown)</h3>
                   <Textarea 
-                      value={settings.contractTemplate}
-                      onChange={(e) => handleContractTemplateChange(e.target.value)}
+                      value={settings.contractTemplates.resident}
+                      onChange={(e) => handleContractTemplateChange('resident', e.target.value)}
                       className="min-h-[400px] font-mono text-sm"
                   />
                   <p className="text-sm text-muted-foreground">
-                      Edite la plantilla base para los contratos. Use variables como 
-                      <code className="text-xs bg-muted p-1 rounded-sm">{'{{{residentName}}}'}</code>
-                      para insertar datos dinámicos.
+                      Use variables como <code className="text-xs bg-muted p-1 rounded-sm">{'{{{residentName}}}'}</code> para insertar datos dinámicos.
                   </p>
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={() => handleSaveChanges("Contratos")}>Guardar Cambios de Contratos</Button>
+              <Button onClick={() => handleSaveChanges("Contratos de Residentes")}>Guardar Cambios</Button>
+            </CardFooter>
+          </Card>
+          <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>Configuración de Contratos de Personal</CardTitle>
+                <CardDescription>Ajuste la plantilla para la generación de contratos para el personal.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8 pt-6">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium">Plantilla de Contrato de Personal (Markdown)</h3>
+                  <Textarea 
+                      value={settings.contractTemplates.staff}
+                      onChange={(e) => handleContractTemplateChange('staff', e.target.value)}
+                      className="min-h-[400px] font-mono text-sm"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                      Use variables como <code className="text-xs bg-muted p-1 rounded-sm">{'{{{staffName}}}'}</code> para insertar datos dinámicos.
+                  </p>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => handleSaveChanges("Contratos de Personal")}>Guardar Cambios</Button>
             </CardFooter>
           </Card>
         </TabsContent>

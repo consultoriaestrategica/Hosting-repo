@@ -10,10 +10,13 @@ export type Settings = {
   };
   vatEnabled: boolean;
   vatRate: number;
-  contractTemplate: string;
+  contractTemplates: {
+    resident: string;
+    staff: string;
+  }
 };
 
-const initialContractTemplate = `
+const initialResidentContractTemplate = `
 Eres un asistente legal experto en la redacción de contratos de servicios para hogares geriátricos en Colombia.
 Tu tarea es generar el texto completo de un contrato de prestación de servicios en formato Markdown, siguiendo la estructura y el tono formal del modelo proporcionado.
 
@@ -65,6 +68,47 @@ Tu tarea es generar el texto completo de un contrato de prestación de servicios
 *   Mantén un lenguaje formal y legal apropiado para Colombia.
 `;
 
+const initialStaffContractTemplate = `
+Eres un asistente legal experto en la redacción de contratos laborales para personal de la salud en Colombia.
+Tu tarea es generar el texto completo de un Contrato de Trabajo a Término Fijo en formato Markdown.
+
+**Utiliza los siguientes datos para personalizar el contrato:**
+
+*   **Empleador:** "Hogar Geriátrico Ángel Guardián" con NIT "900.123.456-7", representado por "Dr. Ana María Rojas".
+*   **Trabajador:** {{{staffName}}} (C.C. {{{staffIdNumber}}}), con domicilio en {{{staffAddress}}}.
+*   **Cargo:** {{{staffRole}}}
+*   **Salario Mensual:** {{{staffSalary}}}
+*   **Fecha de Inicio:** {{{startDate}}}
+*   **Fecha de Fin:** {{{endDate}}}
+*   **Periodo de Prueba:** 30 días.
+
+**Estructura del Contrato:**
+
+**Título:** CONTRATO INDIVIDUAL DE TRABAJO A TÉRMINO FIJO
+
+1.  **PARTES:** Identifica al "EMPLEADOR" y al "TRABAJADOR".
+
+2.  **CLÁUSULA PRIMERA - OBJETO:** El EMPLEADOR contrata al TRABAJADOR para desempeñar el cargo de {{{staffRole}}}.
+
+3.  **CLÁUSULA SEGUNDA - OBLIGACIONES:** Detalla las obligaciones generales del trabajador, incluyendo cumplir el reglamento interno y las funciones inherentes a su cargo.
+
+4.  **CLÁUSULA TERCERA - REMUNERACIÓN:** Especifica el salario mensual de {{{staffSalary}}}, pagadero mensualmente.
+
+5.  **CLÁUSULA CUARTA - DURACIÓN Y PERIODO DE PRUEBA:** Indica que el contrato es a término fijo, desde {{{startDate}}} hasta {{{endDate}}}. Menciona un periodo de prueba de 30 días.
+
+6.  **CLÁUSULA QUINTA - JORNADA DE TRABAJO:** La jornada será la máxima legal permitida, distribuida según las necesidades del servicio.
+
+7.  **CLÁUSULA SEXTA - LUGAR DE TRABAJO:** El lugar de trabajo es la sede del Hogar Geriátrico Ángel Guardián.
+
+8.  **CLÁUSULA SÉPTIMA - FIRMAS:** Deja espacios para las firmas de "EL EMPLEADOR" y "EL TRABAJADOR".
+
+**Instrucciones Finales:**
+*   Formatea el resultado final en **Markdown**.
+*   NO incluyas ninguna explicación o texto introductorio antes del contrato.
+*   El resultado debe empezar directamente con el título "CONTRATO INDIVIDUAL DE TRABAJO...".
+*   Mantén un lenguaje formal y legal apropiado para Colombia.
+`;
+
 
 const initialSettings: Settings = {
     prices: {
@@ -73,7 +117,10 @@ const initialSettings: Settings = {
     },
     vatEnabled: false,
     vatRate: 19,
-    contractTemplate: initialContractTemplate,
+    contractTemplates: {
+      resident: initialResidentContractTemplate,
+      staff: initialStaffContractTemplate,
+    }
 };
 
 const SETTINGS_STORAGE_KEY = 'app_settings';
@@ -87,7 +134,32 @@ export function useSettings() {
       const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (storedSettings) {
         let parsedSettings = JSON.parse(storedSettings);
-        // Migration from old keys
+        
+        // Migration from old contractTemplate key to new contractTemplates object
+        if (parsedSettings.contractTemplate) {
+            parsedSettings.contractTemplates = {
+                resident: parsedSettings.contractTemplate,
+                staff: initialStaffContractTemplate
+            };
+            delete parsedSettings.contractTemplate;
+        }
+
+        // Ensure contractTemplates and its properties exist
+        if (!parsedSettings.contractTemplates) {
+            parsedSettings.contractTemplates = {
+                resident: initialResidentContractTemplate,
+                staff: initialStaffContractTemplate
+            };
+        }
+        if (!parsedSettings.contractTemplates.resident) {
+            parsedSettings.contractTemplates.resident = initialResidentContractTemplate;
+        }
+        if (!parsedSettings.contractTemplates.staff) {
+            parsedSettings.contractTemplates.staff = initialStaffContractTemplate;
+        }
+
+
+        // Migration from old price keys
         if (parsedSettings.prices && parsedSettings.prices['Básica']) {
             parsedSettings.prices['Habitación compartida'] = parsedSettings.prices['Básica'];
             delete parsedSettings.prices['Básica'];
@@ -97,10 +169,6 @@ export function useSettings() {
             delete parsedSettings.prices['Premium'];
         }
 
-        // Ensure contractTemplate exists in stored settings, if not, add it.
-        if (!parsedSettings.contractTemplate) {
-            parsedSettings.contractTemplate = initialContractTemplate;
-        }
         setSettingsState(parsedSettings);
       } else {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(initialSettings));
