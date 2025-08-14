@@ -1,8 +1,9 @@
 
 "use client"
-import { useResidents, Resident, FamilyContact, Medication, Visit } from "@/hooks/use-residents";
+import { useResidents, Resident, DischargeDetails } from "@/hooks/use-residents";
 import { useLogs, Log } from "@/hooks/use-logs";
 import { useContracts as useResidentContracts } from "@/hooks/use-contracts";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { 
   Card, 
@@ -22,6 +23,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { 
     FileText, 
     User, 
     Heart, 
@@ -37,10 +46,12 @@ import {
     BookUser,
     Car,
     Eye,
-    Utensils
+    Utensils,
+    LogOut
 } from "lucide-react";
 import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
+import DischargeForm from "./discharge-form"
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -48,7 +59,7 @@ import { useSearchParams } from "next/navigation";
 const ITEMS_PER_PAGE = 10;
 
 function InfoRow({ label, value }: { label: string; value: string | React.ReactNode }) {
-    if (!value) return null;
+    if (!value && value !== 0) return null; // Allow 0 to be displayed
     return (
         <TableRow>
             <TableCell className="font-medium w-1/3">{label}</TableCell>
@@ -60,14 +71,15 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
 function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || 'admin';
-  const { residents, isLoading: residentsLoading } = useResidents();
+  const { residents, dischargeResident, isLoading: residentsLoading } = useResidents();
   const { logs, isLoading: logsLoading } = useLogs();
   const { contracts: residentContracts, isLoading: contractsLoading } = useResidentContracts();
-
+  const { toast } = useToast()
 
   const [isClient, setIsClient] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isDischargeDialogOpen, setIsDischargeDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   
   useEffect(() => {
@@ -101,6 +113,16 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
     setIsDetailDialogOpen(true);
   };
 
+  const handleDischargeSubmit = (data: Omit<DischargeDetails, 'observations'> & { observations?: string }) => {
+    if (!resident) return;
+    dischargeResident(resident.id, data);
+    toast({
+        title: "Residente dado de baja",
+        description: `${resident.name} ha sido marcado como inactivo.`,
+    });
+    setIsDischargeDialogOpen(false);
+  }
+
   const isLoading = residentsLoading || logsLoading || contractsLoading;
 
   if (!isClient || isLoading) {
@@ -133,16 +155,35 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   return (
     <>
         <div className="p-4 md:p-8 space-y-6">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                 <FileText className="h-8 w-8 text-primary" />
-                <div>
-                <h1 className="text-3xl font-bold font-headline">
-                    Perfil de {resident.name}
-                </h1>
-                <p className="text-muted-foreground">
-                    Detalles completos e historial del residente.
-                </p>
+                <div className="flex-1">
+                    <h1 className="text-3xl font-bold font-headline">
+                        Perfil de {resident.name}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Detalles completos e historial del residente.
+                    </p>
                 </div>
+                {resident.status === 'Activo' && (
+                    <Dialog open={isDischargeDialogOpen} onOpenChange={setIsDischargeDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="destructive">
+                                <LogOut className="mr-2 h-4 w-4"/>
+                                Dar de Baja
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Dar de Baja a {resident.name}</DialogTitle>
+                                <DialogDescription>
+                                Complete la información para registrar la salida del residente. Esta acción cambiará su estado a "Inactivo".
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DischargeForm resident={resident} onSubmit={handleDischargeSubmit} />
+                        </DialogContent>
+                    </Dialog>
+                )}
             </div>
             
             <Tabs defaultValue="general">
@@ -180,6 +221,13 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                                 <TableBody>
                                     <InfoRow label="Estado" value={<Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>{resident.status}</Badge>} />
                                     <InfoRow label="Fecha de Ingreso" value={new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
+                                     {resident.dischargeDetails && (
+                                        <>
+                                         <InfoRow label="Fecha de Salida" value={new Date(resident.dischargeDetails.dischargeDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
+                                         <InfoRow label="Motivo de Salida" value={resident.dischargeDetails.reason} />
+                                         <InfoRow label="Observaciones" value={resident.dischargeDetails.observations} />
+                                        </>
+                                     )}
                                     <InfoRow label="Habitación" value={<Badge variant="secondary">{`${resident.roomType} ${resident.roomNumber || ''}`.trim()}</Badge>} />
                                 </TableBody>
                                 </Table>

@@ -27,10 +27,10 @@ type ResidentDocument = {
   size: number;
 };
 
-type DischargeDetails = {
+export type DischargeDetails = {
     dischargeDate: string; // YYYY-MM-DD
     reason: 'Traslado' | 'Regreso a casa' | 'Fallecimiento';
-    observations: string;
+    observations?: string;
 };
 
 export type AgendaEvent = {
@@ -311,6 +311,14 @@ function useResidents() {
     }
   }, []);
 
+  const dischargeResident = useCallback((residentId: string, dischargeDetails: DischargeDetails) => {
+      updateResident(residentId, {
+        status: 'Inactivo',
+        dischargeDetails: dischargeDetails,
+      });
+  }, [updateResident]);
+
+
   const addAgendaEvent = useCallback((residentId: string, eventData: Omit<AgendaEvent, 'id'>) => {
     updateResident(residentId, {
       agendaEvents: [
@@ -352,7 +360,7 @@ function useResidents() {
   }, [residents, updateResident]);
 
 
-  return { residents, addResident, updateResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, addVisit, isLoading };
+  return { residents, addResident, updateResident, dischargeResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, addVisit, isLoading };
 }
 
 export { useResidents };

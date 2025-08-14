@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Resident } from "@/hooks/use-residents"
+import { Resident, DischargeDetails } from "@/hooks/use-residents"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 
 const dischargeFormSchema = z.object({
