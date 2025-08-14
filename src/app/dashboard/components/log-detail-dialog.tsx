@@ -120,10 +120,12 @@ export default function LogDetailDialog({ isOpen, onOpenChange, log, residentNam
                     <Separator className="my-4" />
                     <div>
                         <h4 className="font-semibold flex items-center mb-2"><StickyNote size={16} className="mr-2"/>Notas de Evolución</h4>
-                        {log.evolutionNotes && log.evolutionNotes.length > 0 ? (
+                        {log.evolutionNotes && Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? (
                            <ul className="list-disc list-inside space-y-2 text-muted-foreground bg-muted p-3 rounded-md">
                               {log.evolutionNotes.map((note, index) => <li key={index}>{note}</li>)}
                            </ul>
+                         ) : log.evolutionNotes && !Array.isArray(log.evolutionNotes) ? (
+                            <p className="text-muted-foreground bg-muted p-3 rounded-md">{log.evolutionNotes}</p>
                         ) : (
                            <p className="text-muted-foreground bg-muted p-3 rounded-md">Sin notas.</p>
                         )}
