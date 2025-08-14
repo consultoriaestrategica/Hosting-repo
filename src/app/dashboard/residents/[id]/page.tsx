@@ -48,7 +48,8 @@ import {
     Eye,
     Utensils,
     LogOut,
-    MessageSquareWarning
+    MessageSquareWarning,
+    Edit
 } from "lucide-react";
 import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
@@ -169,6 +170,14 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {resident.status === 'Activo' && role === 'admin' && (
+                        <Button asChild variant="outline">
+                            <Link href={`/dashboard/residents/edit/${resident.id}`}>
+                                <Edit className="mr-2 h-4 w-4"/>
+                                Editar Perfil
+                            </Link>
+                        </Button>
+                    )}
                     {resident.status === 'Activo' && (
                          <Dialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
                             <DialogTrigger asChild>
