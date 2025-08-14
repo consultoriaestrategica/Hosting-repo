@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge"
 import { useResidents, Resident } from "@/hooks/use-residents"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import NewLogForm from "./[id]/new-log-form"
 import ResidentPreviewDialog from "./resident-preview-dialog"
 
@@ -165,7 +165,11 @@ function ResidentsPageContent() {
             <TableBody>
               {paginatedResidents.map((resident) => (
                 <TableRow key={resident.id}>
-                  <TableCell className="font-medium">{resident.name}</TableCell>
+                  <TableCell className="font-medium">
+                     <Link href={`/dashboard/residents/${resident.id}?role=${role}`} className="hover:underline">
+                        {resident.name}
+                     </Link>
+                  </TableCell>
                   <TableCell>
                      <Badge variant={resident.roomType === "Habitación individual" ? "default" : "secondary"}>
                       {resident.roomType}
@@ -202,25 +206,15 @@ function ResidentsPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        {isStaffRole ? (
-                           <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Ficha
-                            </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem asChild>
-                             <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
-                                <Eye className="mr-2 h-4 w-4" /> Ver Perfil
-                             </Link>
-                          </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver Ficha Rápida
+                        </DropdownMenuItem>
                         {!isFamilyRole && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
-                              <ClipboardList className="mr-2 h-4 w-4" />
-                              Agregar Evolución
-                            </DropdownMenuItem>
-                          </>
+                          <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
+                            <ClipboardList className="mr-2 h-4 w-4" />
+                            Agregar Evolución
+                          </DropdownMenuItem>
                         )}
                          {role === 'admin' && (
                              <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
