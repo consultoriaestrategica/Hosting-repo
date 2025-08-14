@@ -7,9 +7,8 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
-  CardTitle,
+  CardFooter,
 } from "@/components/ui/card"
 import {
   Table,
@@ -101,6 +100,7 @@ function ResidentsPageContent() {
     return <div>Cargando...</div>
   }
 
+  const isAdminRole = role === 'admin';
   const isFamilyRole = role === 'family';
   const isStaffRole = role === 'staff';
 
@@ -109,7 +109,7 @@ function ResidentsPageContent() {
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Residentes</h1>
         <div className="ml-auto flex items-center gap-2">
-          {!isFamilyRole && !isStaffRole && (
+          {isAdminRole && (
             <Button size="sm" className="h-8 gap-1" asChild>
               <Link href={`/dashboard/residents/new?role=${role}`}>
                 <PlusCircle className="h-3.5 w-3.5" />
@@ -206,17 +206,19 @@ function ResidentsPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ver Ficha Rápida
-                        </DropdownMenuItem>
+                        {isStaffRole && (
+                          <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver Ficha Rápida
+                          </DropdownMenuItem>
+                        )}
                         {!isFamilyRole && (
                           <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
                             <ClipboardList className="mr-2 h-4 w-4" />
                             Agregar Reporte
                           </DropdownMenuItem>
                         )}
-                         {role === 'admin' && (
+                         {isAdminRole && (
                              <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
                               <FileText className="mr-2 h-4 w-4" />
                               Generar Reporte
