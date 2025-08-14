@@ -328,6 +328,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
         <TabsContent value="users">
+          {/* El Dialog ahora envuelve la Card y el contenido del modal */}
           <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
             <Card>
               <CardHeader className="flex flex-row items-center">
@@ -337,6 +338,7 @@ export default function SettingsPage() {
                     Añada, edite o elimine usuarios del sistema.
                   </CardDescription>
                 </div>
+                {/* ESTE BOTÓN AHORA ES EL 'TRIGGER' (DISPARADOR) DEL DIÁLOGO */}
                 <DialogTrigger asChild>
                   <Button size="sm" className="ml-auto gap-1" onClick={() => handleOpenUserDialog()}>
                     <PlusCircle className="h-4 w-4" />
@@ -382,6 +384,7 @@ export default function SettingsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              {/* Esta línea abre el diálogo para editar */}
                               <DropdownMenuItem onClick={() => handleOpenUserDialog(user)}>Editar</DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(user.id)}>Eliminar</DropdownMenuItem>
                             </DropdownMenuContent>
@@ -394,6 +397,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
+            {/* EL CONTENIDO DEL DIÁLOGO AHORA ESTÁ AFUERA DE LA CARD, PERO DENTRO DEL DIALOG */}
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
@@ -403,6 +407,7 @@ export default function SettingsPage() {
               </DialogHeader>
               <form onSubmit={handleSaveUser}>
                 <div className="grid gap-4 py-4">
+                  {/* ... (el resto del formulario no cambia) ... */}
                   <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                           <Label htmlFor="user-name">Nombre Completo</Label>
