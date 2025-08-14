@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useResidents, AgendaEvent } from "@/hooks/use-residents"
 import { useLogs, Log } from "@/hooks/use-logs"
-import { useContracts } from "@/hooks/use-contracts"
+import { useContracts, Contract } from "@/hooks/use-contracts"
 import { useEffect, useState, Suspense, use, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -43,6 +43,7 @@ import NewLogForm from "./new-log-form"
 import LogDetailDialog from "../../components/log-detail-dialog"
 import DischargeForm from "./discharge-form"
 import AgendaForm from "./agenda-form"
+import ContractPreviewDialog from "../../components/contract-preview-dialog"
 
 
 function ResidentProfilePageContent({ id }: { id: string }) {
@@ -57,10 +58,12 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   const [isDischargeDialogOpen, setIsDischargeDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isAgendaFormOpen, setIsAgendaFormOpen] = useState(false);
+  const [isContractPreviewOpen, setIsContractPreviewOpen] = useState(false);
   
   // Data states
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
 
 
   const searchParams = useSearchParams()
@@ -147,6 +150,11 @@ function ResidentProfilePageContent({ id }: { id: string }) {
         case 'Cancelado': return 'destructive';
         default: return 'outline';
     }
+  }
+
+  const handleOpenContractPreview = (contract: Contract) => {
+    setSelectedContract(contract);
+    setIsContractPreviewOpen(true);
   }
 
 
@@ -508,11 +516,9 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                             <TableCell>{new Date(contract.startDate).toLocaleDateString()}</TableCell>
                             <TableCell>{new Date(contract.endDate).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right">
-                              <Button asChild variant="outline" size="sm">
-                                <Link href={`/dashboard/contracts/${contract.id}?role=${role}`}>
+                              <Button variant="outline" size="sm" onClick={() => handleOpenContractPreview(contract)}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   Ver Detalle
-                                </Link>
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -593,6 +599,16 @@ function ResidentProfilePageContent({ id }: { id: string }) {
             residentName={resident.name}
         />
       )}
+
+      {selectedContract && resident && (
+        <ContractPreviewDialog
+            isOpen={isContractPreviewOpen}
+            onOpenChange={setIsContractPreviewOpen}
+            contract={selectedContract}
+            residentName={resident.name}
+            role={role}
+        />
+      )}
     </>
   )
 }
@@ -607,3 +623,5 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
     </Suspense>
   )
 }
+
+    
