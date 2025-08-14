@@ -46,7 +46,6 @@ const ITEMS_PER_PAGE = 8;
 
 function ResidentsPageContent() {
   const { residents, isLoading } = useResidents()
-  const router = useRouter()
   const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -203,16 +202,17 @@ function ResidentsPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        {isStaffRole && (
+                        {isStaffRole ? (
                            <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 Ver Ficha
                             </DropdownMenuItem>
-                        )}
-                        {!isStaffRole && (
-                            <DropdownMenuItem onClick={() => router.push(`/dashboard/residents/${resident.id}?role=${role}`)}>
+                        ) : (
+                          <DropdownMenuItem asChild>
+                             <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
                                 <Eye className="mr-2 h-4 w-4" /> Ver Perfil
-                            </DropdownMenuItem>
+                             </Link>
+                          </DropdownMenuItem>
                         )}
                         {!isFamilyRole && (
                           <>
