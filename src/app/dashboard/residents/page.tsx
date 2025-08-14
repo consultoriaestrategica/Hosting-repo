@@ -209,12 +209,13 @@ function ResidentsPageContent() {
                             </DropdownMenuItem>
                         )}
                         {!isStaffRole && (
-                             <DropdownMenuItem asChild>
-                               <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Ver Perfil
-                               </Link>
-                             </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                                    <span className="flex items-center">
+                                        <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                                    </span>
+                                </Link>
+                            </DropdownMenuItem>
                         )}
                         {!isFamilyRole && (
                           <>
