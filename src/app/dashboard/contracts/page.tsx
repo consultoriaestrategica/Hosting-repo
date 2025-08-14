@@ -47,7 +47,7 @@ function ContractsPageContent() {
   const { staff, isLoading: staffLoading } = useStaff()
   
   const [isClient, setIsClient] = useState(false)
-  const [personFilter, setPersonFilter] = useState<string>("")
+  const [personFilter, setPersonFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   
   const searchParams = useSearchParams()
@@ -72,7 +72,7 @@ function ContractsPageContent() {
         filtered = filtered.filter(c => c.contractPartyType === typeFilter);
      }
 
-     if (personFilter) {
+     if (personFilter && personFilter !== 'all') {
        const [type, id] = personFilter.split('-');
        if(type === 'resident') {
           filtered = filtered.filter(c => c.contractPartyType === 'resident' && (c as any).residentId === id);
@@ -108,6 +108,11 @@ function ContractsPageContent() {
         case 'Cancelado': return 'destructive';
         default: return 'outline';
     }
+  }
+  
+  const handleClearFilters = () => {
+    setPersonFilter("all");
+    setTypeFilter("all");
   }
 
   return (
@@ -148,7 +153,7 @@ function ContractsPageContent() {
                     <SelectValue placeholder="Filtrar por persona..." />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">Todas las Personas</SelectItem>
+                    <SelectItem value="all">Todas las Personas</SelectItem>
                     <optgroup label="Residentes">
                         {residents.map((resident) => (
                         <SelectItem key={`resident-${resident.id}`} value={`resident-${resident.id}`}>
@@ -165,7 +170,7 @@ function ContractsPageContent() {
                     </optgroup>
                 </SelectContent>
              </Select>
-             <Button variant="outline" onClick={() => { setPersonFilter(""); setTypeFilter("all");}} disabled={!personFilter && typeFilter === 'all'}>
+             <Button variant="outline" onClick={handleClearFilters} disabled={personFilter === 'all' && typeFilter === 'all'}>
                 <FilterX className="h-4 w-4 mr-2" />
                 Limpiar
             </Button>
