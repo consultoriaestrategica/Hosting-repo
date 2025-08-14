@@ -207,16 +207,18 @@ function ResidentsPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        {!isStaffRole && (
+                           <DropdownMenuItem asChild>
+                             <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Perfil
+                             </Link>
+                          </DropdownMenuItem>
+                        )}
                         {isStaffRole && (
                           <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Ver Ficha Rápida
-                          </DropdownMenuItem>
-                        )}
-                        {!isFamilyRole && !isAdminRole && (
-                          <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
-                            <ClipboardList className="mr-2 h-4 w-4" />
-                            Agregar Reporte
                           </DropdownMenuItem>
                         )}
                          {isAdminRole && (
@@ -270,8 +272,8 @@ function ResidentsPageContent() {
         <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
             <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
-                    <DialogTitle>Agregar Registro de Evolución para {selectedResident.name}</DialogTitle>
-                    <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
+                    <DialogTitle>Agregar Reporte Diario para {selectedResident.name}</DialogTitle>
+                    <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
                 </DialogHeader>
                 <NewLogForm residentId={selectedResident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
             </DialogContent>
