@@ -223,160 +223,158 @@ export default function SettingsPage() {
         <TabsContent value="users">
           <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
             <Card>
-            <CardHeader className="flex flex-row items-center">
+              <CardHeader className="flex flex-row items-center">
                 <div className="grid gap-2">
-                <CardTitle>Gestión de Usuarios</CardTitle>
-                <CardDescription>
+                  <CardTitle>Gestión de Usuarios</CardTitle>
+                  <CardDescription>
                     Añada, edite o elimine usuarios del sistema.
-                </CardDescription>
+                  </CardDescription>
                 </div>
                 <DialogTrigger asChild>
-                <Button size="sm" className="ml-auto gap-1" onClick={() => handleOpenUserDialog()}>
+                  <Button size="sm" className="ml-auto gap-1" onClick={() => handleOpenUserDialog()}>
                     <PlusCircle className="h-4 w-4" />
                     Añadir Usuario
-                </Button>
+                  </Button>
                 </DialogTrigger>
-            </CardHeader>
-            <CardContent>
+              </CardHeader>
+              <CardContent>
                 <Table>
-                <TableHeader>
+                  <TableHeader>
                     <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Nombre de Usuario</TableHead>
-                    <TableHead>Identificación</TableHead>
-                    <TableHead>Correo Electrónico</TableHead>
-                    <TableHead>Rol</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead><span className="sr-only">Acciones</span></TableHead>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Nombre de Usuario</TableHead>
+                      <TableHead>Identificación</TableHead>
+                      <TableHead>Correo Electrónico</TableHead>
+                      <TableHead>Rol</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead><span className="sr-only">Acciones</span></TableHead>
                     </TableRow>
-                </TableHeader>
-                <TableBody>
+                  </TableHeader>
+                  <TableBody>
                     {users.map((user) => (
-                    <TableRow key={user.id}>
+                      <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.username}</TableCell>
                         <TableCell>
-                        <div className="font-medium">{`${user.idType} ${user.idNumber}`}</div>
+                          <div className="font-medium">{`${user.idType} ${user.idNumber}`}</div>
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.role}</TableCell>
                         <TableCell>
-                        <Badge variant={user.status === "Activo" ? "default" : "secondary"} className={user.status === "Activo" ? "bg-green-500 text-white" : ""}>
+                          <Badge variant={user.status === "Activo" ? "default" : "secondary"} className={user.status === "Activo" ? "bg-green-500 text-white" : ""}>
                             {user.status}
-                        </Badge>
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                        <DropdownMenu>
+                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <Button aria-haspopup="true" size="icon" variant="ghost">
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Toggle menu</span>
-                            </Button>
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleOpenUserDialog(user)}>Editar</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(user.id)}>Eliminar</DropdownMenuItem>
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleOpenUserDialog(user)}>Editar</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteUser(user.id)}>Eliminar</DropdownMenuItem>
                             </DropdownMenuContent>
-                        </DropdownMenu>
+                          </DropdownMenu>
                         </TableCell>
-                    </TableRow>
+                      </TableRow>
                     ))}
-                </TableBody>
+                  </TableBody>
                 </Table>
-            </CardContent>
+              </CardContent>
             </Card>
 
             <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
+              <DialogHeader>
                 <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
                 <DialogDescription>
-                {editingUser ? "Actualice los detalles del usuario." : "Complete la información para crear una nueva cuenta."}
+                  {editingUser ? "Actualice los detalles del usuario." : "Complete la información para crear una nueva cuenta."}
                 </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSaveUser}>
+              </DialogHeader>
+              <form onSubmit={handleSaveUser}>
                 <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                    <Label htmlFor="user-name">Nombre Completo</Label>
-                    <Input id="user-name" name="name" defaultValue={editingUser?.name || ""} required />
+                      <Label htmlFor="user-name">Nombre Completo</Label>
+                      <Input id="user-name" name="name" defaultValue={editingUser?.name || ""} required />
                     </div>
                     <div className="grid gap-2">
-                    <Label htmlFor="user-username">Nombre de Usuario</Label>
-                    <Input id="user-username" name="username" defaultValue={editingUser?.username || ""} required />
+                      <Label htmlFor="user-username">Nombre de Usuario</Label>
+                      <Input id="user-username" name="username" defaultValue={editingUser?.username || ""} required />
                     </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                    <Label htmlFor="user-idType">Tipo de Identificación</Label>
-                    <Select name="idType" defaultValue={editingUser?.idType || "C.C."}>
+                      <Label htmlFor="user-idType">Tipo de Identificación</Label>
+                      <Select name="idType" defaultValue={editingUser?.idType || "C.C."}>
                         <SelectTrigger id="user-idType">
-                        <SelectValue placeholder="Seleccione" />
+                          <SelectValue placeholder="Seleccione" />
                         </SelectTrigger>
                         <SelectContent>
-                        <SelectItem value="C.C.">Cédula de Ciudadanía</SelectItem>
-                        <SelectItem value="C.E.">Cédula de Extranjería</SelectItem>
-                        <SelectItem value="Pasaporte">Pasaporte</SelectItem>
-                        <SelectItem value="Otro">Otro</SelectItem>
+                          <SelectItem value="C.C.">Cédula de Ciudadanía</SelectItem>
+                          <SelectItem value="C.E.">Cédula de Extranjería</SelectItem>
+                          <SelectItem value="Pasaporte">Pasaporte</SelectItem>
+                          <SelectItem value="Otro">Otro</SelectItem>
                         </SelectContent>
-                    </Select>
+                      </Select>
                     </div>
                     <div className="grid gap-2">
-                    <Label htmlFor="user-idNumber">Número de Identificación</Label>
-                    <Input id="user-idNumber" name="idNumber" defaultValue={editingUser?.idNumber || ""} required />
+                      <Label htmlFor="user-idNumber">Número de Identificación</Label>
+                      <Input id="user-idNumber" name="idNumber" defaultValue={editingUser?.idNumber || ""} required />
                     </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                    <Label htmlFor="user-phone">Teléfono</Label>
-                    <Input id="user-phone" name="phone" type="tel" defaultValue={editingUser?.phone || ""} required />
+                      <Label htmlFor="user-phone">Teléfono</Label>
+                      <Input id="user-phone" name="phone" type="tel" defaultValue={editingUser?.phone || ""} required />
                     </div>
                     <div className="grid gap-2">
-                    <Label htmlFor="user-email">Correo Electrónico</Label>
-                    <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
+                      <Label htmlFor="user-email">Correo Electrónico</Label>
+                      <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
                     </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                    <Label htmlFor="user-role">Rol</Label>
-                    <Select name="role" defaultValue={editingUser?.role || "Personal"}>
+                      <Label htmlFor="user-role">Rol</Label>
+                      <Select name="role" defaultValue={editingUser?.role || "Personal"}>
                         <SelectTrigger id="user-role">
-                        <SelectValue placeholder="Seleccione un rol" />
+                          <SelectValue placeholder="Seleccione un rol" />
                         </SelectTrigger>
                         <SelectContent>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                        <SelectItem value="Personal">Personal</SelectItem>
-                        <SelectItem value="Familiar">Familiar</SelectItem>
+                          <SelectItem value="Admin">Admin</SelectItem>
+                          <SelectItem value="Personal">Personal</SelectItem>
+                          <SelectItem value="Familiar">Familiar</SelectItem>
                         </SelectContent>
-                    </Select>
+                      </Select>
                     </div>
                     <div className="grid gap-2">
-                    <Label htmlFor="user-status">Estado</Label>
-                    <Select name="status" defaultValue={editingUser?.status || "Activo"}>
+                      <Label htmlFor="user-status">Estado</Label>
+                      <Select name="status" defaultValue={editingUser?.status || "Activo"}>
                         <SelectTrigger id="user-status">
-                        <SelectValue placeholder="Seleccione un estado" />
+                          <SelectValue placeholder="Seleccione un estado" />
                         </SelectTrigger>
                         <SelectContent>
-                        <SelectItem value="Activo">Activo</SelectItem>
-                        <SelectItem value="Inactivo">Inactivo</SelectItem>
+                          <SelectItem value="Activo">Activo</SelectItem>
+                          <SelectItem value="Inactivo">Inactivo</SelectItem>
                         </SelectContent>
-                    </Select>
+                      </Select>
                     </div>
-                </div>
+                  </div>
                 </div>
                 <DialogFooter>
-                <DialogClose asChild>
+                  <DialogClose asChild>
                     <Button type="button" variant="outline">Cancelar</Button>
-                </DialogClose>
-                <Button type="submit">Guardar Cambios</Button>
+                  </DialogClose>
+                  <Button type="submit">Guardar Cambios</Button>
                 </DialogFooter>
-            </form>
+              </form>
             </DialogContent>
           </Dialog>
         </TabsContent>
       </Tabs>
     </>
-  )
+  );
 }
-
-    
