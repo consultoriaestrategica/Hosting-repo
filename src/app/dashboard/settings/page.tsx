@@ -327,7 +327,6 @@ export default function SettingsPage() {
             </CardFooter>
           </Card>
         </TabsContent>
-
         <TabsContent value="users">
           <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
             <Card>
@@ -394,7 +393,6 @@ export default function SettingsPage() {
                 </Table>
               </CardContent>
             </Card>
-
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
