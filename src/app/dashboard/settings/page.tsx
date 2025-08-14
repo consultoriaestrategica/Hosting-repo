@@ -88,7 +88,7 @@ export default function SettingsPage() {
 
   const handleContractTemplateChange = (value: string) => {
     setSettings(prev => ({ ...prev, contractTemplate: value }));
-  }
+  };
 
   const handleSaveChanges = (section: string) => {
     // The hook already saves on change, this is just for user feedback
@@ -96,12 +96,12 @@ export default function SettingsPage() {
       title: "Configuración Guardada",
       description: `Los cambios en la sección de ${section} han sido guardados.`,
     })
-  }
+  };
 
   const handleOpenUserDialog = (user: any | null = null) => {
     setEditingUser(user);
     setIsUserDialogOpen(true);
-  }
+  };
 
   const handleSaveUser = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -126,7 +126,7 @@ export default function SettingsPage() {
   const handleDeleteUser = (userId: string) => {
      setUsers(users.filter(u => u.id !== userId));
      toast({ variant: "destructive", title: "Usuario Eliminado", description: "El usuario ha sido eliminado del sistema." });
-  }
+  };
 
   if (isLoading) {
     return <div>Cargando configuración...</div>
