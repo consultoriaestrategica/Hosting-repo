@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardFooter,
+  CardTitle,
 } from "@/components/ui/card"
 import {
   Table,
@@ -212,7 +213,7 @@ function ResidentsPageContent() {
                               Ver Ficha Rápida
                           </DropdownMenuItem>
                         )}
-                        {!isFamilyRole && (
+                        {!isFamilyRole && !isAdminRole && (
                           <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
                             <ClipboardList className="mr-2 h-4 w-4" />
                             Agregar Reporte
@@ -222,6 +223,12 @@ function ResidentsPageContent() {
                              <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
                               <FileText className="mr-2 h-4 w-4" />
                               Generar Reporte
+                            </DropdownMenuItem>
+                        )}
+                         {isAdminRole && (
+                             <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
+                              <ClipboardList className="mr-2 h-4 w-4" />
+                              Agregar Reporte
                             </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
