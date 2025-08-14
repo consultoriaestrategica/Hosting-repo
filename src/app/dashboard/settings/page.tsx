@@ -338,7 +338,7 @@ export default function SettingsPage() {
                   </CardDescription>
                 </div>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="ml-auto gap-1" onClick={() => handleOpenUserDialog(null)}>
+                  <Button size="sm" className="ml-auto gap-1" onClick={() => handleOpenUserDialog()}>
                     <PlusCircle className="h-4 w-4" />
                     Añadir Usuario
                   </Button>
@@ -393,6 +393,7 @@ export default function SettingsPage() {
                 </Table>
               </CardContent>
             </Card>
+
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
