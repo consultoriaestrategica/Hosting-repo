@@ -159,17 +159,19 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   return (
     <>
         <div className="p-4 md:p-8 space-y-6">
-            <div className="flex flex-wrap items-center gap-4">
-                <FileText className="h-8 w-8 text-primary" />
-                <div className="flex-1">
-                    <h1 className="text-3xl font-bold font-headline">
-                        Perfil de {resident.name}
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Detalles completos e historial del residente.
-                    </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                    <FileText className="h-8 w-8 text-primary mt-1" />
+                    <div>
+                        <h1 className="text-3xl font-bold font-headline">
+                            Perfil de {resident.name}
+                        </h1>
+                        <p className="text-muted-foreground">
+                            Detalles completos e historial del residente.
+                        </p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {resident.status === 'Activo' && role === 'admin' && (
                         <Button asChild variant="outline">
                             <Link href={`/dashboard/residents/edit/${resident.id}`}>
