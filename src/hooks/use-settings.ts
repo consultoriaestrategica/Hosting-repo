@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback } from 'react';
 
 export type Settings = {
   prices: {
-    'Básica': number;
-    'Premium': number;
+    'Habitación compartida': number;
+    'Habitación individual': number;
   };
   vatEnabled: boolean;
   vatRate: number;
@@ -68,8 +68,8 @@ Tu tarea es generar el texto completo de un contrato de prestación de servicios
 
 const initialSettings: Settings = {
     prices: {
-        'Básica': 2000000,
-        'Premium': 3500000,
+        'Habitación compartida': 2000000,
+        'Habitación individual': 3500000,
     },
     vatEnabled: false,
     vatRate: 19,
@@ -86,7 +86,17 @@ export function useSettings() {
     try {
       const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (storedSettings) {
-        const parsedSettings = JSON.parse(storedSettings);
+        let parsedSettings = JSON.parse(storedSettings);
+        // Migration from old keys
+        if (parsedSettings.prices && parsedSettings.prices['Básica']) {
+            parsedSettings.prices['Habitación compartida'] = parsedSettings.prices['Básica'];
+            delete parsedSettings.prices['Básica'];
+        }
+        if (parsedSettings.prices && parsedSettings.prices['Premium']) {
+            parsedSettings.prices['Habitación individual'] = parsedSettings.prices['Premium'];
+            delete parsedSettings.prices['Premium'];
+        }
+
         // Ensure contractTemplate exists in stored settings, if not, add it.
         if (!parsedSettings.contractTemplate) {
             parsedSettings.contractTemplate = initialContractTemplate;

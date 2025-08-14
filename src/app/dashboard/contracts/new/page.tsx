@@ -34,7 +34,7 @@ import { Loader2 } from "lucide-react"
 
 const contractFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
-  contractType: z.enum(["Básica", "Premium"], { required_error: "Debe seleccionar un tipo de contrato." }),
+  contractType: z.enum(["Habitación compartida", "Habitación individual"], { required_error: "Debe seleccionar un tipo de contrato." }),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de inicio inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
@@ -176,8 +176,8 @@ export default function NewContractPage() {
                                     <SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    <SelectItem value="Básica">Servicios Básicos</SelectItem>
-                                    <SelectItem value="Premium">Servicios Premium</SelectItem>
+                                    <SelectItem value="Habitación compartida">Habitación Compartida</SelectItem>
+                                    <SelectItem value="Habitación individual">Habitación Individual</SelectItem>
                                 </SelectContent>
                                 </Select>
                                 <FormDescription>El tipo de habitación se toma del perfil del residente.</FormDescription>

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
@@ -5,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 export type Contract = {
   id: string;
   residentId: string;
-  contractType: 'Básica' | 'Premium';
+  contractType: 'Habitación compartida' | 'Habitación individual';
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   status: 'Activo' | 'Finalizado' | 'Cancelado';
@@ -23,8 +24,11 @@ export function useContracts() {
 
   const loadContracts = useCallback(() => {
     try {
-      const storedContracts = localStorage.getItem(CONTRACTS_STORAGE_KEY);
+      let storedContracts = localStorage.getItem(CONTRACTS_STORAGE_KEY);
       if (storedContracts) {
+        // Migration from old values
+        storedContracts = storedContracts.replace(/"Básica"/g, '"Habitación compartida"');
+        storedContracts = storedContracts.replace(/"Premium"/g, '"Habitación individual"');
         setContracts(JSON.parse(storedContracts));
       } else {
         localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify(initialContracts));

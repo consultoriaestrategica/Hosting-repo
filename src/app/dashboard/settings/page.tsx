@@ -69,7 +69,7 @@ export default function SettingsPage() {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
 
-  const handlePriceChange = (plan: 'Básica' | 'Premium', value: string) => {
+  const handlePriceChange = (plan: 'Habitación compartida' | 'Habitación individual', value: string) => {
     setSettings(prev => ({
         ...prev,
         prices: {
@@ -150,25 +150,25 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-8 pt-6">
               <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Precios de los Planes</h3>
+                  <h3 className="text-lg font-medium">Precios por Tipo de Habitación</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                      <Label htmlFor="price-basic">Valor Plan Básico (COP)</Label>
+                      <Label htmlFor="price-shared">Valor Habitación Compartida (COP)</Label>
                       <Input
-                          id="price-basic"
+                          id="price-shared"
                           type="number"
-                          value={settings.prices['Básica']}
-                          onChange={(e) => handlePriceChange('Básica', e.target.value)}
+                          value={settings.prices['Habitación compartida']}
+                          onChange={(e) => handlePriceChange('Habitación compartida', e.target.value)}
                           placeholder="2000000"
                       />
                       </div>
                       <div className="grid gap-2">
-                      <Label htmlFor="price-premium">Valor Plan Premium (COP)</Label>
+                      <Label htmlFor="price-individual">Valor Habitación Individual (COP)</Label>
                       <Input
-                          id="price-premium"
+                          id="price-individual"
                           type="number"
-                          value={settings.prices['Premium']}
-                          onChange={(e) => handlePriceChange('Premium', e.target.value)}
+                          value={settings.prices['Habitación individual']}
+                          onChange={(e) => handlePriceChange('Habitación individual', e.target.value)}
                           placeholder="3500000"
                       />
                       </div>

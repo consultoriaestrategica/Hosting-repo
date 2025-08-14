@@ -39,7 +39,7 @@ export default function ContractPreviewDialog({ isOpen, onOpenChange, contract, 
     }
   };
 
-  const getContractValueDetails = (type: 'Básica' | 'Premium') => {
+  const getContractValueDetails = (type: 'Habitación compartida' | 'Habitación individual') => {
     const baseValue = settings.prices[type] || 0;
     const vatRate = settings.vatEnabled ? (settings.vatRate || 0) / 100 : 0;
     const vatValue = baseValue * vatRate;
@@ -79,7 +79,7 @@ export default function ContractPreviewDialog({ isOpen, onOpenChange, contract, 
                 </div>
                  <div className="flex justify-between">
                     <span className="font-semibold">Tipo:</span>
-                    <span>Contrato de Servicios {contract.contractType}</span>
+                    <span>Contrato de Servicios ({contract.contractType})</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="font-semibold">Estado:</span>
@@ -125,5 +125,3 @@ export default function ContractPreviewDialog({ isOpen, onOpenChange, contract, 
     </Dialog>
   )
 }
-
-    
