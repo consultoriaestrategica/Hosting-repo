@@ -99,6 +99,7 @@ export default function NewContractPage() {
             roomType: resident.roomType,
             dependencyLevel: resident.dependency,
             contractValue: formattedTotalValue,
+            promptTemplate: settings.contractTemplate, // Pass the template from settings
         });
 
         const newContract = {
@@ -203,5 +204,3 @@ export default function NewContractPage() {
     </>
   )
 }
-
-    

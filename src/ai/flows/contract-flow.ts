@@ -23,6 +23,8 @@ const ContractInputSchema = z.object({
   roomType: z.string().describe('El tipo de habitación asignada (Habitación compartida o Habitación individual).'),
   dependencyLevel: z.string().describe('El nivel de dependencia del residente (Dependiente o Independiente).'),
   contractValue: z.string().describe('El valor total mensual del contrato, formateado como moneda (ej. $2,500,000 COP).'),
+  // New field for the dynamic template
+  promptTemplate: z.string().describe('La plantilla de prompt para generar el contrato.'),
 });
 export type ContractInput = z.infer<typeof ContractInputSchema>;
 
@@ -35,57 +37,8 @@ const prompt = ai.definePrompt({
   name: 'contractPrompt',
   input: { schema: ContractInputSchema },
   output: { format: 'text' },
-  prompt: `
-  Eres un asistente legal experto en la redacción de contratos de servicios para hogares geriátricos en Colombia.
-  Tu tarea es generar el texto completo de un contrato de prestación de servicios en formato Markdown, siguiendo la estructura y el tono formal del modelo proporcionado.
-
-  **Utiliza los siguientes datos para personalizar el contrato:**
-
-  *   **Hogar Geriátrico:** "Hogar Geriátrico Ángel Guardián" con NIT "900.123.456-7", ubicado en "Calle de la Serenidad 123, Bogotá D.C.", representado por "Dr. Ana María Rojas".
-  *   **Residente:** {{{residentName}}} (C.C. {{{residentIdNumber}}}).
-  *   **Responsable Solidario:** {{{responsiblePartyName}}} (C.C. {{{responsiblePartyIdNumber}}}), con domicilio en {{{responsiblePartyAddress}}}, en calidad de {{{responsiblePartyKinship}}}.
-  *   **Fecha de Inicio:** {{{startDate}}}
-  *   **Fecha de Fin:** {{{endDate}}}
-  *   **Plan Contratado:** Plan {{{contractType}}}
-  *   **Habitación Asignada:** {{{roomType}}}
-  *   **Nivel de Dependencia:** {{{dependencyLevel}}}
-  *   **Valor Mensual del Contrato:** {{{contractValue}}}
-
-  **Estructura del Contrato:**
-
-  **Título:** CONTRATO DE PRESTACIÓN DE SERVICIOS DE CUIDADO Y BIENESTAR PARA EL ADULTO MAYOR
-
-  1.  **PARTES:** Identifica a "EL HOGAR" (Hogar Geriátrico Ángel Guardián), "EL RESPONSABLE" (con su nombre, cédula, parentesco y domicilio) y "EL RESIDENTE" (con su nombre y cédula).
-
-  2.  **CLÁUSULA PRIMERA - OBJETO:** Describe la prestación de servicios integrales. Detalla los servicios incluidos según el plan contratado.
-      *   **Alojamiento:** Especifica el tipo de habitación ({{{roomType}}}).
-      *   **Alimentación:** Cinco comidas diarias.
-      *   **Cuidado y Asistencia:** Supervisión 24/7 para actividades de la vida diaria, adaptado al nivel de dependencia ({{{dependencyLevel}}}).
-      *   **Administración de Medicamentos.**
-      *   **Actividades Terapéuticas y Recreativas.**
-      *   **Servicios Adicionales (SOLO para Plan Premium):**
-          *   Atención médica especializada mensual.
-          *   Sesiones de fisioterapia personalizadas (2 por semana).
-          *   Acceso a sala de entretenimiento premium.
-
-  3.  **CLÁUSULA SEGUNDA - VALOR Y FORMA DE PAGO:**
-      *   Establece el valor mensual del contrato usando el valor exacto proporcionado en la variable **{{{contractValue}}}**.
-      *   Indica que el pago es anticipado dentro de los primeros 5 días hábiles de cada mes.
-
-  4.  **CLÁUSULA TERCERA - OBLIGACIONES DE EL HOGAR:** Lista las responsabilidades del hogar.
-
-  5.  **CLÁUSULA CUARTA - OBLIGACIONES DE EL RESPONSABLE:** Lista las responsabilidades del acudiente, incluyendo el suministro de medicamentos y elementos de uso personal.
-
-  6.  **CLÁUSULA QUINTA - DURACIÓN:** Especifica la duración del contrato usando la fecha de inicio y fin proporcionadas.
-
-  7.  **CLÁUSULA SEXTA - FIRMAS:** Deja espacios para las firmas de "EL HOGAR" (Representante Legal), "EL RESPONSABLE" y "EL RESIDENTE".
-
-  **Instrucciones Finales:**
-  *   Formatea el resultado final en **Markdown**, utilizando encabezados (#, ##), negritas (**) y listas (*).
-  *   NO incluyas ninguna explicación o texto introductorio antes del contrato.
-  *   El resultado debe empezar directamente con el título "CONTRATO DE PRESTACIÓN DE SERVICIOS...".
-  *   Mantén un lenguaje formal y legal apropiado para Colombia.
-  `,
+  // Use the template passed in the input
+  prompt: `{{{promptTemplate}}}`,
 });
 
 const generateContractFlow = ai.defineFlow(
@@ -99,5 +52,3 @@ const generateContractFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    

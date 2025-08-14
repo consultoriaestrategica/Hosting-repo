@@ -51,6 +51,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, PlusCircle } from "lucide-react"
 import { useState } from "react"
+import { Textarea } from "@/components/ui/textarea"
 
 // Mock data for users - replace with actual data fetching hook later
 const initialUsers = [
@@ -84,6 +85,10 @@ export default function SettingsPage() {
         [key]: value
     }));
   };
+
+  const handleContractTemplateChange = (value: string) => {
+    setSettings(prev => ({ ...prev, contractTemplate: value }));
+  }
 
   const handleSaveChanges = (section: string) => {
     // The hook already saves on change, this is just for user feedback
@@ -135,10 +140,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="mt-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="pricing">Precios y Facturación</TabsTrigger>
+          <TabsTrigger value="pricing">Precios</TabsTrigger>
+          <TabsTrigger value="contracts">Contratos</TabsTrigger>
           <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
           <TabsTrigger value="users">Usuarios</TabsTrigger>
         </TabsList>
@@ -253,6 +259,34 @@ export default function SettingsPage() {
             </CardContent>
             <CardFooter>
               <Button onClick={() => handleSaveChanges("Precios y Facturación")}>Guardar Cambios</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="contracts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuración de Contratos</CardTitle>
+              <CardDescription>
+                Edite la plantilla base que utiliza la IA para generar los contratos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+               <div className="space-y-2">
+                  <Label htmlFor="contract-template">Plantilla del Contrato</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Modifique el texto usando Markdown. Las variables entre `{{{llaves}}}` serán reemplazadas por la IA.
+                  </p>
+                  <Textarea 
+                    id="contract-template"
+                    className="min-h-[50vh] font-mono text-xs"
+                    value={settings.contractTemplate}
+                    onChange={(e) => handleContractTemplateChange(e.target.value)}
+                  />
+               </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => handleSaveChanges("Contratos")}>Guardar Plantilla</Button>
             </CardFooter>
           </Card>
         </TabsContent>
