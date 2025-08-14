@@ -210,7 +210,10 @@ function ResidentsPageContent() {
                         )}
                         {!isStaffRole && (
                              <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>Ver Perfil</Link>
+                               <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver Perfil
+                               </Link>
                              </DropdownMenuItem>
                         )}
                         {!isFamilyRole && (
@@ -293,5 +296,3 @@ export default function ResidentsPage() {
     </Suspense>
   )
 }
-
-    
