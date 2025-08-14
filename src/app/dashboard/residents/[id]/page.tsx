@@ -47,13 +47,15 @@ import {
     Car,
     Eye,
     Utensils,
-    LogOut
+    LogOut,
+    MessageSquareWarning
 } from "lucide-react";
 import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
 import DischargeForm from "./discharge-form"
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import AlertForm from "./alert-form";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -80,6 +82,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isDischargeDialogOpen, setIsDischargeDialogOpen] = useState(false);
+  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   
   useEffect(() => {
@@ -165,25 +168,46 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                         Detalles completos e historial del residente.
                     </p>
                 </div>
-                {resident.status === 'Activo' && (
-                    <Dialog open={isDischargeDialogOpen} onOpenChange={setIsDischargeDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="destructive">
-                                <LogOut className="mr-2 h-4 w-4"/>
-                                Dar de Baja
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Dar de Baja a {resident.name}</DialogTitle>
-                                <DialogDescription>
-                                Complete la información para registrar la salida del residente. Esta acción cambiará su estado a "Inactivo".
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DischargeForm resident={resident} onSubmit={handleDischargeSubmit} />
-                        </DialogContent>
-                    </Dialog>
-                )}
+                <div className="flex items-center gap-2">
+                    {resident.status === 'Activo' && (
+                         <Dialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700">
+                                    <MessageSquareWarning className="mr-2 h-4 w-4"/>
+                                    Enviar Alerta
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Enviar Alerta de Emergencia</DialogTitle>
+                                    <DialogDescription>
+                                    Seleccione el contacto y redacte el mensaje para notificar por WhatsApp.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <AlertForm resident={resident} onFormSubmit={() => setIsAlertDialogOpen(false)}/>
+                            </DialogContent>
+                        </Dialog>
+                    )}
+                    {resident.status === 'Activo' && (
+                        <Dialog open={isDischargeDialogOpen} onOpenChange={setIsDischargeDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="destructive">
+                                    <LogOut className="mr-2 h-4 w-4"/>
+                                    Dar de Baja
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Dar de Baja a {resident.name}</DialogTitle>
+                                    <DialogDescription>
+                                    Complete la información para registrar la salida del residente. Esta acción cambiará su estado a "Inactivo".
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <DischargeForm resident={resident} onSubmit={handleDischargeSubmit} />
+                            </DialogContent>
+                        </Dialog>
+                    )}
+                </div>
             </div>
             
             <Tabs defaultValue="general">
@@ -487,7 +511,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
 
 
 export default function ResidentProfilePage({ params }: { params: { id: string } }) {
-    const { id } = use(params);
+    const id = use(params.id);
     return (
       <Suspense fallback={<div>Cargando...</div>}>
         <ResidentProfilePageContent id={id} />
