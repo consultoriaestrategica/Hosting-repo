@@ -43,7 +43,7 @@ function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: stri
 }
 
 function PhotoEvidenceCarousel({ photoUrls }: { photoUrls?: string[] }) {
-    if (!photoUrls || photoUrls.length === 0) return null;
+    if (!photoUrls || !Array.isArray(photoUrls) || photoUrls.length === 0) return null;
 
     return (
         <>
