@@ -36,9 +36,10 @@ import {
     CheckCircle2,
     BookUser,
     Car,
-    Eye
+    Eye,
+    Utensils
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -56,9 +57,7 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
     );
 }
 
-export default function ResidentProfilePage({ params }: { params: { id: string } }) {
-  
-  const residentId = params.id;
+function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || 'admin';
   const { residents, isLoading: residentsLoading } = useResidents();
@@ -436,4 +435,14 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
         )}
     </>
   );
+}
+
+
+export default function ResidentProfilePage({ params }: { params: { id: string } }) {
+    const { id } = use(params);
+    return (
+      <Suspense fallback={<div>Cargando...</div>}>
+        <ResidentProfilePageContent id={id} />
+      </Suspense>
+    );
 }
