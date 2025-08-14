@@ -1,4 +1,3 @@
-
 "use client"
 import Link from "next/link"
 import { PlusCircle, MoreHorizontal, FileText, ClipboardList, Search, Eye } from "lucide-react"
@@ -7,9 +6,9 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardFooter,
-  CardTitle,
+  CardHeader,
+  CardTitle, // CORRECCIÓN: 'Cardtittle' a 'CardTitle'
 } from "@/components/ui/card"
 import {
   Table,
@@ -53,8 +52,6 @@ function ResidentsPageContent() {
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
-
-  // State for filtering and pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,7 +76,6 @@ function ResidentsPageContent() {
     return filteredResidents.slice(startIndex, endIndex);
   }, [filteredResidents, currentPage]);
 
-
   const handleGenerateReport = (residentName: string) => {
     toast({
       title: "Generando Reporte...",
@@ -98,7 +94,7 @@ function ResidentsPageContent() {
   }
 
   if (!isClient || isLoading) {
-    return <div>Cargando...</div>
+    return <div>Cargando residentes...</div>
   }
 
   const isAdminRole = role === 'admin';
@@ -166,71 +162,58 @@ function ResidentsPageContent() {
             <TableBody>
               {paginatedResidents.map((resident) => (
                 <TableRow key={resident.id}>
-                  <TableCell className="font-medium">
-                     <Link href={`/dashboard/residents/${resident.id}?role=${role}`} className="hover:underline">
-                        {resident.name}
-                     </Link>
-                  </TableCell>
+                  <TableCell className="font-medium">{resident.name}</TableCell>
                   <TableCell>
-                     <Badge variant={resident.roomType === "Habitación individual" ? "default" : "secondary"}>
+                    <Badge variant={resident.roomType === "Habitación individual" ? "default" : "secondary"}>
                       {resident.roomType}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                     <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>
+                    <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>
                       {resident.status}
                     </Badge>
                   </TableCell>
                   <TableCell>{resident.admissionDate}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={
-                        resident.dependency === "Dependiente"
-                          ? "destructive"
-                          : "outline"
-                      }
-                    >
+                    <Badge variant={resident.dependency === "Dependiente" ? "destructive" : "outline"}>
                       {resident.dependency}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Toggle menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        {!isStaffRole && (
-                           <DropdownMenuItem asChild>
-                             <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Perfil
-                             </Link>
-                          </DropdownMenuItem>
-                        )}
+                        
+                        {/* AÑADIDO: Opción para navegar a la página de perfil completo */}
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Ver Perfil Completo
+                          </Link>
+                        </DropdownMenuItem>
+
                         {isStaffRole && (
                           <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver Ficha Rápida
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver Ficha Rápida
+                          </DropdownMenuItem>
+                        )}
+                        {!isFamilyRole && (
+                          <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
+                            <ClipboardList className="mr-2 h-4 w-4" />
+                            Agregar Reporte
                           </DropdownMenuItem>
                         )}
                          {isAdminRole && (
-                             <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
+                            <DropdownMenuItem onClick={() => handleGenerateReport(resident.name)}>
                               <FileText className="mr-2 h-4 w-4" />
                               Generar Reporte
-                            </DropdownMenuItem>
-                        )}
-                         {isAdminRole && (
-                             <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
-                              <ClipboardList className="mr-2 h-4 w-4" />
-                              Agregar Reporte
                             </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -272,8 +255,8 @@ function ResidentsPageContent() {
         <Dialog open={isLogDialogOpen} onOpenChange={setIsLogDialogOpen}>
             <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
-                    <DialogTitle>Agregar Reporte Diario para {selectedResident.name}</DialogTitle>
-                    <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
+                    <DialogTitle>Agregar Registro de Evolución para {selectedResident.name}</DialogTitle>
+                    <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
                 </DialogHeader>
                 <NewLogForm residentId={selectedResident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
             </DialogContent>
@@ -290,7 +273,6 @@ function ResidentsPageContent() {
     </>
   )
 }
-
 
 export default function ResidentsPage() {
   return (
