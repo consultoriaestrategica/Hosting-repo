@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail, Home, LogOut, Info, CalendarPlus, MoreHorizontal, Edit, Trash2 } from "lucide-react"
+import { AlertTriangle, FileUp, CheckCircle, FileText, Stethoscope, Truck, PlusCircle, UserPlus, Phone, Mail, Home, LogOut, Info, CalendarPlus, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -35,8 +35,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useResidents, AgendaEvent } from "@/hooks/use-residents"
 import { useLogs, Log } from "@/hooks/use-logs"
+import { useContracts } from "@/hooks/use-contracts"
 import { useEffect, useState, Suspense, use, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import NewLogForm from "./new-log-form"
 import LogDetailDialog from "../../components/log-detail-dialog"
 import DischargeForm from "./discharge-form"
@@ -47,6 +49,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   const { toast } = useToast()
   const { residents, isLoading: residentsLoading, updateResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent } = useResidents()
   const { logs, isLoading: logsLoading } = useLogs()
+  const { contracts, isLoading: contractsLoading } = useContracts()
   const [isClient, setIsClient] = useState(false)
   
   // Dialog states
@@ -73,13 +76,17 @@ function ResidentProfilePageContent({ id }: { id: string }) {
   const evolutionLog = useMemo(() => 
     [...logs].filter(log => log.residentId === id).sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
   , [logs, id]);
+
+  const residentContracts = useMemo(() => 
+    [...contracts].filter(c => c.residentId === id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  , [contracts, id]);
   
   const sortedAgendaEvents = useMemo(() => 
     [...(resident?.agendaEvents || [])].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   , [resident?.agendaEvents]);
 
 
-  if (!isClient || residentsLoading || logsLoading) {
+  if (!isClient || residentsLoading || logsLoading || contractsLoading) {
     return <div>Cargando...</div>
   }
 
@@ -128,6 +135,15 @@ function ResidentProfilePageContent({ id }: { id: string }) {
     switch (status) {
         case 'Pendiente': return 'default';
         case 'Completado': return 'secondary';
+        case 'Cancelado': return 'destructive';
+        default: return 'outline';
+    }
+  }
+
+  const getContractStatusVariant = (status: string) => {
+    switch(status) {
+        case 'Activo': return 'default';
+        case 'Finalizado': return 'secondary';
         case 'Cancelado': return 'destructive';
         default: return 'outline';
     }
@@ -277,6 +293,7 @@ function ResidentProfilePageContent({ id }: { id: string }) {
               <TabsTrigger value="evolution">Historial de Reportes</TabsTrigger>
               <TabsTrigger value="agenda">Agenda</TabsTrigger>
               <TabsTrigger value="profile">Perfil Completo</TabsTrigger>
+              {role === 'admin' && <TabsTrigger value="contracts">Contratos</TabsTrigger>}
               {!isFamilyRole && !isStaffRole && <TabsTrigger value="documents">Documentos</TabsTrigger>}
             </TabsList>
             <TabsContent value="evolution">
@@ -454,6 +471,61 @@ function ResidentProfilePageContent({ id }: { id: string }) {
                     <h3 className="font-semibold">Plan de Alimentación</h3>
                     <p className="text-muted-foreground">{resident.diet}</p>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="contracts">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Historial de Contratos</CardTitle>
+                  <CardDescription>
+                    Listado de todos los contratos asociados a este residente.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Inicio</TableHead>
+                        <TableHead>Fin</TableHead>
+                        <TableHead><span className="sr-only">Acciones</span></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {residentContracts.length > 0 ? (
+                        residentContracts.map((contract) => (
+                          <TableRow key={contract.id}>
+                            <TableCell>
+                              Contrato {contract.contractType}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getContractStatusVariant(contract.status)}>
+                                {contract.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{new Date(contract.startDate).toLocaleDateString()}</TableCell>
+                            <TableCell>{new Date(contract.endDate).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-right">
+                              <Button asChild variant="outline" size="sm">
+                                <Link href={`/dashboard/contracts/${contract.id}?role=${role}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver Detalle
+                                </Link>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center">
+                            No se encontraron contratos para este residente.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
