@@ -481,7 +481,6 @@ export default function SettingsPage() {
                 </DialogContent>
             </Dialog>
         </TabsContent>
-
       </Tabs>
     </>
   )
