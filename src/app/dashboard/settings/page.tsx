@@ -86,12 +86,12 @@ export default function SettingsPage() {
   };
 
   const handleContractTemplateChange = (type: 'resident' | 'staff', value: string) => {
-    setSettings(prev => ({ 
-        ...prev, 
-        contractTemplates: {
-            ...prev.contractTemplates,
-            [type]: value
-        } 
+    setSettings(prev => ({
+      ...prev,
+      contractTemplates: {
+          ...prev.contractTemplates,
+          [type]: value
+      }
     }));
   };
 
@@ -148,100 +148,110 @@ export default function SettingsPage() {
             <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>
         </TabsList>
         <TabsContent value="contracts">
-          <Card>
-            <CardHeader>
-                <CardTitle>Configuración de Contratos de Residentes</CardTitle>
-                <CardDescription>Ajuste los precios base, el IVA y la plantilla para la generación de contratos para residentes.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8 pt-6">
-              <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Precios por Tipo de Habitación</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                      <Label htmlFor="price-shared">Valor Habitación Compartida (COP)</Label>
-                      <Input
-                          id="price-shared"
-                          type="number"
-                          value={settings.prices['Habitación compartida']}
-                          onChange={(e) => handlePriceChange('Habitación compartida', e.target.value)}
-                          placeholder="2000000"
-                      />
+           <Tabs defaultValue="resident-contracts" className="mt-4">
+              <TabsList>
+                <TabsTrigger value="resident-contracts">Residentes</TabsTrigger>
+                <TabsTrigger value="staff-contracts">Personal</TabsTrigger>
+              </TabsList>
+              <TabsContent value="resident-contracts">
+                  <Card className="mt-4">
+                    <CardHeader>
+                        <CardTitle>Configuración de Contratos de Residentes</CardTitle>
+                        <CardDescription>Ajuste los precios base, el IVA y la plantilla para la generación de contratos para residentes.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8 pt-6">
+                      <div className="space-y-4">
+                          <h3 className="text-lg font-medium">Precios por Tipo de Habitación</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                              <Label htmlFor="price-shared">Valor Habitación Compartida (COP)</Label>
+                              <Input
+                                  id="price-shared"
+                                  type="number"
+                                  value={settings.prices['Habitación compartida']}
+                                  onChange={(e) => handlePriceChange('Habitación compartida', e.target.value)}
+                                  placeholder="2000000"
+                              />
+                              </div>
+                              <div className="grid gap-2">
+                              <Label htmlFor="price-individual">Valor Habitación Individual (COP)</Label>
+                              <Input
+                                  id="price-individual"
+                                  type="number"
+                                  value={settings.prices['Habitación individual']}
+                                  onChange={(e) => handlePriceChange('Habitación individual', e.target.value)}
+                                  placeholder="3500000"
+                              />
+                              </div>
+                          </div>
                       </div>
-                      <div className="grid gap-2">
-                      <Label htmlFor="price-individual">Valor Habitación Individual (COP)</Label>
-                      <Input
-                          id="price-individual"
-                          type="number"
-                          value={settings.prices['Habitación individual']}
-                          onChange={(e) => handlePriceChange('Habitación individual', e.target.value)}
-                          placeholder="3500000"
-                      />
+                      <div className="space-y-4">
+                          <h3 className="text-lg font-medium">Impuestos</h3>
+                          <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                  <Switch
+                                      id="vat-enabled"
+                                      checked={settings.vatEnabled}
+                                      onCheckedChange={(checked) => handleVatChange('vatEnabled', checked)}
+                                  />
+                                  <Label htmlFor="vat-enabled">Habilitar IVA</Label>
+                              </div>
+                              {settings.vatEnabled && (
+                              <div className="grid gap-2 w-40">
+                                  <Label htmlFor="vat-rate">Tasa de IVA (%)</Label>
+                                  <Input
+                                      id="vat-rate"
+                                      type="number"
+                                      value={settings.vatRate}
+                                      onChange={(e) => handleVatChange('vatRate', Number(e.target.value))}
+                                      placeholder="19"
+                                  />
+                              </div>
+                              )}
+                          </div>
                       </div>
-                  </div>
-              </div>
-              <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Impuestos</h3>
-                  <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                          <Switch
-                              id="vat-enabled"
-                              checked={settings.vatEnabled}
-                              onCheckedChange={(checked) => handleVatChange('vatEnabled', checked)}
+                      <div className="space-y-2">
+                          <h3 className="text-lg font-medium">Plantilla de Contrato de Residente (Markdown)</h3>
+                          <Textarea 
+                              value={settings.contractTemplates.resident}
+                              onChange={(e) => handleContractTemplateChange('resident', e.target.value)}
+                              className="min-h-[400px] font-mono text-sm"
                           />
-                          <Label htmlFor="vat-enabled">Habilitar IVA</Label>
+                          <p className="text-sm text-muted-foreground">
+                              Use variables como <code className="text-xs bg-muted p-1 rounded-sm">{'{{{residentName}}}'}</code> para insertar datos dinámicos.
+                          </p>
                       </div>
-                      {settings.vatEnabled && (
-                      <div className="grid gap-2 w-40">
-                          <Label htmlFor="vat-rate">Tasa de IVA (%)</Label>
-                          <Input
-                              id="vat-rate"
-                              type="number"
-                              value={settings.vatRate}
-                              onChange={(e) => handleVatChange('vatRate', Number(e.target.value))}
-                              placeholder="19"
+                    </CardContent>
+                    <CardFooter>
+                      <Button onClick={() => handleSaveChanges("Contratos de Residentes")}>Guardar Cambios</Button>
+                    </CardFooter>
+                  </Card>
+              </TabsContent>
+              <TabsContent value="staff-contracts">
+                 <Card className="mt-4">
+                    <CardHeader>
+                        <CardTitle>Configuración de Contratos de Personal</CardTitle>
+                        <CardDescription>Ajuste la plantilla para la generación de contratos para el personal.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8 pt-6">
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-medium">Plantilla de Contrato de Personal (Markdown)</h3>
+                          <Textarea 
+                              value={settings.contractTemplates.staff}
+                              onChange={(e) => handleContractTemplateChange('staff', e.target.value)}
+                              className="min-h-[400px] font-mono text-sm"
                           />
+                          <p className="text-sm text-muted-foreground">
+                              Use variables como <code className="text-xs bg-muted p-1 rounded-sm">{'{{{staffName}}}'}</code> para insertar datos dinámicos.
+                          </p>
                       </div>
-                      )}
-                  </div>
-              </div>
-              <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Plantilla de Contrato de Residente (Markdown)</h3>
-                  <Textarea 
-                      value={settings.contractTemplates.resident}
-                      onChange={(e) => handleContractTemplateChange('resident', e.target.value)}
-                      className="min-h-[400px] font-mono text-sm"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                      Use variables como <code className="text-xs bg-muted p-1 rounded-sm">{'{{{residentName}}}'}</code> para insertar datos dinámicos.
-                  </p>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={() => handleSaveChanges("Contratos de Residentes")}>Guardar Cambios</Button>
-            </CardFooter>
-          </Card>
-          <Card className="mt-6">
-            <CardHeader>
-                <CardTitle>Configuración de Contratos de Personal</CardTitle>
-                <CardDescription>Ajuste la plantilla para la generación de contratos para el personal.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8 pt-6">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Plantilla de Contrato de Personal (Markdown)</h3>
-                  <Textarea 
-                      value={settings.contractTemplates.staff}
-                      onChange={(e) => handleContractTemplateChange('staff', e.target.value)}
-                      className="min-h-[400px] font-mono text-sm"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                      Use variables como <code className="text-xs bg-muted p-1 rounded-sm">{'{{{staffName}}}'}</code> para insertar datos dinámicos.
-                  </p>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={() => handleSaveChanges("Contratos de Personal")}>Guardar Cambios</Button>
-            </CardFooter>
-          </Card>
+                    </CardContent>
+                    <CardFooter>
+                      <Button onClick={() => handleSaveChanges("Contratos de Personal")}>Guardar Cambios</Button>
+                    </CardFooter>
+                  </Card>
+              </TabsContent>
+           </Tabs>
         </TabsContent>
         <TabsContent value="users">
           <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
