@@ -49,7 +49,8 @@ import {
     Utensils,
     LogOut,
     MessageSquareWarning,
-    Edit
+    Edit,
+    PlusCircle
 } from "lucide-react";
 import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
@@ -57,6 +58,7 @@ import DischargeForm from "./discharge-form"
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AlertForm from "./alert-form";
+import NewLogForm from "./new-log-form";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -84,6 +86,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isDischargeDialogOpen, setIsDischargeDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
+  const [isNewLogDialogOpen, setIsNewLogDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   
   useEffect(() => {
@@ -439,9 +442,26 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
 
                 <TabsContent value="logs" className="mt-4">
                      <Card>
-                        <CardHeader>
-                            <CardTitle>Historial de Registros</CardTitle>
-                             <CardDescription>Todos los reportes médicos y de suministros para {resident.name}.</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>Historial de Registros</CardTitle>
+                                <CardDescription>Todos los reportes médicos y de suministros para {resident.name}.</CardDescription>
+                            </div>
+                             <Dialog open={isNewLogDialogOpen} onOpenChange={setIsNewLogDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm">
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Agregar Registro
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-4xl">
+                                    <DialogHeader>
+                                        <DialogTitle>Agregar Registro para {resident.name}</DialogTitle>
+                                        <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
+                                    </DialogHeader>
+                                    <NewLogForm residentId={resident.id} onFormSubmit={() => setIsNewLogDialogOpen(false)} />
+                                </DialogContent>
+                            </Dialog>
                         </CardHeader>
                         <CardContent>
                             <Table>
