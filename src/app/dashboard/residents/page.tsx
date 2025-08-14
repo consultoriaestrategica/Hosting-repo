@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -212,7 +213,7 @@ function ResidentsPageContent() {
                         {!isFamilyRole && (
                           <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
                             <ClipboardList className="mr-2 h-4 w-4" />
-                            Agregar Evolución
+                            Agregar Reporte
                           </DropdownMenuItem>
                         )}
                          {role === 'admin' && (
