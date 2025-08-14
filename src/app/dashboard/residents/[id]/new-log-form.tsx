@@ -30,6 +30,7 @@ import { useState, useEffect, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Mic, MicOff, Camera, X, PlusCircle, Trash2, Upload } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
 
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
@@ -44,6 +45,10 @@ const reportFormSchema = z.object({
     note: z.string().min(1, "La nota no puede estar vacía."),
   })).optional(),
   photoEvidence: z.array(z.string()).optional(),
+  visitType: z.string().optional(),
+  professionalName: z.string().optional(),
+  entryTime: z.string().optional(),
+  exitTime: z.string().optional(),
 
   // Supply fields
   supplierName: z.string().optional(),
@@ -259,6 +264,10 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         feedingType: data.feedingType,
         evolutionNotes: data.evolutionNotes?.map(n => n.note).filter(Boolean),
         photoEvidenceUrl: data.photoEvidence,
+        visitType: data.visitType,
+        professionalName: data.professionalName,
+        entryTime: data.entryTime,
+        exitTime: data.exitTime,
       };
     } else { // suministro
       finalLogData = {
@@ -420,14 +429,46 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
               {reportType === 'medico' && (
                 <div className="space-y-4 pt-4 border-t">
+                    <h3 className="text-base font-semibold">Signos Vitales</h3>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <FormField control={form.control} name="heartRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Cardíaca (lpm)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="respiratoryRate" render={({ field }) => (<FormItem><FormLabel>Frecuencia Respiratoria (rpm)</FormLabel><FormControl><Input type="number" placeholder="18" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="spo2" render={({ field }) => (<FormItem><FormLabel>Saturación de Oxígeno (SPO2 %)</FormLabel><FormControl><Input type="number" placeholder="97" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="feedingType" render={({ field }) => (<FormItem><FormLabel>Alimentación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Vía Oral">Vía Oral</SelectItem><SelectItem value="Parental">Parental</SelectItem><SelectItem value="Sonda">Sonda</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                     </div>
+                    <Separator className="my-6" />
+                     <h3 className="text-base font-semibold">Visitas Profesionales</h3>
+                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="visitType"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Tipo de Visita</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="Médica">Médica</SelectItem>
+                                        <SelectItem value="Terapia física">Terapia física</SelectItem>
+                                        <SelectItem value="TEO (Ocupacional)">TEO (Ocupacional)</SelectItem>
+                                        <SelectItem value="Terapia Fonoaudiología">Terapia Fonoaudiología</SelectItem>
+                                        <SelectItem value="Terapia Respiratoria">Terapia Respiratoria</SelectItem>
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField control={form.control} name="professionalName" render={({ field }) => (<FormItem><FormLabel>Nombre del Profesional</FormLabel><FormControl><Input placeholder="Ej. Dr. Carlos" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="entryTime" render={({ field }) => (<FormItem><FormLabel>Hora de Llegada</FormLabel><FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="exitTime" render={({ field }) => (<FormItem><FormLabel>Hora de Salida</FormLabel><FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                     </div>
+
+                    <Separator className="my-6" />
                     <div>
-                        <FormLabel>Notas de Evolución</FormLabel>
+                        <h3 className="text-base font-semibold">Notas de Evolución</h3>
                         <div className="space-y-2 mt-2">
                         {evolutionNoteFields.map((field, index) => (
                             <FormField

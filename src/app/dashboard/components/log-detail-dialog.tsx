@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Log } from "@/hooks/use-logs"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
-import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, ImageIcon, FileDown, Clock } from "lucide-react"
+import { Stethoscope, Truck, Heart, Wind, Droplets, Utensils, User, Calendar, FileText, StickyNote, ImageIcon, FileDown, Clock, UserCheck, Briefcase } from "lucide-react"
 
 interface LogDetailDialogProps {
   isOpen: boolean
@@ -117,6 +117,18 @@ export default function LogDetailDialog({ isOpen, onOpenChange, log, residentNam
                         <DetailItem icon={<Droplets size={16}/>} label="Saturación de Oxígeno" value={log.spo2 ? `${log.spo2}%` : 'N/A'} />
                         <DetailItem icon={<Utensils size={16}/>} label="Alimentación" value={log.feedingType || 'N/A'} />
                     </div>
+                    {log.visitType && (
+                        <>
+                         <Separator className="my-4" />
+                          <h3 className="font-semibold text-lg mb-2">Visita Profesional</h3>
+                          <div className="space-y-3">
+                              <DetailItem icon={<Briefcase size={16}/>} label="Tipo de Visita" value={log.visitType} />
+                              <DetailItem icon={<UserCheck size={16}/>} label="Profesional" value={log.professionalName} />
+                              <DetailItem icon={<Clock size={16}/>} label="Hora de Llegada" value={log.entryTime} />
+                              <DetailItem icon={<Clock size={16}/>} label="Hora de Salida" value={log.exitTime} />
+                          </div>
+                        </>
+                    )}
                     <Separator className="my-4" />
                     <div>
                         <h4 className="font-semibold flex items-center mb-2"><StickyNote size={16} className="mr-2"/>Notas de Evolución</h4>

@@ -20,6 +20,10 @@ type MedicalLog = BaseLog & {
   feedingType?: string;
   evolutionNotes?: string[];
   photoEvidenceUrl?: string[];
+  visitType?: string;
+  professionalName?: string;
+  entryTime?: string;
+  exitTime?: string;
 };
 
 // Supply Report
