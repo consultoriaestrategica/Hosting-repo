@@ -49,16 +49,16 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, PlusCircle, CalendarSync } from "lucide-react"
+import { MoreHorizontal, PlusCircle, CalendarSync, CheckCircle, ExternalLink } from "lucide-react"
 import { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 
 // Mock data for users - replace with actual data fetching hook later
 const initialUsers = [
-  { id: "user-1", name: "Admin", username: "admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo", idType: "C.C.", idNumber: "12345678", phone: "3001234567" },
-  { id: "user-2", name: "Enfermera Ana", username: "anap", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo", idType: "C.C.", idNumber: "87654321", phone: "3011234567" },
-  { id: "user-3", name: "Juan Rodriguez", username: "juanr", email: "juan.r@example.com", role: "Familiar", status: "Activo", idType: "C.E.", idNumber: "11223344", phone: "3021234567" },
-  { id: "user-4", name: "Carlos Parra", username: "carlosp", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo", idType: "C.C.", idNumber: "44332211", phone: "3031234567" },
+  { id: "user-1", name: "Admin", username: "admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo", idType: "C.C.", idNumber: "12345678", phone: "3001234567", calendarSynced: false },
+  { id: "user-2", name: "Enfermera Ana", username: "anap", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo", idType: "C.C.", idNumber: "87654321", phone: "3011234567", calendarSynced: false },
+  { id: "user-3", name: "Juan Rodriguez", username: "juanr", email: "juan.r@example.com", role: "Familiar", status: "Activo", idType: "C.E.", idNumber: "11223344", phone: "3021234567", calendarSynced: false },
+  { id: "user-4", name: "Carlos Parra", username: "carlosp", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo", idType: "C.C.", idNumber: "44332211", phone: "3031234567", calendarSynced: false },
 ];
 
 
@@ -67,7 +67,9 @@ export default function SettingsPage() {
   const { settings, setSettings, isLoading } = useSettings()
   const [users, setUsers] = useState(initialUsers);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [syncingUser, setSyncingUser] = useState<any | null>(null);
 
   const handlePriceChange = (plan: 'Habitación compartida' | 'Habitación individual', value: string) => {
     setSettings(prev => ({
@@ -120,7 +122,7 @@ export default function SettingsPage() {
       toast({ title: "Usuario Actualizado", description: `Los datos de ${userData.name} han sido actualizados.` });
     } else {
       // Add user logic
-      const newUser = { id: `user-${Date.now()}`, ...userData };
+      const newUser = { id: `user-${Date.now()}`, ...userData, calendarSynced: false };
       setUsers([...users, newUser as any]);
       toast({ title: "Usuario Creado", description: `El usuario ${userData.name} ha sido añadido.` });
     }
@@ -134,13 +136,26 @@ export default function SettingsPage() {
      toast({ variant: "destructive", title: "Usuario Eliminado", description: "El usuario ha sido eliminado del sistema." });
   };
   
-  const handleSyncCalendar = (userEmail: string) => {
-    toast({
-      title: "Sincronización de Calendario",
-      description: `Iniciando proceso para sincronizar ${userEmail} con Google Calendar. Por favor, siga las instrucciones en la ventana emergente.`,
-    });
-    // In a real app, this would trigger the OAuth flow with Google.
+  const handleSyncCalendar = (user: any) => {
+    setSyncingUser(user);
+    setIsSyncDialogOpen(true);
   };
+  
+  const handleConfirmSync = () => {
+    if (!syncingUser) return;
+    
+    // Simulate API call and update state
+    setUsers(users.map(u => u.id === syncingUser.id ? { ...u, calendarSynced: true } : u));
+    
+    toast({
+      title: "¡Sincronización Exitosa!",
+      description: `El calendario de ${syncingUser.name} ha sido vinculado.`,
+    });
+
+    setIsSyncDialogOpen(false);
+    setSyncingUser(null);
+  };
+
 
   if (isLoading) {
     return <div>Cargando configuración...</div>
@@ -263,8 +278,7 @@ export default function SettingsPage() {
            </Tabs>
         </TabsContent>
         <TabsContent value="users">
-          <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-            <Card>
+          <Card>
               <CardHeader className="flex flex-row items-center">
                 <div className="grid gap-2">
                   <CardTitle>Gestión de Usuarios</CardTitle>
@@ -272,12 +286,10 @@ export default function SettingsPage() {
                     Añada, edite o elimine usuarios del sistema.
                   </CardDescription>
                 </div>
-                <DialogTrigger asChild>
                   <Button size="sm" className="ml-auto gap-1" onClick={() => handleOpenUserDialog()}>
                     <PlusCircle className="h-4 w-4" />
                     Añadir Usuario
                   </Button>
-                </DialogTrigger>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -286,7 +298,7 @@ export default function SettingsPage() {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Correo Electrónico</TableHead>
                       <TableHead>Rol</TableHead>
-                      <TableHead>Sincronización Calendario</TableHead>
+                      <TableHead>Calendario</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead><span className="sr-only">Acciones</span></TableHead>
                     </TableRow>
@@ -301,10 +313,17 @@ export default function SettingsPage() {
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.role}</TableCell>
                         <TableCell>
-                           <Button variant="outline" size="sm" onClick={() => handleSyncCalendar(user.email)}>
-                                <CalendarSync className="mr-2 h-4 w-4" />
-                                Sincronizar
-                            </Button>
+                           {user.calendarSynced ? (
+                                <Badge variant="secondary" className="text-green-600 border-green-200">
+                                    <CheckCircle className="mr-1 h-3 w-3"/>
+                                    Sincronizado
+                                </Badge>
+                           ) : (
+                                <Button variant="outline" size="sm" onClick={() => handleSyncCalendar(user)}>
+                                    <CalendarSync className="mr-2 h-4 w-4" />
+                                    Sincronizar
+                                </Button>
+                           )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={user.status === "Activo" ? "default" : "secondary"} className={user.status === "Activo" ? "bg-green-500 text-white" : ""}>
@@ -333,6 +352,10 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
+        </TabsContent>
+      </Tabs>
+
+        <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
@@ -418,9 +441,42 @@ export default function SettingsPage() {
                 </DialogFooter>
               </form>
             </DialogContent>
-          </Dialog>
-        </TabsContent>
-      </Tabs>
+        </Dialog>
+        
+        <Dialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <CalendarSync />
+                        Sincronizar con Google Calendar
+                    </DialogTitle>
+                    <DialogDescription>
+                        Estás a punto de conectar el calendario para <strong>{syncingUser?.email}</strong>.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 text-sm space-y-4">
+                    <p>Para completar la sincronización, se seguirán los siguientes pasos:</p>
+                    <ol className="list-decimal list-inside space-y-2 bg-muted p-4 rounded-md">
+                        <li>Serás redirigido a la página de inicio de sesión de Google.</li>
+                        <li>Inicia sesión con la cuenta <strong>{syncingUser?.email}</strong>.</li>
+                        <li>Google te pedirá permiso para que "Ángel Guardián" pueda ver y gestionar los eventos de tu calendario.</li>
+                        <li>Al aceptar, la conexión quedará establecida.</li>
+                    </ol>
+                    <p className="text-xs text-muted-foreground">
+                        Esta aplicación podrá crear, modificar y eliminar eventos en tu Google Calendar para mantenerte informado sobre la agenda. Puedes revocar este permiso en cualquier momento desde la configuración de tu cuenta de Google.
+                    </p>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                    <Button onClick={handleConfirmSync}>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Autorizar en Google
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
     </>
   );
 }
+
