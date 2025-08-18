@@ -1,11 +1,11 @@
 
 "use client"
 import { useState, useMemo, useEffect } from "react"
-import { Users, Activity } from "lucide-react"
+import { Users, CalendarCheck } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useResidents } from "@/hooks/use-residents"
-import ActivityFeed from "./components/activity-feed"
+import AgendaDashboard from "./components/agenda-dashboard"
 
 export default function DashboardPage() {
   const { residents, isLoading: residentsLoading } = useResidents()
@@ -43,15 +43,15 @@ export default function DashboardPage() {
           <Card>
              <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    <Activity/>
-                    Actividad Reciente
+                    <CalendarCheck />
+                    Agenda de Próximos Eventos
                 </CardTitle>
                 <CardDescription>
-                    Últimas acciones realizadas en el sistema.
+                    Eventos programados para los próximos 7 días.
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ActivityFeed />
+                <AgendaDashboard />
             </CardContent>
           </Card>
         </div>
