@@ -1,10 +1,11 @@
 
 "use client"
 import { useState, useMemo, useEffect } from "react"
-import { Users } from "lucide-react"
+import { Users, Activity } from "lucide-react"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useResidents } from "@/hooks/use-residents"
+import ActivityFeed from "./components/activity-feed"
 
 export default function DashboardPage() {
   const { residents, isLoading: residentsLoading } = useResidents()
@@ -28,8 +29,8 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold font-headline">Bienvenido a Ángel Guardián</h1>
       </div>
-       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
+       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <Card className="lg:col-span-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total de Residentes Activos</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -37,6 +38,20 @@ export default function DashboardPage() {
             <CardContent>
                 <div className="text-2xl font-bold">{totalActiveResidents}</div>
                 <p className="text-xs text-muted-foreground">Residentes actualmente en el hogar.</p>
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2 xl:col-span-3">
+             <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Activity/>
+                    Actividad Reciente
+                </CardTitle>
+                <CardDescription>
+                    Últimas acciones realizadas en el sistema.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ActivityFeed />
             </CardContent>
           </Card>
         </div>
