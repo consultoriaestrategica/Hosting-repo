@@ -1,6 +1,6 @@
 
 "use client"
-import { useResidents, Resident, DischargeDetails } from "@/hooks/use-residents";
+import { useResidents, Resident, DischargeDetails, AgendaEvent } from "@/hooks/use-residents";
 import { useLogs, Log } from "@/hooks/use-logs";
 import { useContracts as useResidentContracts } from "@/hooks/use-contracts";
 import { useToast } from "@/hooks/use-toast";
@@ -44,13 +44,14 @@ import {
     AlertTriangle,
     CheckCircle2,
     BookUser,
-    Car,
+    Calendar,
     Eye,
     Utensils,
     LogOut,
     MessageSquareWarning,
     Edit,
-    PlusCircle
+    PlusCircle,
+    Trash2
 } from "lucide-react";
 import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
@@ -59,6 +60,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AlertForm from "./alert-form";
 import NewLogForm from "./new-log-form";
+import AgendaForm from "./agenda-form";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -76,7 +78,7 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
 function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || 'admin';
-  const { residents, dischargeResident, isLoading: residentsLoading } = useResidents();
+  const { residents, dischargeResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, isLoading: residentsLoading } = useResidents();
   const { logs, isLoading: logsLoading } = useLogs();
   const { contracts: residentContracts, isLoading: contractsLoading } = useResidentContracts();
   const { toast } = useToast()
@@ -87,6 +89,8 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const [isDischargeDialogOpen, setIsDischargeDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [isNewLogDialogOpen, setIsNewLogDialogOpen] = useState(false);
+  const [isAgendaFormOpen, setIsAgendaFormOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   
   useEffect(() => {
@@ -107,6 +111,11 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
       .filter(log => log.residentId === resident.id)
       .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
   }, [logs, resident]);
+
+  const sortedAgendaEvents = useMemo(() => {
+    if (!resident?.agendaEvents) return [];
+    return [...resident.agendaEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [resident]);
   
   const totalPages = Math.ceil(residentLogs.length / ITEMS_PER_PAGE);
 
@@ -128,6 +137,30 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
         description: `${resident.name} ha sido marcado como inactivo.`,
     });
     setIsDischargeDialogOpen(false);
+  }
+
+  const handleAgendaFormSubmit = (data: Omit<AgendaEvent, 'id'>) => {
+    if (!resident) return;
+    if (selectedEvent) {
+      updateAgendaEvent(resident.id, selectedEvent.id, data);
+      toast({ title: "Evento Actualizado", description: `El evento "${data.title}" ha sido actualizado.` });
+    } else {
+      addAgendaEvent(resident.id, data);
+      toast({ title: "Evento Agendado", description: `Se ha añadido un nuevo evento para ${resident.name}.` });
+    }
+    setIsAgendaFormOpen(false);
+    setSelectedEvent(null);
+  };
+
+  const handleOpenAgendaDialog = (event: AgendaEvent | null = null) => {
+    setSelectedEvent(event);
+    setIsAgendaFormOpen(true);
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    if (!resident) return;
+    deleteAgendaEvent(resident.id, eventId);
+    toast({ variant: 'destructive', title: 'Evento Eliminado', description: 'El evento ha sido eliminado de la agenda.' });
   }
 
   const isLoading = residentsLoading || logsLoading || contractsLoading;
@@ -155,6 +188,15 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
         case 'Finalizado': return 'secondary';
         case 'Cancelado': return 'destructive';
         default: return 'outline';
+    }
+  };
+
+   const getAgendaStatusVariant = (status: string) => {
+    switch (status) {
+      case 'Pendiente': return 'default';
+      case 'Completado': return 'secondary';
+      case 'Cancelado': return 'destructive';
+      default: return 'outline';
     }
   };
 
@@ -229,7 +271,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                     <TabsTrigger value="general">Perfil General</TabsTrigger>
                     <TabsTrigger value="contacts">Contactos</TabsTrigger>
                     <TabsTrigger value="contracts">Contratos</TabsTrigger>
-                    <TabsTrigger value="visits">Visitas</TabsTrigger>
+                    <TabsTrigger value="agenda">Agenda</TabsTrigger>
                     <TabsTrigger value="logs">Registros</TabsTrigger>
                 </TabsList>
                 
@@ -400,38 +442,53 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="visits" className="mt-4">
+                 <TabsContent value="agenda" className="mt-4">
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><Car />Historial de Visitas</CardTitle>
-                            <CardDescription>Todas las visitas registradas para {resident.name}.</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2"><Calendar />Agenda de Eventos</CardTitle>
+                                <CardDescription>Citas, recordatorios y gestiones para {resident.name}.</CardDescription>
+                            </div>
+                            <Button size="sm" onClick={() => handleOpenAgendaDialog()}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Agendar Evento
+                            </Button>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Fecha y Hora</TableHead>
-                                        <TableHead>Visitante</TableHead>
-                                        <TableHead>Parentesco</TableHead>
-                                        <TableHead>Notas</TableHead>
+                                        <TableHead>Evento</TableHead>
+                                        <TableHead>Tipo</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {resident.visits && resident.visits.length > 0 ? (
-                                        [...resident.visits].sort((a,b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()).map(visit => (
-                                            <TableRow key={visit.id}>
-                                                <TableCell>{new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
+                                    {sortedAgendaEvents.length > 0 ? (
+                                        sortedAgendaEvents.map(event => (
+                                            <TableRow key={event.id}>
+                                                <TableCell>{new Date(event.date).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
                                                 <TableCell>
-                                                     <div>{visit.visitorName}</div>
-                                                     <div className="text-xs text-muted-foreground">{visit.visitorIdNumber}</div>
+                                                    <p className="font-semibold">{event.title}</p>
+                                                    <p className="text-xs text-muted-foreground">{event.description}</p>
                                                 </TableCell>
-                                                <TableCell>{visit.kinship}</TableCell>
-                                                <TableCell>{visit.notes || 'N/A'}</TableCell>
+                                                <TableCell>{event.type}</TableCell>
+                                                <TableCell><Badge variant={getAgendaStatusVariant(event.status)}>{event.status}</Badge></TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenAgendaDialog(event)}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEvent(event.id)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">No se han registrado visitas.</TableCell>
+                                            <TableCell colSpan={5} className="h-24 text-center">No hay eventos agendados.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -527,6 +584,25 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                 </TabsContent>
             </Tabs>
         </div>
+        
+        <Dialog open={isAgendaFormOpen} onOpenChange={setIsAgendaFormOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{selectedEvent ? 'Editar Evento' : 'Agendar Nuevo Evento'}</DialogTitle>
+                    <DialogDescription>
+                        Complete los detalles del evento para {resident.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <AgendaForm 
+                    event={selectedEvent} 
+                    onSubmit={handleAgendaFormSubmit}
+                    onCancel={() => {
+                        setIsAgendaFormOpen(false);
+                        setSelectedEvent(null);
+                    }}
+                />
+            </DialogContent>
+        </Dialog>
 
         {selectedLog && (
             <LogDetailDialog 

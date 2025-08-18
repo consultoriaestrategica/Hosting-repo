@@ -58,6 +58,7 @@ export type Resident = {
   age: number;
   dob: string;
   idNumber: string;
+  gender?: "Femenino" | "Masculino" | "Otro";
   medicalHistory?: string[];
   surgicalHistory?: string[];
   allergies?: string[];
@@ -107,8 +108,8 @@ const initialResidents: Resident[] = [
     ],
     diet: "Baja en sodio, alimentos blandos",
     agendaEvents: [
-        { id: "evt-001", date: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), type: 'Cita Médica', title: 'Cita con cardiólogo', description: 'Revisión anual con el Dr. Martínez.', status: 'Pendiente' },
-        { id: "evt-002", date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(), type: 'Gestión Personal', title: 'Visita de la nieta', description: 'Viene Sofía a visitarla por la tarde.', status: 'Completado' },
+        { id: "evt-001", date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), type: 'Cita Médica', title: 'Cita con cardiólogo', description: 'Revisión anual con el Dr. Martínez.', status: 'Pendiente' },
+        { id: "evt-002", date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(), type: 'Gestión Personal', title: 'Visita de la nieta', description: 'Vino Sofía a visitarla por la tarde.', status: 'Completado' },
     ],
     visits: [
         { id: "visit-001", visitorName: "Juan Rodriguez", visitorIdNumber: "11223344", kinship: "Hijo", visitDate: new Date(2024, 6, 18, 16, 0).toISOString(), notes: "Le trajo flores y galletas." },
@@ -320,9 +321,12 @@ function useResidents() {
 
 
   const addAgendaEvent = useCallback((residentId: string, eventData: Omit<AgendaEvent, 'id'>) => {
+    const resident = residents.find(r => r.id === residentId);
+    if (!resident) return;
+
     updateResident(residentId, {
       agendaEvents: [
-        ...(residents.find(r => r.id === residentId)?.agendaEvents || []),
+        ...(resident.agendaEvents || []),
         { ...eventData, id: `evt-${Date.now()}` }
       ]
     });
