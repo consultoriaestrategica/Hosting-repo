@@ -10,7 +10,7 @@ import { useSettings } from "@/hooks/use-settings"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent, Briefcase, Download } from "lucide-react"
+import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent, Briefcase, Download, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -82,8 +82,16 @@ function ContractDetailPageContent({ id }: { id: string }) {
     const staffSalaryFormatted = contractType === 'staff' ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((contract as any).salary) : null;
 
     const handleDownload = () => {
+       if (!contract.documentUrl) return;
+       
+       const link = document.createElement('a');
+       link.href = contract.documentUrl;
+       link.download = contract.documentName || 'contrato.pdf';
+       document.body.appendChild(link);
+       link.click();
+       document.body.removeChild(link);
+       
        toast({ title: "Descarga Iniciada", description: `Descargando ${contract.documentName}`})
-       // In a real app, this would trigger a download from contract.documentUrl
     }
 
 
@@ -190,26 +198,31 @@ function ContractDetailPageContent({ id }: { id: string }) {
                 </div>
                 <div className="lg:col-span-2">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Documento del Contrato</CardTitle>
-                            <CardDescription>
-                                Visualice o descargue el documento PDF del contrato adjunto.
-                            </CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                             <div>
+                                <CardTitle>Documento del Contrato</CardTitle>
+                                <CardDescription>
+                                    Visualice o descargue el documento PDF del contrato adjunto.
+                                </CardDescription>
+                            </div>
+                             {contract.documentUrl && (
+                                <Button onClick={handleDownload} variant="outline">
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Descargar
+                                </Button>
+                             )}
                         </CardHeader>
                         <CardContent>
                             {contract.documentUrl ? (
-                                <div className="flex items-center justify-center p-6 border-2 border-dashed rounded-md">
-                                    <div className="text-center">
-                                        <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                                        <p className="mt-2 font-semibold">{contract.documentName}</p>
-                                        <Button onClick={handleDownload} className="mt-4">
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Descargar Contrato
-                                        </Button>
-                                    </div>
+                                <div className="border rounded-md overflow-hidden">
+                                     <iframe 
+                                        src={contract.documentUrl}
+                                        className="w-full h-[800px]"
+                                        title={`Contrato de ${person.name}`}
+                                    />
                                 </div>
                             ) : (
-                                <div className="text-center text-muted-foreground p-6">
+                                <div className="text-center text-muted-foreground p-10 border-2 border-dashed rounded-md">
                                     No se adjuntó ningún documento para este contrato.
                                 </div>
                             )}
