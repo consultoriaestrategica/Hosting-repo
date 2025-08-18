@@ -14,6 +14,7 @@ import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSig
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 function ContractDetailPageContent({ id }: { id: string }) {
     const searchParams = useSearchParams()
@@ -108,102 +109,108 @@ function ContractDetailPageContent({ id }: { id: string }) {
                     Detalle del Contrato
                 </h1>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
-                 <div className="lg:col-span-1 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><FileText/>Información del Contrato</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-sm space-y-3">
-                            <div className="flex justify-between">
-                                <span className="font-semibold">ID Contrato:</span>
-                                <span>{contract.id}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="font-semibold">Tipo:</span>
-                                <span>{contractType === 'resident' ? `Contrato de Servicios (${(contract as any).contractType})` : 'Contrato Laboral'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="font-semibold">Estado:</span>
-                                <Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge>
-                            </div>
-                            {contractValues && (
-                                <>
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-semibold flex items-center gap-1.5"><DollarSign size={14}/>Valor Base Mensual:</span>
-                                        <span className="font-semibold">{contractValues.base}</span>
-                                    </div>
-                                    {contractValues.vatEnabled && (
-                                        <div className="flex justify-between items-center text-muted-foreground pl-5">
-                                            <span className="flex items-center gap-1.5"><Percent size={12}/>IVA ({settings.vatRate}%):</span>
-                                            <span>{contractValues.vat}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between items-center text-base">
-                                        <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Total Mensual:</span>
-                                        <span className="font-bold">{contractValues.total}</span>
-                                    </div>
-                                </>
-                            )}
-                            {staffSalaryFormatted && (
-                                 <div className="flex justify-between items-center text-base">
-                                    <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Salario Mensual:</span>
-                                    <span className="font-bold">{staffSalaryFormatted}</span>
-                                </div>
-                            )}
-                             <div className="flex justify-between items-center">
-                                <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Inicio:</span>
-                                <span>{new Date(contract.startDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
-                            </div>
-                             <div className="flex justify-between items-center">
-                                <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Fin:</span>
-                                <span>{new Date(contract.endDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
-                            </div>
-                             <div className="flex justify-between items-center">
-                                <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Creación:</span>
-                                <span>{new Date(contract.createdAt).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                             <CardTitle className="flex items-center gap-2">
-                                {contractType === 'resident' ? <User/> : <Briefcase />}
-                                Información d{contractType === 'resident' ? 'el Residente' : 'el Empleado'}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-sm space-y-3">
-                            <div className="flex justify-between">
-                                <span className="font-semibold">Nombre:</span>
-                                <span>{person.name}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="font-semibold">Cédula:</span>
-                                <span>{person.idNumber}</span>
-                            </div>
-                            {contractType === 'resident' && (
-                                <>
-                                    <div className="flex justify-between">
-                                        <span className="font-semibold">Edad:</span>
-                                        <span>{(person as any).age}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-semibold">Habitación:</span>
-                                        <Badge variant={(person as any).roomType === "Habitación individual" ? "default" : "secondary"}>{(person as any).roomType} {(person as any).roomNumber}</Badge>
-                                    </div>
-                                </>
-                            )}
-                            {contractType === 'staff' && (
+            <Tabs defaultValue="details" className="mt-4">
+                <TabsList>
+                    <TabsTrigger value="details">Detalles del Contrato</TabsTrigger>
+                    <TabsTrigger value="document">Documento</TabsTrigger>
+                </TabsList>
+                <TabsContent value="details">
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><FileText/>Información del Contrato</CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-sm space-y-3">
                                 <div className="flex justify-between">
-                                    <span className="font-semibold">Cargo:</span>
-                                    <span>{(person as any).role}</span>
+                                    <span className="font-semibold">ID Contrato:</span>
+                                    <span>{contract.id}</span>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-                <div className="lg:col-span-2">
-                    <Card>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Tipo:</span>
+                                    <span>{contractType === 'resident' ? `Contrato de Servicios (${(contract as any).contractType})` : 'Contrato Laboral'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Estado:</span>
+                                    <Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge>
+                                </div>
+                                {contractValues && (
+                                    <>
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-semibold flex items-center gap-1.5"><DollarSign size={14}/>Valor Base Mensual:</span>
+                                            <span className="font-semibold">{contractValues.base}</span>
+                                        </div>
+                                        {contractValues.vatEnabled && (
+                                            <div className="flex justify-between items-center text-muted-foreground pl-5">
+                                                <span className="flex items-center gap-1.5"><Percent size={12}/>IVA ({settings.vatRate}%):</span>
+                                                <span>{contractValues.vat}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center text-base">
+                                            <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Total Mensual:</span>
+                                            <span className="font-bold">{contractValues.total}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {staffSalaryFormatted && (
+                                    <div className="flex justify-between items-center text-base">
+                                        <span className="font-bold flex items-center gap-1.5"><DollarSign size={14}/>Salario Mensual:</span>
+                                        <span className="font-bold">{staffSalaryFormatted}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Inicio:</span>
+                                    <span>{new Date(contract.startDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Fin:</span>
+                                    <span>{new Date(contract.endDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="font-semibold flex items-center gap-1.5"><Calendar size={14}/>Fecha de Creación:</span>
+                                    <span>{new Date(contract.createdAt).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    {contractType === 'resident' ? <User/> : <Briefcase />}
+                                    Información d{contractType === 'resident' ? 'el Residente' : 'el Empleado'}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-sm space-y-3">
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Nombre:</span>
+                                    <span>{person.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold">Cédula:</span>
+                                    <span>{person.idNumber}</span>
+                                </div>
+                                {contractType === 'resident' && (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span className="font-semibold">Edad:</span>
+                                            <span>{(person as any).age}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-semibold">Habitación:</span>
+                                            <Badge variant={(person as any).roomType === "Habitación individual" ? "default" : "secondary"}>{(person as any).roomType} {(person as any).roomNumber}</Badge>
+                                        </div>
+                                    </>
+                                )}
+                                {contractType === 'staff' && (
+                                    <div className="flex justify-between">
+                                        <span className="font-semibold">Cargo:</span>
+                                        <span>{(person as any).role}</span>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+                <TabsContent value="document">
+                     <Card className="mt-4">
                         <CardHeader className="flex flex-row items-center justify-between">
                              <div>
                                 <CardTitle>Documento del Contrato</CardTitle>
@@ -224,9 +231,14 @@ function ContractDetailPageContent({ id }: { id: string }) {
                                 </div>
                              )}
                         </CardHeader>
+                        <CardContent>
+                            <div className="text-center p-8 text-muted-foreground">
+                                {contract.documentUrl ? "Use los botones de arriba para gestionar el archivo." : "No hay un documento adjunto para este contrato."}
+                            </div>
+                        </CardContent>
                     </Card>
-                </div>
-            </div>
+                </TabsContent>
+            </Tabs>
         </>
     )
 }
