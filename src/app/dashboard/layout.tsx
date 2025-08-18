@@ -1,6 +1,7 @@
 
 "use client"
 import { useEffect } from "react"
+import { usePathname } from "next/navigation"
 import {
   SidebarProvider,
   Sidebar,
@@ -21,9 +22,17 @@ import { isTomorrow, parseISO } from "date-fns"
 
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { isOpen } = useSidebarContext()
+  const { isOpen, isMobile, setIsOpen } = useSidebarContext()
   const { residents, isLoading: residentsLoading } = useResidents()
   const { toast } = useToast()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    if (isMobile) {
+      setIsOpen(false)
+    }
+  }, [pathname, isMobile, setIsOpen])
+
 
   useEffect(() => {
     if (residentsLoading) return;
