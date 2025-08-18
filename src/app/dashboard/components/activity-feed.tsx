@@ -8,10 +8,16 @@ import { useContracts as useResidentContracts } from '@/hooks/use-contracts';
 import { useStaffContracts } from '@/hooks/use-staff-contracts';
 import { useResidents } from '@/hooks/use-residents';
 import { useStaff } from '@/hooks/use-staff';
-import { Stethoscope, FileText, User, Car, Briefcase } from 'lucide-react';
+import { Stethoscope, FileText, User, Car, Briefcase, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 type ActivityItem = {
     id: string;
@@ -19,6 +25,7 @@ type ActivityItem = {
     date: string; // ISO string
     icon: React.ReactNode;
     description: React.ReactNode;
+    activityType: React.ReactNode;
 };
 
 const ITEMS_TO_SHOW = 15;
@@ -33,15 +40,16 @@ export default function ActivityFeed() {
     const allActivities = useMemo(() => {
         const logActivities: ActivityItem[] = logs.map(log => {
             const residentName = residents.find(r => r.id === log.residentId)?.name || 'Residente desconocido';
+            const isMedical = log.reportType === 'medico';
             return {
                 id: log.id,
                 type: 'log',
                 date: log.endDate,
-                icon: <Stethoscope className="h-4 w-4" />,
+                icon: isMedical ? <Stethoscope className="h-4 w-4" /> : <Truck className="h-4 w-4" />,
+                activityType: <Badge variant="outline">{isMedical ? 'Reporte Médico' : 'Suministro'}</Badge>,
                 description: (
                     <p>
-                        Nuevo{' '}
-                        <Badge variant="outline">{log.reportType === 'medico' ? 'Reporte Médico' : 'Reporte de Suministro'}</Badge> para{' '}
+                        Para{' '}
                         <Link href={`/dashboard/residents/${log.residentId}?role=admin`} className="font-semibold hover:underline">{residentName}</Link>.
                     </p>
                 )
@@ -55,9 +63,10 @@ export default function ActivityFeed() {
                 type: 'resident-contract',
                 date: contract.createdAt,
                 icon: <FileText className="h-4 w-4" />,
+                activityType: <Badge variant="outline">Contrato Residente</Badge>,
                 description: (
                     <p>
-                        Nuevo <Badge variant="outline">Contrato de Residente</Badge> generado para{' '}
+                        Generado para{' '}
                         <Link href={`/dashboard/residents/${contract.residentId}?role=admin`} className="font-semibold hover:underline">{residentName}</Link>.
                     </p>
                 )
@@ -71,9 +80,10 @@ export default function ActivityFeed() {
                 type: 'staff-contract',
                 date: contract.createdAt,
                 icon: <Briefcase className="h-4 w-4" />,
+                activityType: <Badge variant="outline">Contrato Laboral</Badge>,
                 description: (
                     <p>
-                        Nuevo <Badge variant="outline">Contrato Laboral</Badge> generado para{' '}
+                        Generado para{' '}
                         <Link href={`/dashboard/staff/${contract.staffId}?role=admin`} className="font-semibold hover:underline">{staffName}</Link>.
                     </p>
                 )
@@ -86,9 +96,10 @@ export default function ActivityFeed() {
                 type: 'visit' as const,
                 date: visit.visitDate,
                 icon: <Car className="h-4 w-4" />,
+                activityType: <Badge variant="secondary">Visita</Badge>,
                 description: (
                      <p>
-                        <Badge variant="secondary">Visita</Badge> de <strong>{visit.visitorName}</strong> a{' '}
+                        De <strong>{visit.visitorName}</strong> a{' '}
                         <Link href={`/dashboard/residents/${resident.id}?role=admin`} className="font-semibold hover:underline">{resident.name}</Link>.
                     </p>
                 )
@@ -112,22 +123,32 @@ export default function ActivityFeed() {
     }
 
     return (
-        <ScrollArea className="h-72">
-            <div className="space-y-4">
-                {allActivities.map((activity, index) => (
-                    <div key={activity.id} className="grid grid-cols-[auto,1fr,auto] items-start gap-4">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            {activity.icon}
-                        </div>
-                        <div className="text-sm">
-                            {activity.description}
-                        </div>
-                        <time className="text-sm text-muted-foreground">
-                            {new Date(activity.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                        </time>
-                    </div>
-                ))}
-            </div>
-        </ScrollArea>
+        <div className="w-full">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[120px]">Tipo</TableHead>
+                        <TableHead>Detalle</TableHead>
+                        <TableHead className="w-[140px] text-right">Fecha</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {allActivities.map((activity) => (
+                        <TableRow key={activity.id}>
+                            <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                    {activity.icon}
+                                    {activity.activityType}
+                                </div>
+                            </TableCell>
+                            <TableCell>{activity.description}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                                {new Date(activity.date).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
     );
 }

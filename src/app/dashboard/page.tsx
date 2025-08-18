@@ -29,8 +29,8 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold font-headline">Bienvenido a Ángel Guardián</h1>
       </div>
-       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <Card className="lg:col-span-1">
+       <div className="grid gap-6 md:grid-cols-1">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total de Residentes Activos</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -40,7 +40,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Residentes actualmente en el hogar.</p>
             </CardContent>
           </Card>
-          <Card className="lg:col-span-2 xl:col-span-3">
+          <Card>
              <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Activity/>
