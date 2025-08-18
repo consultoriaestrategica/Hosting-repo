@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent, Briefcase, Download, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
+import Link from "next/link"
 
 function ContractDetailPageContent({ id }: { id: string }) {
     const searchParams = useSearchParams()
@@ -92,6 +93,11 @@ function ContractDetailPageContent({ id }: { id: string }) {
        document.body.removeChild(link);
        
        toast({ title: "Descarga Iniciada", description: `Descargando ${contract.documentName}`})
+    }
+    
+    const handleView = () => {
+       if (!contract.documentUrl) return;
+       window.open(contract.documentUrl, '_blank');
     }
 
 
@@ -206,26 +212,26 @@ function ContractDetailPageContent({ id }: { id: string }) {
                                 </CardDescription>
                             </div>
                              {contract.documentUrl && (
-                                <Button onClick={handleDownload} variant="outline">
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Descargar
-                                </Button>
+                                <div className="flex gap-2">
+                                     <Button onClick={handleView} variant="outline">
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Ver Archivo
+                                    </Button>
+                                    <Button onClick={handleDownload}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Descargar
+                                    </Button>
+                                </div>
                              )}
                         </CardHeader>
                         <CardContent>
+                            <div className="text-center text-muted-foreground p-10 border-2 border-dashed rounded-md h-[800px] flex items-center justify-center">
                             {contract.documentUrl ? (
-                                <div className="border rounded-md overflow-hidden">
-                                     <iframe 
-                                        src={contract.documentUrl}
-                                        className="w-full h-[800px]"
-                                        title={`Contrato de ${person.name}`}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="text-center text-muted-foreground p-10 border-2 border-dashed rounded-md">
-                                    No se adjuntó ningún documento para este contrato.
-                                </div>
-                            )}
+                                <p>Haga clic en "Ver Archivo" para abrir el documento en una nueva pestaña.</p>
+                             ) : (
+                                <p>No se adjuntó ningún documento para este contrato.</p>
+                             )}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
