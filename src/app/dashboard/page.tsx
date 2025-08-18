@@ -32,6 +32,15 @@ export default function DashboardPage() {
     return residents.filter(r => r.status === 'Activo').length;
   }, [residents]);
 
+  const generateGoogleCalendarLink = (event: Omit<AgendaEvent, 'id' | 'status'>) => {
+    const startTime = new Date(event.date).toISOString().replace(/-|:|\.\d\d\d/g, "");
+    const endTime = new Date(new Date(event.date).getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, ""); // Add 1 hour duration
+    const details = encodeURIComponent(event.description || '');
+    const text = encodeURIComponent(event.title);
+
+    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
+  };
+
   const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
     if (!residentId) {
         toast({ variant: 'destructive', title: 'Error', description: 'Debe seleccionar un residente.'})
@@ -41,7 +50,18 @@ export default function DashboardPage() {
     if (!resident) return;
 
     addAgendaEvent(residentId, data);
-    toast({ title: "Evento Agendado", description: `Se ha añadido un nuevo evento para ${resident.name}.` });
+    
+    const calendarLink = generateGoogleCalendarLink(data);
+
+    toast({ 
+        title: "Evento Agendado", 
+        description: `Se ha añadido un nuevo evento para ${resident.name}.`,
+        action: (
+            <a href={calendarLink} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm">Añadir a Google Calendar</Button>
+            </a>
+        )
+    });
     
     setIsAgendaFormOpen(false);
   };

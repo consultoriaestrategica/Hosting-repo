@@ -138,15 +138,43 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
     });
     setIsDischargeDialogOpen(false);
   }
+  
+  const generateGoogleCalendarLink = (event: Omit<AgendaEvent, 'id' | 'status'>) => {
+    const startTime = new Date(event.date).toISOString().replace(/-|:|\.\d\d\d/g, "");
+    const endTime = new Date(new Date(event.date).getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, ""); // Add 1 hour duration
+    const details = encodeURIComponent(event.description || '');
+    const text = encodeURIComponent(event.title);
+
+    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
+  };
 
   const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
     if (!resident) return;
+    
+    const calendarLink = generateGoogleCalendarLink(data);
+
     if (selectedEvent) {
       updateAgendaEvent(resident.id, selectedEvent.id, data);
-      toast({ title: "Evento Actualizado", description: `El evento "${data.title}" ha sido actualizado.` });
+      toast({ 
+          title: "Evento Actualizado", 
+          description: `El evento "${data.title}" ha sido actualizado.`,
+          action: (
+              <a href={calendarLink} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm">Actualizar en Google Calendar</Button>
+              </a>
+          )
+      });
     } else {
       addAgendaEvent(resident.id, data);
-      toast({ title: "Evento Agendado", description: `Se ha añadido un nuevo evento para ${resident.name}.` });
+      toast({ 
+          title: "Evento Agendado", 
+          description: `Se ha añadido un nuevo evento para ${resident.name}.`,
+           action: (
+            <a href={calendarLink} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm">Añadir a Google Calendar</Button>
+            </a>
+        )
+      });
     }
     setIsAgendaFormOpen(false);
     setSelectedEvent(null);
