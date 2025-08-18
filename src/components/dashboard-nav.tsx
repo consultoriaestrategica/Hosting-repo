@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { BarChart3, Users, ClipboardList, FileText, Settings, BookUser, HardHat, Car } from "lucide-react"
+import { Home, Users, ClipboardList, FileText, Settings, BookUser, HardHat, Car } from "lucide-react"
 
 import {
   SidebarMenu,
@@ -20,7 +20,7 @@ export function DashboardNav() {
   }
   
   const allNavItems = [
-    { href: "/dashboard", label: "Panel de Control", icon: <BarChart3 />, roles: ['admin', 'family', 'staff'] },
+    { href: "/dashboard", label: "Inicio", icon: <Home />, roles: ['admin', 'family', 'staff'] },
     { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['admin', 'family', 'staff'] },
     { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['admin'] },
     { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['admin', 'staff'] },
