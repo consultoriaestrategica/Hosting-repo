@@ -28,15 +28,15 @@ import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
 import { useContracts } from "@/hooks/use-contracts"
 import { useSettings } from "@/hooks/use-settings"
-import { useState } from "react"
-import { generateContract } from "@/ai/flows/contract-flow"
-import { Loader2 } from "lucide-react"
+import { useState, useRef } from "react"
+import { Loader2, UploadCloud, File, X } from "lucide-react"
 
 const contractFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
   contractType: z.enum(["Habitación compartida", "Habitación individual"], { required_error: "Debe seleccionar un tipo de contrato." }),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de inicio inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
+  document: z.any().refine(file => file?.name, "Debe adjuntar un archivo de contrato."),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
     message: "La fecha de fin debe ser posterior a la fecha de inicio.",
     path: ["endDate"],
@@ -51,7 +51,9 @@ export default function NewContractPage() {
   const { residents } = useResidents()
   const { addContract } = useContracts()
   const { settings } = useSettings()
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ContractFormValues>({
     resolver: zodResolver(contractFormSchema),
@@ -63,44 +65,36 @@ export default function NewContractPage() {
     },
   })
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setUploadedFile(file);
+      form.setValue("document", file); // Set value for react-hook-form
+    }
+  };
+
+  const removeFile = () => {
+    setUploadedFile(null);
+    form.setValue("document", null);
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
+
  async function onSubmit(data: ContractFormValues) {
-    setIsGenerating(true)
+    setIsSaving(true)
     const resident = residents.find(r => r.id === data.residentId);
 
-    if (!resident) {
-      toast({ variant: "destructive", title: "Error", description: "No se pudo encontrar al residente seleccionado." });
-      setIsGenerating(false);
+    if (!resident || !uploadedFile) {
+      toast({ variant: "destructive", title: "Error", description: "Faltan datos del residente o el archivo del contrato." });
+      setIsSaving(false);
       return;
     }
     
-    const responsibleParty = resident.familyContacts?.[0];
-    if(!responsibleParty) {
-        toast({ variant: "destructive", title: "Error", description: "El residente no tiene un contacto familiar principal asignado." });
-        setIsGenerating(false);
-        return;
-    }
-
     try {
-        const baseValue = settings.prices[data.contractType];
-        const vatRate = settings.vatEnabled ? (settings.vatRate || 0) / 100 : 0;
-        const totalValue = baseValue * (1 + vatRate);
-        const formattedTotalValue = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalValue);
-
-        const contractDetails = await generateContract({
-            residentName: resident.name,
-            residentIdNumber: resident.idNumber,
-            responsiblePartyName: responsibleParty.name,
-            responsiblePartyIdNumber: "N/A", // This should be added to the resident model
-            responsiblePartyKinship: responsibleParty.kinship,
-            responsiblePartyAddress: responsibleParty.address,
-            startDate: data.startDate,
-            endDate: data.endDate,
-            contractType: data.contractType,
-            roomType: resident.roomType,
-            dependencyLevel: resident.dependency,
-            contractValue: formattedTotalValue,
-            promptTemplate: settings.contractTemplate, // Pass the template from settings
-        });
+        // Simulate file upload and get a URL
+        const documentUrl = URL.createObjectURL(uploadedFile);
 
         const newContract = {
             residentId: data.residentId,
@@ -108,39 +102,40 @@ export default function NewContractPage() {
             startDate: data.startDate,
             endDate: data.endDate,
             status: 'Activo',
-            details: contractDetails,
+            documentName: uploadedFile.name,
+            documentUrl: documentUrl, 
             createdAt: new Date().toISOString()
         };
 
         const addedContract = addContract(newContract);
 
         toast({
-            title: "Contrato Generado Exitosamente",
+            title: "Contrato Guardado Exitosamente",
             description: `Se ha creado un nuevo contrato para ${resident.name}.`,
         });
 
-        router.push(`/dashboard/contracts/${addedContract.id}`);
+        router.push(`/dashboard/contracts/${addedContract.id}?type=resident`);
 
     } catch (error) {
-        console.error("Error generating contract:", error);
+        console.error("Error saving contract:", error);
         toast({
             variant: "destructive",
-            title: "Error al Generar Contrato",
-            description: "No se pudo generar el contrato. Por favor, inténtelo de nuevo.",
+            title: "Error al Guardar Contrato",
+            description: "No se pudo guardar el contrato. Por favor, inténtelo de nuevo.",
         });
     } finally {
-        setIsGenerating(false);
+        setIsSaving(false);
     }
   }
 
 
   return (
     <>
-      <h1 className="text-3xl font-bold font-headline mb-6">Generar Nuevo Contrato</h1>
+      <h1 className="text-3xl font-bold font-headline mb-6">Crear Nuevo Contrato</h1>
       <Card>
         <CardHeader>
             <CardTitle>Datos del Contrato</CardTitle>
-            <CardDescription>Seleccione el residente y especifique los términos del contrato. La IA generará el documento.</CardDescription>
+            <CardDescription>Complete los datos y adjunte el documento PDF del contrato.</CardDescription>
         </CardHeader>
         <CardContent>
             <Form {...form}>
@@ -157,10 +152,9 @@ export default function NewContractPage() {
                                     <SelectTrigger><SelectValue placeholder="Seleccione un residente" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {residents.filter(r => r.status === 'Activo' && r.familyContacts && r.familyContacts.length > 0).map(r => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
+                                    {residents.filter(r => r.status === 'Activo').map(r => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}
                                 </SelectContent>
                                 </Select>
-                                 <FormDescription>Solo se muestran residentes con un contacto familiar.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -180,7 +174,6 @@ export default function NewContractPage() {
                                     <SelectItem value="Habitación individual">Habitación Individual</SelectItem>
                                 </SelectContent>
                                 </Select>
-                                <FormDescription>El tipo de habitación se toma del perfil del residente.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -188,13 +181,49 @@ export default function NewContractPage() {
                         <FormField control={form.control} name="startDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                      </div>
+
+                    <FormField
+                        control={form.control}
+                        name="document"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Documento del Contrato (PDF)</FormLabel>
+                                {uploadedFile ? (
+                                     <div className="p-3 rounded-lg border bg-muted/50 flex justify-between items-center text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <File className="h-5 w-5 text-muted-foreground" />
+                                            <span>{uploadedFile.name}</span>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={removeFile}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <FormControl>
+                                        <label htmlFor="file-upload" className="relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-card py-6 hover:bg-muted">
+                                            <div className=" text-center">
+                                                <UploadCloud size={20} />
+                                                <p className="mt-2 text-sm text-gray-500">
+                                                    <span className="font-semibold">Subir archivo PDF</span>
+                                                </p>
+                                            </div>
+                                             <Input id="file-upload" ref={fileInputRef} type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+                                        </label>
+                                    </FormControl>
+                                )}
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+
                      <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => router.back()} disabled={isGenerating}>
+                        <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSaving}>
                         Cancelar
                         </Button>
-                        <Button type="submit" disabled={isGenerating}>
-                            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isGenerating ? "Generando..." : "Generar y Guardar Contrato"}
+                        <Button type="submit" disabled={isSaving}>
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSaving ? "Guardando..." : "Guardar Contrato"}
                         </Button>
                     </div>
                 </form>

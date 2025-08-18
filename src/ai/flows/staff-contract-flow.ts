@@ -18,31 +18,12 @@ const StaffContractInputSchema = z.object({
   staffSalary: z.string().describe('El salario mensual del empleado, formateado como moneda (ej. $2,500,000 COP).'),
   startDate: z.string().describe('La fecha de inicio del contrato (YYYY-MM-DD).'),
   endDate: z.string().describe('La fecha de fin del contrato (YYYY-MM-DD).'),
-  promptTemplate: z.string().describe('La plantilla de prompt para generar el contrato.'),
 });
 
 export type StaffContractInput = z.infer<typeof StaffContractInputSchema>;
 
+// The AI generation is removed. This function now serves no purpose but is kept to avoid breaking imports.
 export async function generateStaffContract(input: StaffContractInput): Promise<string> {
-  const result = await generateStaffContractFlow(input);
-  return result;
+  console.log("generateStaffContract is deprecated and should not be used for AI generation.");
+  return "Contrato no generado por IA.";
 }
-
-const prompt = ai.definePrompt({
-  name: 'staffContractPrompt',
-  input: { schema: StaffContractInputSchema },
-  output: { format: 'text' },
-  prompt: `{{{promptTemplate}}}`,
-});
-
-const generateStaffContractFlow = ai.defineFlow(
-  {
-    name: 'generateStaffContractFlow',
-    inputSchema: StaffContractInputSchema,
-    outputSchema: z.string(),
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    return output!;
-  }
-);

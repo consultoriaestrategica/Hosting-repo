@@ -16,9 +16,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { generateStaffContract } from "@/ai/flows/staff-contract-flow"
-import { Loader2 } from "lucide-react"
+import { useState, useRef } from "react"
+import { Loader2, UploadCloud, File, X } from "lucide-react"
 import { useSettings } from "@/hooks/use-settings"
 import { Staff } from "@/hooks/use-staff"
 import { useStaffContracts } from "@/hooks/use-staff-contracts"
@@ -28,6 +27,7 @@ const contractFormSchema = z.object({
   salary: z.coerce.number().min(0, "El salario debe ser un número positivo."),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de inicio inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
+  document: z.any().refine(file => file?.name, "Debe adjuntar un archivo de contrato."),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
     message: "La fecha de fin debe ser posterior a la fecha de inicio.",
     path: ["endDate"],
@@ -44,9 +44,11 @@ interface NewStaffContractFormProps {
 export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewStaffContractFormProps) {
   const { toast } = useToast()
   const router = useRouter()
-  const { settings } = useSettings()
   const { addContract } = useStaffContracts()
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const form = useForm<ContractFormValues>({
     resolver: zodResolver(contractFormSchema),
@@ -57,22 +59,33 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
     },
   })
 
- async function onSubmit(data: ContractFormValues) {
-    setIsGenerating(true)
-   
-    try {
-        const formattedSalary = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(data.salary);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setUploadedFile(file);
+      form.setValue("document", file);
+    }
+  };
 
-        const contractDetails = await generateStaffContract({
-            staffName: staffMember.name,
-            staffIdNumber: staffMember.idNumber,
-            staffAddress: staffMember.address,
-            staffRole: staffMember.role,
-            staffSalary: formattedSalary,
-            startDate: data.startDate,
-            endDate: data.endDate,
-            promptTemplate: settings.contractTemplates.staff,
-        });
+  const removeFile = () => {
+    setUploadedFile(null);
+    form.setValue("document", null);
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
+ async function onSubmit(data: ContractFormValues) {
+    setIsSaving(true)
+   
+     if (!uploadedFile) {
+      toast({ variant: "destructive", title: "Error", description: "Debe adjuntar el archivo del contrato." });
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+        const documentUrl = URL.createObjectURL(uploadedFile);
 
         const newContract = {
             staffId: staffMember.id,
@@ -80,14 +93,15 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
             endDate: data.endDate,
             status: 'Activo',
             salary: data.salary,
-            details: contractDetails,
+            documentName: uploadedFile.name,
+            documentUrl: documentUrl,
             createdAt: new Date().toISOString()
         };
 
         const addedContract = addContract(newContract);
 
         toast({
-            title: "Contrato Generado Exitosamente",
+            title: "Contrato Guardado Exitosamente",
             description: `Se ha creado un nuevo contrato para ${staffMember.name}.`,
         });
         
@@ -95,14 +109,14 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
         router.push(`/dashboard/contracts/${addedContract.id}?type=staff`);
 
     } catch (error) {
-        console.error("Error generating staff contract:", error);
+        console.error("Error saving staff contract:", error);
         toast({
             variant: "destructive",
-            title: "Error al Generar Contrato",
-            description: "No se pudo generar el contrato. Por favor, inténtelo de nuevo.",
+            title: "Error al Guardar Contrato",
+            description: "No se pudo guardar el contrato. Por favor, inténtelo de nuevo.",
         });
     } finally {
-        setIsGenerating(false);
+        setIsSaving(false);
     }
   }
 
@@ -110,20 +124,55 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
   return (
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
-                    <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salario Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="startDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salario Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="startDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
+                     <FormField
+                        control={form.control}
+                        name="document"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Documento del Contrato (PDF)</FormLabel>
+                                {uploadedFile ? (
+                                     <div className="p-3 rounded-lg border bg-muted/50 flex justify-between items-center text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <File className="h-5 w-5 text-muted-foreground" />
+                                            <span>{uploadedFile.name}</span>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={removeFile}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <FormControl>
+                                        <label htmlFor="file-upload" className="relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-card py-6 hover:bg-muted">
+                                            <div className=" text-center">
+                                                <UploadCloud size={20} />
+                                                <p className="mt-2 text-sm text-gray-500">
+                                                    <span className="font-semibold">Subir archivo PDF</span>
+                                                </p>
+                                            </div>
+                                             <Input id="file-upload" ref={fileInputRef} type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+                                        </label>
+                                    </FormControl>
+                                )}
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                    <Button type="button" variant="outline" disabled={isGenerating}>
+                    <Button type="button" variant="outline" disabled={isSaving}>
                         Cancelar
                     </Button>
                     </DialogClose>
-                    <Button type="submit" disabled={isGenerating}>
-                        {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isGenerating ? "Generando..." : "Generar y Guardar Contrato"}
+                    <Button type="submit" disabled={isSaving}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSaving ? "Guardando..." : "Guardar Contrato"}
                     </Button>
                 </DialogFooter>
         </form>

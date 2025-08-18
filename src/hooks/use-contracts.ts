@@ -10,7 +10,8 @@ export type Contract = {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   status: 'Activo' | 'Finalizado' | 'Cancelado';
-  details: string; // Markdown text of the contract
+  documentName: string;
+  documentUrl: string; // URL to the uploaded PDF
   createdAt: string; // ISO string
 };
 
@@ -24,12 +25,28 @@ export function useContracts() {
 
   const loadContracts = useCallback(() => {
     try {
-      let storedContracts = localStorage.getItem(CONTRACTS_STORAGE_KEY);
-      if (storedContracts) {
-        // Migration from old values
-        storedContracts = storedContracts.replace(/"Básica"/g, '"Habitación compartida"');
-        storedContracts = storedContracts.replace(/"Premium"/g, '"Habitación individual"');
-        setContracts(JSON.parse(storedContracts));
+      let storedContractsJson = localStorage.getItem(CONTRACTS_STORAGE_KEY);
+      if (storedContractsJson) {
+        let storedContracts = JSON.parse(storedContractsJson);
+
+        // Migration logic for old data structure
+        const needsMigration = storedContracts.some((c: any) => c.details && !c.documentUrl);
+        if (needsMigration) {
+            storedContracts = storedContracts.map((c: any) => {
+                if (c.details && !c.documentUrl) {
+                    return {
+                        ...c,
+                        documentName: `contrato-${c.id}.pdf`,
+                        documentUrl: '', // Old contracts won't have a file
+                        details: undefined, // Remove old field
+                    };
+                }
+                return c;
+            });
+             localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify(storedContracts));
+        }
+
+        setContracts(storedContracts);
       } else {
         localStorage.setItem(CONTRACTS_STORAGE_KEY, JSON.stringify(initialContracts));
         setContracts(initialContracts);

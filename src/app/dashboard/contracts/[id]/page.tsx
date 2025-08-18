@@ -10,8 +10,7 @@ import { useSettings } from "@/hooks/use-settings"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent, Briefcase } from "lucide-react"
-import { marked } from "marked"
+import { Printer, User, FileText, Calendar, AlertTriangle, Edit, Save, DollarSign, Percent, Briefcase, Download } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -20,8 +19,8 @@ function ContractDetailPageContent({ id }: { id: string }) {
     const contractType = searchParams.get('type') || 'resident';
 
     // Hooks
-    const { contracts: residentContracts, updateContract: updateResidentContract, isLoading: residentContractsLoading } = useResidentContracts()
-    const { contracts: staffContracts, updateContract: updateStaffContract, isLoading: staffContractsLoading } = useStaffContracts()
+    const { contracts: residentContracts, isLoading: residentContractsLoading } = useResidentContracts()
+    const { contracts: staffContracts, isLoading: staffContractsLoading } = useStaffContracts()
     const { residents, isLoading: residentsLoading } = useResidents()
     const { staff, isLoading: staffLoading } = useStaff()
     const { settings, isLoading: settingsLoading } = useSettings()
@@ -29,9 +28,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
 
     // State
     const [isClient, setIsClient] = useState(false)
-    const [isEditing, setIsEditing] = useState(false)
-    const [editableDetails, setEditableDetails] = useState("")
-
+    
     useEffect(() => {
         setIsClient(true)
     }, [])
@@ -45,11 +42,6 @@ function ContractDetailPageContent({ id }: { id: string }) {
         ? residents.find(r => r.id === (contract as any)?.residentId)
         : staff.find(s => s.id === (contract as any)?.staffId);
 
-    useEffect(() => {
-        if (contract) {
-            setEditableDetails(contract.details)
-        }
-    }, [contract])
 
     const isLoading = residentsLoading || staffLoading || residentContractsLoading || staffContractsLoading || settingsLoading;
 
@@ -89,31 +81,11 @@ function ContractDetailPageContent({ id }: { id: string }) {
     const contractValues = contractType === 'resident' ? getResidentContractValueDetails((contract as any).contractType) : null;
     const staffSalaryFormatted = contractType === 'staff' ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((contract as any).salary) : null;
 
-    const handlePrint = () => {
-       const printWindow = window.open('', '_blank');
-       if(printWindow) {
-            printWindow.document.write('<html><head><title>Contrato</title>');
-            printWindow.document.write('<style>body { font-family: sans-serif; } .prose { max-width: 100%; } </style>');
-            printWindow.document.write('</head><body>');
-            const contractHtml = marked.parse(contract.details);
-            printWindow.document.write(contractHtml as string);
-            printWindow.document.write('</body></html>');
-            printWindow.document.close();
-            printWindow.print();
-       } else {
-            toast({ variant: "destructive", title: "Error", description: "No se pudo abrir la ventana de impresión. Revise la configuración de su navegador."})
-       }
+    const handleDownload = () => {
+       toast({ title: "Descarga Iniciada", description: `Descargando ${contract.documentName}`})
+       // In a real app, this would trigger a download from contract.documentUrl
     }
 
-    const handleSave = () => {
-        if (contractType === 'resident') {
-            updateResidentContract(id, { details: editableDetails });
-        } else {
-            updateStaffContract(id, { details: editableDetails });
-        }
-        setIsEditing(false);
-        toast({ title: "Contrato Actualizado", description: "Los cambios se han guardado exitosamente." });
-    }
 
     return (
         <>
@@ -121,23 +93,6 @@ function ContractDetailPageContent({ id }: { id: string }) {
                 <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold font-headline tracking-tight sm:grow-0">
                     Detalle del Contrato
                 </h1>
-                <div className="hidden items-center gap-2 md:ml-auto md:flex">
-                    {isEditing ? (
-                        <Button onClick={handleSave}>
-                            <Save className="mr-2 h-4 w-4" />
-                            Guardar Cambios
-                        </Button>
-                    ) : (
-                         <Button variant="outline" onClick={() => setIsEditing(true)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar Contrato
-                        </Button>
-                    )}
-                    <Button variant="outline" onClick={handlePrint} disabled={isEditing}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Imprimir / Guardar PDF
-                    </Button>
-                </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
                  <div className="lg:col-span-1 space-y-6">
@@ -236,23 +191,28 @@ function ContractDetailPageContent({ id }: { id: string }) {
                 <div className="lg:col-span-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Contenido del Contrato</CardTitle>
+                            <CardTitle>Documento del Contrato</CardTitle>
                             <CardDescription>
-                                {isEditing
-                                ? "Edite el contenido del contrato en formato Markdown. Guarde los cambios para actualizar."
-                                : "Este es el texto completo del contrato generado. Revíselo cuidadosamente."}
+                                Visualice o descargue el documento PDF del contrato adjunto.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                           {isEditing ? (
-                                <Textarea 
-                                    value={editableDetails}
-                                    onChange={(e) => setEditableDetails(e.target.value)}
-                                    className="min-h-[60vh] font-mono text-sm"
-                                />
-                           ) : (
-                                <div className="prose prose-sm max-w-none border rounded-md p-4 bg-muted/50 overflow-y-auto max-h-[60vh]" dangerouslySetInnerHTML={{ __html: marked.parse(contract.details) as string }}></div>
-                           )}
+                            {contract.documentUrl ? (
+                                <div className="flex items-center justify-center p-6 border-2 border-dashed rounded-md">
+                                    <div className="text-center">
+                                        <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                                        <p className="mt-2 font-semibold">{contract.documentName}</p>
+                                        <Button onClick={handleDownload} className="mt-4">
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Descargar Contrato
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center text-muted-foreground p-6">
+                                    No se adjuntó ningún documento para este contrato.
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

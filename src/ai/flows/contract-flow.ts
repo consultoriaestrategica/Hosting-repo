@@ -10,6 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
+// This flow is no longer used for AI generation, but the schema can be kept for validation if needed elsewhere.
 const ContractInputSchema = z.object({
   residentName: z.string().describe('El nombre completo del residente.'),
   residentIdNumber: z.string().describe('El número de cédula del residente.'),
@@ -23,32 +24,11 @@ const ContractInputSchema = z.object({
   roomType: z.string().describe('El tipo de habitación asignada (Habitación compartida o Habitación individual).'),
   dependencyLevel: z.string().describe('El nivel de dependencia del residente (Dependiente o Independiente).'),
   contractValue: z.string().describe('El valor total mensual del contrato, formateado como moneda (ej. $2,500,000 COP).'),
-  // New field for the dynamic template
-  promptTemplate: z.string().describe('La plantilla de prompt para generar el contrato.'),
 });
 export type ContractInput = z.infer<typeof ContractInputSchema>;
 
+// The AI generation is removed. This function now serves no purpose but is kept to avoid breaking imports.
 export async function generateContract(input: ContractInput): Promise<string> {
-  const result = await generateContractFlow(input);
-  return result;
+  console.log("generateContract is deprecated and should not be used for AI generation.");
+  return "Contrato no generado por IA.";
 }
-
-const prompt = ai.definePrompt({
-  name: 'contractPrompt',
-  input: { schema: ContractInputSchema },
-  output: { format: 'text' },
-  // Use the template passed in the input
-  prompt: `{{{promptTemplate}}}`,
-});
-
-const generateContractFlow = ai.defineFlow(
-  {
-    name: 'generateContractFlow',
-    inputSchema: ContractInputSchema,
-    outputSchema: z.string(),
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    return output!;
-  }
-);

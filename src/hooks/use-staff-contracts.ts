@@ -10,7 +10,8 @@ export type StaffContract = {
   endDate: string; // YYYY-MM-DD
   status: 'Activo' | 'Finalizado' | 'Cancelado';
   salary: number;
-  details: string; // Markdown text of the contract
+  documentName: string;
+  documentUrl: string; // URL to the uploaded PDF
   createdAt: string; // ISO string
 };
 
@@ -24,9 +25,26 @@ export function useStaffContracts() {
 
   const loadContracts = useCallback(() => {
     try {
-      const storedContracts = localStorage.getItem(STAFF_CONTRACTS_STORAGE_KEY);
-      if (storedContracts) {
-        setContracts(JSON.parse(storedContracts));
+      const storedContractsJson = localStorage.getItem(STAFF_CONTRACTS_STORAGE_KEY);
+      if (storedContractsJson) {
+         let storedContracts = JSON.parse(storedContractsJson);
+
+         const needsMigration = storedContracts.some((c: any) => c.details && !c.documentUrl);
+         if (needsMigration) {
+             storedContracts = storedContracts.map((c: any) => {
+                 if (c.details && !c.documentUrl) {
+                     return {
+                         ...c,
+                         documentName: `contrato-personal-${c.id}.pdf`,
+                         documentUrl: '', 
+                         details: undefined,
+                     };
+                 }
+                 return c;
+             });
+              localStorage.setItem(STAFF_CONTRACTS_STORAGE_KEY, JSON.stringify(storedContracts));
+         }
+        setContracts(storedContracts);
       } else {
         localStorage.setItem(STAFF_CONTRACTS_STORAGE_KEY, JSON.stringify(initialContracts));
         setContracts(initialContracts);
