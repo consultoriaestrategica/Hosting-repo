@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -48,7 +49,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, PlusCircle } from "lucide-react"
+import { MoreHorizontal, PlusCircle, CalendarSync } from "lucide-react"
 import { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -133,6 +134,14 @@ export default function SettingsPage() {
      toast({ variant: "destructive", title: "Usuario Eliminado", description: "El usuario ha sido eliminado del sistema." });
   };
   
+  const handleSyncCalendar = (userEmail: string) => {
+    toast({
+      title: "Sincronización de Calendario",
+      description: `Iniciando proceso para sincronizar ${userEmail} con Google Calendar. Por favor, siga las instrucciones en la ventana emergente.`,
+    });
+    // In a real app, this would trigger the OAuth flow with Google.
+  };
+
   if (isLoading) {
     return <div>Cargando configuración...</div>
   }
@@ -275,10 +284,9 @@ export default function SettingsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Nombre de Usuario</TableHead>
-                      <TableHead>Identificación</TableHead>
                       <TableHead>Correo Electrónico</TableHead>
                       <TableHead>Rol</TableHead>
+                      <TableHead>Sincronización Calendario</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead><span className="sr-only">Acciones</span></TableHead>
                     </TableRow>
@@ -286,13 +294,18 @@ export default function SettingsPage() {
                   <TableBody>
                     {users.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell>
-                          <div className="font-medium">{`${user.idType} ${user.idNumber}`}</div>
+                        <TableCell className="font-medium">
+                          <div>{user.name}</div>
+                          <div className="text-xs text-muted-foreground">{user.username}</div>
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.role}</TableCell>
+                        <TableCell>
+                           <Button variant="outline" size="sm" onClick={() => handleSyncCalendar(user.email)}>
+                                <CalendarSync className="mr-2 h-4 w-4" />
+                                Sincronizar
+                            </Button>
+                        </TableCell>
                         <TableCell>
                           <Badge variant={user.status === "Activo" ? "default" : "secondary"} className={user.status === "Activo" ? "bg-green-500 text-white" : ""}>
                             {user.status}
