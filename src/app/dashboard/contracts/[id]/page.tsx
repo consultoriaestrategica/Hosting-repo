@@ -224,15 +224,6 @@ function ContractDetailPageContent({ id }: { id: string }) {
                                 </div>
                              )}
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-center text-muted-foreground p-10 border-2 border-dashed rounded-md h-[800px] flex items-center justify-center">
-                            {contract.documentUrl ? (
-                                <p>Haga clic en "Ver Archivo" para abrir el documento en una nueva pestaña.</p>
-                             ) : (
-                                <p>No se adjuntó ningún documento para este contrato.</p>
-                             )}
-                            </div>
-                        </CardContent>
                     </Card>
                 </div>
             </div>
