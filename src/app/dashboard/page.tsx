@@ -1,15 +1,28 @@
 
 "use client"
 import { useState, useMemo, useEffect } from "react"
-import { Users, CalendarCheck } from "lucide-react"
+import { Users, CalendarCheck, PlusCircle } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useResidents } from "@/hooks/use-residents"
+import { useResidents, AgendaEvent } from "@/hooks/use-residents"
+import { useToast } from "@/hooks/use-toast"
 import AgendaDashboard from "./components/agenda-dashboard"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import AgendaForm from "./components/agenda-form"
 
 export default function DashboardPage() {
-  const { residents, isLoading: residentsLoading } = useResidents()
+  const { residents, addAgendaEvent, isLoading: residentsLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
+  const [isAgendaFormOpen, setIsAgendaFormOpen] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     setIsClient(true)
@@ -18,6 +31,20 @@ export default function DashboardPage() {
   const totalActiveResidents = useMemo(() => {
     return residents.filter(r => r.status === 'Activo').length;
   }, [residents]);
+
+  const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
+    if (!residentId) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Debe seleccionar un residente.'})
+        return;
+    }
+    const resident = residents.find(r => r.id === residentId)
+    if (!resident) return;
+
+    addAgendaEvent(residentId, data);
+    toast({ title: "Evento Agendado", description: `Se ha añadido un nuevo evento para ${resident.name}.` });
+    
+    setIsAgendaFormOpen(false);
+  };
 
 
   if (!isClient || residentsLoading) {
@@ -41,14 +68,37 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           <Card>
-             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <CalendarCheck />
-                    Agenda de Próximos Eventos
-                </CardTitle>
-                <CardDescription>
-                    Eventos programados para los próximos 7 días.
-                </CardDescription>
+             <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2">
+                        <CalendarCheck />
+                        Agenda de Próximos Eventos
+                    </CardTitle>
+                    <CardDescription>
+                        Eventos programados para los próximos 7 días.
+                    </CardDescription>
+                </div>
+                 <Dialog open={isAgendaFormOpen} onOpenChange={setIsAgendaFormOpen}>
+                    <DialogTrigger asChild>
+                         <Button size="sm">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Agregar Evento
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Agendar Nuevo Evento</DialogTitle>
+                            <DialogDescription>
+                                Complete los detalles del evento y seleccione al residente.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <AgendaForm 
+                            event={null} 
+                            onSubmit={handleAgendaFormSubmit}
+                            onCancel={() => setIsAgendaFormOpen(false)}
+                        />
+                    </DialogContent>
+                </Dialog>
             </CardHeader>
             <CardContent>
                 <AgendaDashboard />

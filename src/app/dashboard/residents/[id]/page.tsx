@@ -60,7 +60,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AlertForm from "./alert-form";
 import NewLogForm from "./new-log-form";
-import AgendaForm from "./agenda-form";
+import AgendaForm from "../../components/agenda-form";
 
 
 const ITEMS_PER_PAGE = 10;
@@ -139,7 +139,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
     setIsDischargeDialogOpen(false);
   }
 
-  const handleAgendaFormSubmit = (data: Omit<AgendaEvent, 'id'>) => {
+  const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
     if (!resident) return;
     if (selectedEvent) {
       updateAgendaEvent(resident.id, selectedEvent.id, data);
@@ -594,6 +594,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                     </DialogDescription>
                 </DialogHeader>
                 <AgendaForm 
+                    residentId={resident.id}
                     event={selectedEvent} 
                     onSubmit={handleAgendaFormSubmit}
                     onCancel={() => {
