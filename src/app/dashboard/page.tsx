@@ -17,12 +17,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import AgendaForm from "./components/agenda-form"
+import { useUser } from "@/hooks/use-user"
 
 export default function DashboardPage() {
   const { residents, addAgendaEvent, isLoading: residentsLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
   const [isAgendaFormOpen, setIsAgendaFormOpen] = useState(false)
   const { toast } = useToast()
+  const { user } = useUser()
 
   useEffect(() => {
     setIsClient(true)
@@ -32,13 +34,17 @@ export default function DashboardPage() {
     return residents.filter(r => r.status === 'Activo').length;
   }, [residents]);
 
-  const generateGoogleCalendarLink = (event: Omit<AgendaEvent, 'id' | 'status'>) => {
+  const generateGoogleCalendarLink = (event: Omit<AgendaEvent, 'id' | 'status'>, userEmail?: string) => {
     const startTime = new Date(event.date).toISOString().replace(/-|:|\.\d\d\d/g, "");
     const endTime = new Date(new Date(event.date).getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, ""); // Add 1 hour duration
     const details = encodeURIComponent(event.description || '');
     const text = encodeURIComponent(event.title);
-
-    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
+    const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
+    
+    if (userEmail) {
+        return `${calendarUrl}&add=${encodeURIComponent(userEmail)}`;
+    }
+    return calendarUrl;
   };
 
   const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
@@ -51,7 +57,7 @@ export default function DashboardPage() {
 
     addAgendaEvent(residentId, data);
     
-    const calendarLink = generateGoogleCalendarLink(data);
+    const calendarLink = generateGoogleCalendarLink(data, user?.email);
 
     toast({ 
         title: "Evento Agendado", 

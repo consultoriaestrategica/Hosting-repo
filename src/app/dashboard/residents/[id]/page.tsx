@@ -4,6 +4,7 @@ import { useResidents, Resident, DischargeDetails, AgendaEvent } from "@/hooks/u
 import { useLogs, Log } from "@/hooks/use-logs";
 import { useContracts as useResidentContracts } from "@/hooks/use-contracts";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/use-user";
 import { Badge } from "@/components/ui/badge";
 import { 
   Card, 
@@ -82,6 +83,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const { logs, isLoading: logsLoading } = useLogs();
   const { contracts: residentContracts, isLoading: contractsLoading } = useResidentContracts();
   const { toast } = useToast()
+  const { user } = useUser();
 
   const [isClient, setIsClient] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
@@ -139,19 +141,23 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
     setIsDischargeDialogOpen(false);
   }
   
-  const generateGoogleCalendarLink = (event: Omit<AgendaEvent, 'id' | 'status'>) => {
+  const generateGoogleCalendarLink = (event: Omit<AgendaEvent, 'id' | 'status'>, userEmail?: string) => {
     const startTime = new Date(event.date).toISOString().replace(/-|:|\.\d\d\d/g, "");
     const endTime = new Date(new Date(event.date).getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, ""); // Add 1 hour duration
     const details = encodeURIComponent(event.description || '');
     const text = encodeURIComponent(event.title);
+    const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
 
-    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
+    if (userEmail) {
+        return `${calendarUrl}&add=${encodeURIComponent(userEmail)}`;
+    }
+    return calendarUrl;
   };
 
   const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
     if (!resident) return;
     
-    const calendarLink = generateGoogleCalendarLink(data);
+    const calendarLink = generateGoogleCalendarLink(data, user?.email);
 
     if (selectedEvent) {
       updateAgendaEvent(resident.id, selectedEvent.id, data);
