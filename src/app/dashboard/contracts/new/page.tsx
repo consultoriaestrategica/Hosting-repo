@@ -118,7 +118,7 @@ export default function NewContractPage() {
     try {
         // Step 1: Upload file to Firebase Storage
         const fileToUpload = data.document;
-        const storageRef = ref(storage, `contracts/residents/${resident.id}/${fileToUpload.name}`);
+        const storageRef = ref(storage, `contracts/residents/${resident.id}/${Date.now()}-${fileToUpload.name}`);
         await uploadBytes(storageRef, fileToUpload);
         
         // Step 2: Get download URL

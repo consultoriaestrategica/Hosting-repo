@@ -42,11 +42,10 @@ export function useContracts() {
   const addContract = useCallback(async (newContractData: Omit<Contract, 'id'>): Promise<Contract> => {
      try {
         const docRef = await addDoc(contractsCollection, newContractData);
-        return { ...newContractData, id: docRef.id };
+        return { id: docRef.id, ...newContractData };
     } catch (error) {
         console.error("Error adding resident contract to Firestore: ", error);
-        // In case of error, return a non-persistent object to avoid breaking the UI flow
-        return { ...newContractData, id: `error-${Date.now()}` };
+        throw error; // Re-throw the error to be caught by the calling function
     }
   }, []);
 
