@@ -161,6 +161,7 @@ export default function NewResidentPage() {
         idNumber: data.idNumber,
         dob: data.dob,
         age: age,
+        gender: data.gender,
         dependency: data.dependency,
         status: data.status,
         admissionDate: data.admissionDate,
