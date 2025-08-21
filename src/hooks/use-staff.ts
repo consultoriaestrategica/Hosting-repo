@@ -2,6 +2,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 export type Staff = {
   id: string;
@@ -17,103 +19,42 @@ export type Staff = {
   salary?: number;
 };
 
-const initialStaff: Staff[] = [
-  {
-    id: "staff-001",
-    name: "Ana Pérez",
-    role: "Enfermera",
-    idNumber: "1122334455",
-    phone: "3101234567",
-    email: "ana.perez@example.com",
-    address: "Carrera 5, #10-20",
-    status: "Activo",
-    hireDate: "2022-08-15",
-    salary: 2500000,
-  },
-  {
-    id: "staff-002",
-    name: "Carlos Mendoza",
-    role: "Médico",
-    idNumber: "6677889900",
-    phone: "3207654321",
-    email: "carlos.mendoza@example.com",
-    address: "Avenida 3, #4-50",
-    status: "Activo",
-    hireDate: "2021-01-20",
-    salary: 6000000,
-  }
-];
+const staffCollection = collection(db, 'staff');
 
-const STAFF_STORAGE_KEY = 'staff_members';
 
 export function useStaff() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadStaff = useCallback(() => {
-    try {
-      const storedStaff = localStorage.getItem(STAFF_STORAGE_KEY);
-      if (storedStaff) {
-        setStaff(JSON.parse(storedStaff));
-      } else {
-        localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(initialStaff));
-        setStaff(initialStaff);
-      }
-    } catch (error) {
-      console.error("Failed to access localStorage for staff", error);
-      setStaff(initialStaff);
-    }
-    setIsLoading(false);
-  }, []);
-
   useEffect(() => {
-    loadStaff();
-    
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === STAFF_STORAGE_KEY) {
-        loadStaff();
-      }
-    };
+    setIsLoading(true);
+    const unsubscribe = onSnapshot(staffCollection, (snapshot) => {
+        const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+        setStaff(staffData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching staff from Firestore: ", error);
+        setIsLoading(false);
+    });
 
-    window.addEventListener('storage', handleStorageChange);
+    return () => unsubscribe();
+  }, []);
 
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [loadStaff]);
 
-  const triggerStorageEvent = () => {
-     window.dispatchEvent(new StorageEvent('storage', {
-        key: STAFF_STORAGE_KEY,
-        newValue: localStorage.getItem(STAFF_STORAGE_KEY),
-    }));
-  }
-
-  const addStaffMember = useCallback((newStaffData: Omit<Staff, 'id'>) => {
-    const storedStaff = JSON.parse(localStorage.getItem(STAFF_STORAGE_KEY) || '[]');
-    const staffWithId: Staff = { ...newStaffData, id: `staff-${Date.now()}` };
-    const updatedStaff = [...storedStaff, staffWithId];
+  const addStaffMember = useCallback(async (newStaffData: Omit<Staff, 'id'>) => {
     try {
-        localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(updatedStaff));
-        triggerStorageEvent();
+        await addDoc(staffCollection, newStaffData);
     } catch (error) {
-        console.error("Failed to save to localStorage", error);
+        console.error("Error adding staff member to Firestore: ", error);
     }
   }, []);
 
-  const updateStaffMember = useCallback((staffId: string, updatedDetails: Partial<Staff>) => {
-    const storedStaff = JSON.parse(localStorage.getItem(STAFF_STORAGE_KEY) || '[]');
-    const updatedStaff = storedStaff.map((member: Staff) => {
-        if (member.id === staffId) {
-            return { ...member, ...updatedDetails };
-        }
-        return member;
-    });
-    try {
-        localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(updatedStaff));
-        triggerStorageEvent();
+  const updateStaffMember = useCallback(async (staffId: string, updatedDetails: Partial<Staff>) => {
+     try {
+        const staffDoc = doc(db, 'staff', staffId);
+        await updateDoc(staffDoc, updatedDetails);
     } catch (error) {
-        console.error("Failed to save staff update to localStorage", error);
+        console.error("Error updating staff member in Firestore: ", error);
     }
   }, []);
 

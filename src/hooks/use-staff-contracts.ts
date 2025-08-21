@@ -2,6 +2,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
+
 
 export type StaffContract = {
   id: string;
@@ -15,95 +18,45 @@ export type StaffContract = {
   createdAt: string; // ISO string
 };
 
-const initialContracts: StaffContract[] = [];
+const staffContractsCollection = collection(db, 'staff_contracts');
 
-const STAFF_CONTRACTS_STORAGE_KEY = 'staff_contracts';
 
 export function useStaffContracts() {
   const [contracts, setContracts] = useState<StaffContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadContracts = useCallback(() => {
-    try {
-      const storedContractsJson = localStorage.getItem(STAFF_CONTRACTS_STORAGE_KEY);
-      if (storedContractsJson) {
-         let storedContracts = JSON.parse(storedContractsJson);
-
-         const needsMigration = storedContracts.some((c: any) => c.details && !c.documentUrl);
-         if (needsMigration) {
-             storedContracts = storedContracts.map((c: any) => {
-                 if (c.details && !c.documentUrl) {
-                     return {
-                         ...c,
-                         documentName: `contrato-personal-${c.id}.pdf`,
-                         documentUrl: '', 
-                         details: undefined,
-                     };
-                 }
-                 return c;
-             });
-              localStorage.setItem(STAFF_CONTRACTS_STORAGE_KEY, JSON.stringify(storedContracts));
-         }
-        setContracts(storedContracts);
-      } else {
-        localStorage.setItem(STAFF_CONTRACTS_STORAGE_KEY, JSON.stringify(initialContracts));
-        setContracts(initialContracts);
-      }
-    } catch (error) {
-      console.error("Failed to access localStorage for staff contracts", error);
-      setContracts(initialContracts);
-    }
-    setIsLoading(false);
-  }, []);
-
   useEffect(() => {
-    loadContracts();
-    
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === STAFF_CONTRACTS_STORAGE_KEY) {
-        loadContracts();
-      }
-    };
+    setIsLoading(true);
+    const unsubscribe = onSnapshot(staffContractsCollection, (snapshot) => {
+        const contractsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StaffContract));
+        setContracts(contractsData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching staff contracts from Firestore: ", error);
+        setIsLoading(false);
+    });
 
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [loadContracts]);
-
-  const addContract = useCallback((newContractData: Omit<StaffContract, 'id'>): StaffContract => {
-    const storedContracts = JSON.parse(localStorage.getItem(STAFF_CONTRACTS_STORAGE_KEY) || '[]');
-    const contractWithId: StaffContract = { ...newContractData, id: `staff-contract-${Date.now()}` };
-    const updatedContracts = [...storedContracts, contractWithId];
-     try {
-        localStorage.setItem(STAFF_CONTRACTS_STORAGE_KEY, JSON.stringify(updatedContracts));
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: STAFF_CONTRACTS_STORAGE_KEY,
-            newValue: JSON.stringify(updatedContracts),
-        }));
-    } catch (error) {
-        console.error("Failed to save to localStorage", error);
-    }
-    return contractWithId;
+    return () => unsubscribe();
   }, []);
 
-  const updateContract = useCallback((contractId: string, updatedDetails: Partial<StaffContract>) => {
-    const storedContracts = JSON.parse(localStorage.getItem(STAFF_CONTRACTS_STORAGE_KEY) || '[]');
-    const updatedContracts = storedContracts.map((contract: StaffContract) => {
-        if (contract.id === contractId) {
-            return { ...contract, ...updatedDetails };
-        }
-        return contract;
-    });
+
+  const addContract = useCallback(async (newContractData: Omit<StaffContract, 'id'>): Promise<StaffContract> => {
     try {
-        localStorage.setItem(STAFF_CONTRACTS_STORAGE_KEY, JSON.stringify(updatedContracts));
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: STAFF_CONTRACTS_STORAGE_KEY,
-            newValue: JSON.stringify(updatedContracts),
-        }));
+        const docRef = await addDoc(staffContractsCollection, newContractData);
+        return { ...newContractData, id: docRef.id };
     } catch (error) {
-        console.error("Failed to save to localStorage", error);
+        console.error("Error adding staff contract to Firestore: ", error);
+        // In case of error, return a non-persistent object to avoid breaking the UI flow
+        return { ...newContractData, id: `error-${Date.now()}` };
+    }
+  }, []);
+
+  const updateContract = useCallback(async (contractId: string, updatedDetails: Partial<StaffContract>) => {
+    try {
+        const contractDoc = doc(db, 'staff_contracts', contractId);
+        await updateDoc(contractDoc, updatedDetails);
+    } catch (error) {
+        console.error("Error updating staff contract in Firestore: ", error);
     }
   }, []);
 
