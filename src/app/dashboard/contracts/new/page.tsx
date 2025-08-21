@@ -100,31 +100,31 @@ export default function NewContractPage() {
 
 
  async function onSubmit(data: ContractFormValues) {
-    setIsSaving(true)
+    setIsSaving(true);
     const resident = residents.find(r => r.id === data.residentId);
 
     if (!resident) {
-      toast({ variant: "destructive", title: "Error", description: "Por favor, seleccione un residente." });
+      toast({ variant: "destructive", title: "Error", description: "Por favor, seleccione un residente válido." });
       setIsSaving(false);
       return;
     }
     
     if (!(data.document instanceof File)) {
-        toast({ variant: "destructive", title: "Error", description: "Por favor, adjunte el documento del contrato en PDF." });
+        toast({ variant: "destructive", title: "Error", description: "Por favor, adjunte el documento del contrato en formato PDF." });
         setIsSaving(false);
         return;
     }
     
     try {
-        // 1. Upload file to Firebase Storage
+        // Step 1: Upload file to Firebase Storage
         const fileToUpload = data.document;
         const storageRef = ref(storage, `contracts/residents/${resident.id}/${fileToUpload.name}`);
         await uploadBytes(storageRef, fileToUpload);
         
-        // 2. Get download URL
+        // Step 2: Get download URL
         const documentUrl = await getDownloadURL(storageRef);
 
-        // 3. Create contract object
+        // Step 3: Create contract object and save to Firestore
         const newContract = {
             residentId: data.residentId,
             contractType: data.contractType,
@@ -150,7 +150,7 @@ export default function NewContractPage() {
         toast({
             variant: "destructive",
             title: "Error al Guardar Contrato",
-            description: "No se pudo guardar el contrato. Verifique las reglas de Firebase Storage.",
+            description: "No se pudo guardar el contrato. Verifique la consola para más detalles y asegúrese de que las reglas de Firebase Storage estén configuradas correctamente.",
         });
     } finally {
         setIsSaving(false);
