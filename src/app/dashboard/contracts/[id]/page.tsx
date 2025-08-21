@@ -88,13 +88,31 @@ function ContractDetailPageContent({ id }: { id: string }) {
     const contractValues = contractType === 'resident' ? getResidentContractValueDetails((contract as any).contractType) : null;
     const staffSalaryFormatted = contractType === 'staff' ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((contract as any).salary) : null;
 
-    const handleFileAction = () => {
-       toast({ 
-           title: "Función no disponible", 
-           description: "La visualización y descarga de archivos estará disponible en futuras actualizaciones.",
-           variant: "default"
-       })
-    }
+    const handleFileAction = (action: 'view' | 'download') => {
+        if (!contract?.documentUrl) {
+            toast({
+                variant: 'destructive',
+                title: 'Archivo no disponible',
+                description: 'No se encontró una URL para este documento.',
+            });
+            return;
+        }
+
+        if (action === 'view') {
+            window.open(contract.documentUrl, '_blank');
+        } else {
+             // For download, we create an anchor tag and simulate a click
+             // This is a common way to force download instead of navigating
+             const link = document.createElement('a');
+             link.href = contract.documentUrl;
+             // Adding the download attribute with a filename is a suggestion to the browser
+             link.setAttribute('download', contract.documentName || 'contrato'); 
+             link.target = '_blank'; // Good practice for security and user experience
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+        }
+    };
 
 
     return (
@@ -215,11 +233,11 @@ function ContractDetailPageContent({ id }: { id: string }) {
                             </div>
                              {contract.documentUrl && (
                                 <div className="flex gap-2">
-                                     <Button onClick={handleFileAction} variant="outline">
+                                     <Button onClick={() => handleFileAction('view')} variant="outline">
                                         <Eye className="mr-2 h-4 w-4" />
                                         Ver Archivo
                                     </Button>
-                                    <Button onClick={handleFileAction}>
+                                    <Button onClick={() => handleFileAction('download')}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Descargar
                                     </Button>

@@ -30,6 +30,8 @@ import { useContracts } from "@/hooks/use-contracts"
 import { useSettings } from "@/hooks/use-settings"
 import { useState, useRef, useEffect } from "react"
 import { Loader2, UploadCloud, File, X } from "lucide-react"
+import { storage } from "@/lib/firebase"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
 const contractFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
@@ -106,10 +108,14 @@ export default function NewContractPage() {
     }
     
     try {
-        // This is a placeholder. In a real app, you would upload the file to a cloud storage
-        // and get a persistent URL. For now, we'll store a placeholder.
-        const documentUrl = `local-file-reference/${uploadedFile.name}`;
+        // 1. Upload file to Firebase Storage
+        const storageRef = ref(storage, `contracts/residents/${resident.id}/${uploadedFile.name}`);
+        const uploadResult = await uploadBytes(storageRef, uploadedFile);
+        
+        // 2. Get download URL
+        const documentUrl = await getDownloadURL(uploadResult.ref);
 
+        // 3. Create contract object
         const newContract = {
             residentId: data.residentId,
             contractType: data.contractType,
@@ -135,7 +141,7 @@ export default function NewContractPage() {
         toast({
             variant: "destructive",
             title: "Error al Guardar Contrato",
-            description: "No se pudo guardar el contrato. Por favor, inténtelo de nuevo.",
+            description: "No se pudo guardar el contrato. Verifique las reglas de Firebase Storage.",
         });
     } finally {
         setIsSaving(false);

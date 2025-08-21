@@ -18,10 +18,11 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
 import { Loader2, UploadCloud, File, X } from "lucide-react"
-import { useSettings } from "@/hooks/use-settings"
 import { Staff } from "@/hooks/use-staff"
 import { useStaffContracts } from "@/hooks/use-staff-contracts"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
+import { storage } from "@/lib/firebase"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
 const contractFormSchema = z.object({
   salary: z.coerce.number().min(0, "El salario debe ser un número positivo."),
@@ -85,10 +86,14 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
     }
 
     try {
-        // This is a placeholder. In a real app, you would upload the file to a cloud storage
-        // and get a persistent URL. For now, we'll store a placeholder.
-        const documentUrl = `local-file-reference/${uploadedFile.name}`;
+        // 1. Upload file to Firebase Storage
+        const storageRef = ref(storage, `contracts/staff/${staffMember.id}/${uploadedFile.name}`);
+        const uploadResult = await uploadBytes(storageRef, uploadedFile);
+        
+        // 2. Get download URL
+        const documentUrl = await getDownloadURL(uploadResult.ref);
 
+        // 3. Create contract object with the new URL
         const newContract = {
             staffId: staffMember.id,
             startDate: data.startDate,
@@ -100,7 +105,7 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
             createdAt: new Date().toISOString()
         };
 
-        const addedContract = addContract(newContract);
+        const addedContract = await addContract(newContract);
 
         toast({
             title: "Contrato Guardado Exitosamente",
@@ -115,7 +120,7 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
         toast({
             variant: "destructive",
             title: "Error al Guardar Contrato",
-            description: "No se pudo guardar el contrato. Por favor, inténtelo de nuevo.",
+            description: "No se pudo guardar el contrato. Verifique las reglas de Firebase Storage.",
         });
     } finally {
         setIsSaving(false);
