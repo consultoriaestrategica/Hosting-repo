@@ -88,22 +88,12 @@ function ContractDetailPageContent({ id }: { id: string }) {
     const contractValues = contractType === 'resident' ? getResidentContractValueDetails((contract as any).contractType) : null;
     const staffSalaryFormatted = contractType === 'staff' ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((contract as any).salary) : null;
 
-    const handleDownload = () => {
-       if (!contract.documentUrl) return;
-       
-       const link = document.createElement('a');
-       link.href = contract.documentUrl;
-       link.download = contract.documentName || 'contrato.pdf';
-       document.body.appendChild(link);
-       link.click();
-       document.body.removeChild(link);
-       
-       toast({ title: "Descarga Iniciada", description: `Descargando ${contract.documentName}`})
-    }
-    
-    const handleView = () => {
-       if (!contract.documentUrl) return;
-       window.open(contract.documentUrl, '_blank');
+    const handleFileAction = () => {
+       toast({ 
+           title: "Función no disponible", 
+           description: "La visualización y descarga de archivos estará disponible en futuras actualizaciones.",
+           variant: "default"
+       })
     }
 
 
@@ -225,11 +215,11 @@ function ContractDetailPageContent({ id }: { id: string }) {
                             </div>
                              {contract.documentUrl && (
                                 <div className="flex gap-2">
-                                     <Button onClick={handleView} variant="outline">
+                                     <Button onClick={handleFileAction} variant="outline">
                                         <Eye className="mr-2 h-4 w-4" />
                                         Ver Archivo
                                     </Button>
-                                    <Button onClick={handleDownload}>
+                                    <Button onClick={handleFileAction}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Descargar
                                     </Button>
@@ -238,7 +228,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
                         </CardHeader>
                         <CardContent>
                             <div className="text-center p-8 text-muted-foreground">
-                                {contract.documentUrl ? "Use los botones de arriba para gestionar el archivo." : "No hay un documento adjunto para este contrato."}
+                                {contract.documentUrl ? `Archivo adjunto: ${contract.documentName}` : "No hay un documento adjunto para este contrato."}
                             </div>
                         </CardContent>
                     </Card>

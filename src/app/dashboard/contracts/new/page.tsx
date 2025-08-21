@@ -106,8 +106,9 @@ export default function NewContractPage() {
     }
     
     try {
-        // Simulate file upload and get a URL
-        const documentUrl = URL.createObjectURL(uploadedFile);
+        // This is a placeholder. In a real app, you would upload the file to a cloud storage
+        // and get a persistent URL. For now, we'll store a placeholder.
+        const documentUrl = `local-file-reference/${uploadedFile.name}`;
 
         const newContract = {
             residentId: data.residentId,
