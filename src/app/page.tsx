@@ -13,7 +13,7 @@ export default function LoginPage() {
       <div className="flex items-center justify-center p-6">
         <div className="mx-auto grid w-full max-w-md gap-6">
           <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold font-headline">Ángel Guardián</h1>
+            <h1 className="text-3xl font-bold font-headline">HOGAR SAN JUAN</h1>
             <p className="text-balance text-muted-foreground">
               Ingrese sus credenciales para acceder al portal
             </p>
