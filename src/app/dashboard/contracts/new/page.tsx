@@ -27,8 +27,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
 import { useContracts } from "@/hooks/use-contracts"
-import { useSettings } from "@/hooks/use-settings"
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Loader2, UploadCloud, File as FileIcon, X } from "lucide-react"
 import { storage } from "@/lib/firebase"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
@@ -38,7 +37,7 @@ const contractFormSchema = z.object({
   contractType: z.enum(["Habitación compartida", "Habitación individual"], { required_error: "Debe seleccionar un tipo de contrato." }),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de inicio inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
-  document: z.any().optional(),
+  document: z.instanceof(File, { message: "Debe adjuntar el documento del contrato en formato PDF." }),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
     message: "La fecha de fin debe ser posterior a la fecha de inicio.",
     path: ["endDate"],
@@ -52,7 +51,6 @@ export default function NewContractPage() {
   const router = useRouter()
   const { residents } = useResidents()
   const { addContract } = useContracts()
-  const { settings } = useSettings()
   const [isSaving, setIsSaving] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,19 +81,20 @@ export default function NewContractPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      // Basic validation for PDF
       if (file.type !== "application/pdf") {
           toast({ variant: "destructive", title: "Archivo inválido", description: "Por favor, suba un archivo en formato PDF." });
+          setUploadedFile(null);
+          form.setValue("document", undefined);
           return;
       }
       setUploadedFile(file);
-      form.setValue("document", file); 
+      form.setValue("document", file, { shouldValidate: true }); 
     }
   };
 
   const removeFile = () => {
     setUploadedFile(null);
-    form.setValue("document", null);
+    form.setValue("document", undefined, { shouldValidate: true });
     if(fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -112,7 +111,7 @@ export default function NewContractPage() {
       return;
     }
     
-    if (!uploadedFile) {
+    if (!data.document) {
         toast({ variant: "destructive", title: "Error", description: "Por favor, adjunte el documento del contrato en PDF." });
         setIsSaving(false);
         return;
@@ -120,8 +119,9 @@ export default function NewContractPage() {
     
     try {
         // 1. Upload file to Firebase Storage
-        const storageRef = ref(storage, `contracts/residents/${resident.id}/${uploadedFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, uploadedFile);
+        const fileToUpload = data.document;
+        const storageRef = ref(storage, `contracts/residents/${resident.id}/${fileToUpload.name}`);
+        const uploadResult = await uploadBytes(storageRef, fileToUpload);
         
         // 2. Get download URL
         const documentUrl = await getDownloadURL(uploadResult.ref);
@@ -133,7 +133,7 @@ export default function NewContractPage() {
             startDate: data.startDate,
             endDate: data.endDate,
             status: 'Activo',
-            documentName: uploadedFile.name,
+            documentName: fileToUpload.name,
             documentUrl: documentUrl, 
             createdAt: new Date().toISOString()
         };
@@ -258,3 +258,5 @@ export default function NewContractPage() {
     </>
   )
 }
+
+    
