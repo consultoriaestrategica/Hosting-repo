@@ -52,11 +52,6 @@ export default function LoginPage() {
                     <Stethoscope className="mr-2 h-4 w-4" /> Acceso Personal
                   </Link>
                 </Button>
-                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/dashboard?role=family">
-                    <HeartHandshake className="mr-2 h-4 w-4" /> Acceso Familiares
-                  </Link>
-                </Button>
               </div>
             </CardContent>
           </Card>
