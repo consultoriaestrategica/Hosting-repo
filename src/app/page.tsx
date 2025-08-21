@@ -9,69 +9,63 @@ import { Stethoscope, Users, HeartHandshake } from 'lucide-react';
 
 export default function LoginPage() {
   return (
-    <div className="w-full h-screen lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center p-6">
-        <div className="mx-auto grid w-full max-w-md gap-6">
-          <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold font-headline">HOGAR SAN JUAN</h1>
-            <p className="text-balance text-muted-foreground">
-              Ingrese sus credenciales para acceder al portal
+    <div className="w-full h-screen relative">
+      <Image
+        src="https://storage.googleapis.com/monjo-social/11142024-001000-q09v0n24g7.png"
+        alt="Bienvenido a su Hogar"
+        layout="fill"
+        objectFit="cover"
+        className="dark:brightness-[0.7]"
+      />
+      <div className="absolute inset-0 bg-black/40" />
+      
+      <div className="absolute top-0 right-0 h-full w-full lg:w-1/2 flex items-center justify-center p-6">
+        <div className="mx-auto grid w-full max-w-md gap-6 rounded-xl bg-white/10 backdrop-blur-sm p-8 shadow-2xl">
+          <div className="grid gap-2 text-center text-white">
+            <h1 className="text-4xl font-bold font-headline">HOGAR SAN JUAN</h1>
+            <p className="text-balance text-gray-200">
+              Cuidado, calidez y comunidad para nuestros mayores.
             </p>
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl font-headline">Iniciar Sesión</CardTitle>
-              <CardDescription>
-                Seleccione su rol para iniciar sesión.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
+          
+            <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
+                <Label htmlFor="email" className="text-white">Correo Electrónico</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="m@ejemplo.com"
                   required
+                  className="bg-white/80 text-black placeholder:text-gray-600"
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Contraseña</Label>
+                  <Label htmlFor="password" className="text-white">Contraseña</Label>
                 </div>
-                <Input id="password" type="password" required />
+                <Input id="password" type="password" required  className="bg-white/80 text-black"/>
               </div>
               <div className="grid gap-2 mt-4">
-                 <Button asChild className="w-full">
+                 <Button asChild className="w-full bg-primary/80 hover:bg-primary">
                   <Link href="/dashboard?role=admin">
                     <Users className="mr-2 h-4 w-4" /> Acceso Administrador
                   </Link>
                 </Button>
-                <Button asChild variant="secondary" className="w-full">
+                <Button asChild variant="secondary" className="w-full bg-secondary/80 hover:bg-secondary">
                   <Link href="/dashboard?role=staff">
                     <Stethoscope className="mr-2 h-4 w-4" /> Acceso Personal
                   </Link>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-           <div className="mt-4 text-center text-sm">
+            </div>
+          
+           <div className="mt-4 text-center text-sm text-gray-200">
               ¿No tienes una cuenta?{' '}
               <Link href="#" className="underline">
                 Regístrate
               </Link>
             </div>
         </div>
-      </div>
-      <div className="hidden bg-muted lg:block">
-        <Image
-          src="https://placehold.co/1200x900.png"
-          alt="Cuidado de ancianos"
-          data-ai-hint="caregiver elderly"
-          width="1200"
-          height="900"
-          className="h-full w-full object-cover dark:brightness-[0.3]"
-        />
       </div>
     </div>
   );
