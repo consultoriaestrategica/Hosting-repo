@@ -37,7 +37,7 @@ const contractFormSchema = z.object({
   contractType: z.enum(["Habitación compartida", "Habitación individual"], { required_error: "Debe seleccionar un tipo de contrato." }),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de inicio inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
-  document: z.instanceof(File, { message: "Debe adjuntar el documento del contrato en formato PDF." }),
+  document: z.any().refine(file => file instanceof File, "Debe adjuntar el documento del contrato en formato PDF."),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
     message: "La fecha de fin debe ser posterior a la fecha de inicio.",
     path: ["endDate"],
@@ -52,7 +52,6 @@ export default function NewContractPage() {
   const { residents } = useResidents()
   const { addContract } = useContracts()
   const [isSaving, setIsSaving] = useState(false)
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ContractFormValues>({
@@ -66,6 +65,7 @@ export default function NewContractPage() {
   })
 
   const residentId = form.watch("residentId");
+  const documentFile = form.watch("document");
 
   useEffect(() => {
     if (residentId) {
@@ -83,21 +83,19 @@ export default function NewContractPage() {
       const file = event.target.files[0];
       if (file.type !== "application/pdf") {
           toast({ variant: "destructive", title: "Archivo inválido", description: "Por favor, suba un archivo en formato PDF." });
-          setUploadedFile(null);
-          form.setValue("document", undefined);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          form.resetField("document");
           return;
       }
-      setUploadedFile(file);
       form.setValue("document", file, { shouldValidate: true }); 
     }
   };
 
   const removeFile = () => {
-    setUploadedFile(null);
-    form.setValue("document", undefined, { shouldValidate: true });
     if(fileInputRef.current) {
         fileInputRef.current.value = "";
     }
+    form.resetField("document");
   };
 
 
@@ -111,7 +109,7 @@ export default function NewContractPage() {
       return;
     }
     
-    if (!data.document) {
+    if (!(data.document instanceof File)) {
         toast({ variant: "destructive", title: "Error", description: "Por favor, adjunte el documento del contrato en PDF." });
         setIsSaving(false);
         return;
@@ -132,7 +130,7 @@ export default function NewContractPage() {
             contractType: data.contractType,
             startDate: data.startDate,
             endDate: data.endDate,
-            status: 'Activo',
+            status: 'Activo' as const,
             documentName: fileToUpload.name,
             documentUrl: documentUrl, 
             createdAt: new Date().toISOString()
@@ -213,11 +211,11 @@ export default function NewContractPage() {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Documento del Contrato (PDF)</FormLabel>
-                                {uploadedFile ? (
+                                {documentFile instanceof File ? (
                                      <div className="p-3 rounded-lg border bg-muted/50 flex justify-between items-center text-sm">
                                         <div className="flex items-center gap-2">
                                             <FileIcon className="h-5 w-5 text-muted-foreground" />
-                                            <span>{uploadedFile.name}</span>
+                                            <span className="truncate max-w-xs">{documentFile.name}</span>
                                         </div>
                                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={removeFile}>
                                             <X className="h-4 w-4" />
@@ -258,5 +256,3 @@ export default function NewContractPage() {
     </>
   )
 }
-
-    
