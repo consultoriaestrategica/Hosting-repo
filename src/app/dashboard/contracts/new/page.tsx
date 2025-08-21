@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
 import { useContracts } from "@/hooks/use-contracts"
 import { useSettings } from "@/hooks/use-settings"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Loader2, UploadCloud, File, X } from "lucide-react"
 
 const contractFormSchema = z.object({
@@ -64,6 +64,19 @@ export default function NewContractPage() {
       endDate: "",
     },
   })
+
+  const residentId = form.watch("residentId");
+
+  useEffect(() => {
+    if (residentId) {
+      const selectedResident = residents.find(r => r.id === residentId);
+      if (selectedResident) {
+        form.setValue("contractType", selectedResident.roomType);
+      }
+    } else {
+        form.setValue("contractType", undefined);
+    }
+  }, [residentId, residents, form]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -107,7 +120,7 @@ export default function NewContractPage() {
             createdAt: new Date().toISOString()
         };
 
-        const addedContract = addContract(newContract);
+        const addedContract = await addContract(newContract);
 
         toast({
             title: "Contrato Guardado Exitosamente",
@@ -165,15 +178,9 @@ export default function NewContractPage() {
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Tipo de Contrato</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Seleccione un tipo" /></SelectTrigger>
+                                 <FormControl>
+                                     <Input readOnly {...field} value={field.value || 'Seleccione un residente'}  />
                                 </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="Habitación compartida">Habitación Compartida</SelectItem>
-                                    <SelectItem value="Habitación individual">Habitación Individual</SelectItem>
-                                </SelectContent>
-                                </Select>
                                 <FormMessage />
                             </FormItem>
                             )}
