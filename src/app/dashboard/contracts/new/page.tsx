@@ -119,10 +119,10 @@ export default function NewContractPage() {
         // 1. Upload file to Firebase Storage
         const fileToUpload = data.document;
         const storageRef = ref(storage, `contracts/residents/${resident.id}/${fileToUpload.name}`);
-        const uploadResult = await uploadBytes(storageRef, fileToUpload);
+        await uploadBytes(storageRef, fileToUpload);
         
         // 2. Get download URL
-        const documentUrl = await getDownloadURL(uploadResult.ref);
+        const documentUrl = await getDownloadURL(storageRef);
 
         // 3. Create contract object
         const newContract = {
