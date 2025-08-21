@@ -101,13 +101,10 @@ function ContractDetailPageContent({ id }: { id: string }) {
         if (action === 'view') {
             window.open(contract.documentUrl, '_blank');
         } else {
-             // For download, we create an anchor tag and simulate a click
-             // This is a common way to force download instead of navigating
              const link = document.createElement('a');
              link.href = contract.documentUrl;
-             // Adding the download attribute with a filename is a suggestion to the browser
              link.setAttribute('download', contract.documentName || 'contrato'); 
-             link.target = '_blank'; // Good practice for security and user experience
+             link.target = '_blank';
              document.body.appendChild(link);
              link.click();
              document.body.removeChild(link);
@@ -246,7 +243,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
                         </CardHeader>
                         <CardContent>
                             <div className="text-center p-8 text-muted-foreground">
-                                {contract.documentUrl ? `Archivo adjunto: ${contract.documentName}` : "No hay un documento adjunto para este contrato."}
+                                {contract.documentUrl ? `Archivo adjunto: ${contract.documentName || 'contrato.pdf'}` : "No hay un documento adjunto para este contrato."}
                             </div>
                         </CardContent>
                     </Card>

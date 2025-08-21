@@ -29,7 +29,7 @@ import { useResidents } from "@/hooks/use-residents"
 import { useContracts } from "@/hooks/use-contracts"
 import { useSettings } from "@/hooks/use-settings"
 import { useState, useRef, useEffect } from "react"
-import { Loader2, UploadCloud, File, X } from "lucide-react"
+import { Loader2, UploadCloud, File as FileIcon, X } from "lucide-react"
 import { storage } from "@/lib/firebase"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
@@ -38,7 +38,7 @@ const contractFormSchema = z.object({
   contractType: z.enum(["Habitación compartida", "Habitación individual"], { required_error: "Debe seleccionar un tipo de contrato." }),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de inicio inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
-  document: z.any().refine(file => file?.name, "Debe adjuntar un archivo de contrato."),
+  document: z.any().optional(),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
     message: "La fecha de fin debe ser posterior a la fecha de inicio.",
     path: ["endDate"],
@@ -83,8 +83,13 @@ export default function NewContractPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
+      // Basic validation for PDF
+      if (file.type !== "application/pdf") {
+          toast({ variant: "destructive", title: "Archivo inválido", description: "Por favor, suba un archivo en formato PDF." });
+          return;
+      }
       setUploadedFile(file);
-      form.setValue("document", file); // Set value for react-hook-form
+      form.setValue("document", file); 
     }
   };
 
@@ -101,10 +106,16 @@ export default function NewContractPage() {
     setIsSaving(true)
     const resident = residents.find(r => r.id === data.residentId);
 
-    if (!resident || !uploadedFile) {
-      toast({ variant: "destructive", title: "Error", description: "Faltan datos del residente o el archivo del contrato." });
+    if (!resident) {
+      toast({ variant: "destructive", title: "Error", description: "Por favor, seleccione un residente." });
       setIsSaving(false);
       return;
+    }
+    
+    if (!uploadedFile) {
+        toast({ variant: "destructive", title: "Error", description: "Por favor, adjunte el documento del contrato en PDF." });
+        setIsSaving(false);
+        return;
     }
     
     try {
@@ -205,7 +216,7 @@ export default function NewContractPage() {
                                 {uploadedFile ? (
                                      <div className="p-3 rounded-lg border bg-muted/50 flex justify-between items-center text-sm">
                                         <div className="flex items-center gap-2">
-                                            <File className="h-5 w-5 text-muted-foreground" />
+                                            <FileIcon className="h-5 w-5 text-muted-foreground" />
                                             <span>{uploadedFile.name}</span>
                                         </div>
                                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={removeFile}>
