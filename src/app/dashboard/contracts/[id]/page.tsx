@@ -2,10 +2,10 @@
 "use client"
 import { useEffect, useState, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
-import { useContracts as useResidentContracts } from "@/hooks/use-contracts"
-import { useStaffContracts } from "@/hooks/use-staff-contracts"
-import { useResidents } from "@/hooks/use-residents"
-import { useStaff } from "@/hooks/use-staff"
+import { useContracts as useResidentContracts, Contract as ResidentContract } from "@/hooks/use-contracts"
+import { useStaffContracts, StaffContract } from "@/hooks/use-staff-contracts"
+import { useResidents, Resident } from "@/hooks/use-residents"
+import { useStaff, Staff } from "@/hooks/use-staff"
 import { useSettings } from "@/hooks/use-settings"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -30,23 +30,28 @@ function ContractDetailPageContent({ id }: { id: string }) {
 
     // State
     const [isClient, setIsClient] = useState(false)
-    
-    useEffect(() => {
-        setIsClient(true)
-    }, [])
-    
-    // Data selection based on contract type
-    const contract = contractType === 'resident' 
-        ? residentContracts.find(c => c.id === id) 
-        : staffContracts.find(c => c.id === id);
-
-    const person = contractType === 'resident'
-        ? residents.find(r => r.id === (contract as any)?.residentId)
-        : staff.find(s => s.id === (contract as any)?.staffId);
-
+    const [contract, setContract] = useState<ResidentContract | StaffContract | undefined>(undefined);
+    const [person, setPerson] = useState<Resident | Staff | undefined>(undefined);
 
     const isLoading = residentsLoading || staffLoading || residentContractsLoading || staffContractsLoading || settingsLoading;
 
+    useEffect(() => {
+        setIsClient(true)
+        if (!isLoading) {
+            const foundContract = contractType === 'resident'
+                ? residentContracts.find(c => c.id === id)
+                : staffContracts.find(c => c.id === id);
+            setContract(foundContract);
+
+            if (foundContract) {
+                const foundPerson = contractType === 'resident'
+                    ? residents.find(r => r.id === (foundContract as ResidentContract).residentId)
+                    : staff.find(s => s.id === (foundContract as StaffContract).staffId);
+                setPerson(foundPerson);
+            }
+        }
+    }, [id, contractType, isLoading, residentContracts, staffContracts, residents, staff]);
+    
     if (!isClient || isLoading) {
         return <div>Cargando...</div>
     }
