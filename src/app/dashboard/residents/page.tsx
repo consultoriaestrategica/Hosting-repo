@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -229,12 +228,15 @@ function ResidentsPageContent() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         
-                        <DropdownMenuItem asChild>
-                           <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                        {isAdminRole && (
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
                                 <FileText className="mr-2 h-4 w-4" />
                                 Ver Perfil
-                           </Link>
-                        </DropdownMenuItem>
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        
 
                         {isStaffRole && (
                           <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
