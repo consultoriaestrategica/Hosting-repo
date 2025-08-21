@@ -58,6 +58,8 @@ function StaffPageContent() {
     return status === 'Activo' ? 'default' : 'secondary';
   }
 
+  const isAdminRole = role === 'admin';
+
   return (
     <>
       <div className="flex items-center">
@@ -131,11 +133,13 @@ function StaffPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                         <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/staff/${member.id}?role=${role}`}>
-                                <Eye className="mr-2 h-4 w-4" /> Ver Perfil
-                            </Link>
-                         </DropdownMenuItem>
+                         {isAdminRole && (
+                            <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/staff/${member.id}?role=${role}`}>
+                                    <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                                </Link>
+                            </DropdownMenuItem>
+                         )}
                          <DropdownMenuItem asChild>
                             <Link href={`/dashboard/staff/edit/${member.id}?role=${role}`}>
                                 <Edit className="mr-2 h-4 w-4" /> Editar
