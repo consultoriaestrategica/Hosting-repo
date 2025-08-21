@@ -2,6 +2,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 
 // Shared properties
 type BaseLog = {
@@ -38,94 +40,33 @@ type SupplyLog = BaseLog & {
 
 export type Log = MedicalLog | SupplyLog;
 
-const initialLogs: Log[] = [
-    { 
-      id: "log-001", 
-      residentId: "res-001", 
-      startDate: new Date(2024, 6, 20, 9, 55).toISOString(), 
-      endDate: new Date(2024, 6, 20, 10, 0).toISOString(), 
-      reportType: 'medico',
-      heartRate: 80,
-      respiratoryRate: 18,
-      spo2: 98,
-      feedingType: 'Vía Oral',
-      evolutionNotes: ["Participó en la musicoterapia matutina, se mostró contenta."],
-    },
-    { 
-      id: "log-002", 
-      residentId: "res-001", 
-      startDate: new Date(2024, 6, 19, 15, 25).toISOString(), 
-      endDate: new Date(2024, 6, 19, 15, 30).toISOString(), 
-      reportType: 'medico',
-      heartRate: 85,
-      respiratoryRate: 20,
-      spo2: 97,
-      feedingType: 'Vía Oral',
-      evolutionNotes: ["Experimentó algo de confusión por la tarde, se le brindó apoyo."],
-    },
-    { 
-      id: "log-003", 
-      residentId: "res-002", 
-      startDate: new Date(2024, 6, 20, 10, 58).toISOString(), 
-      endDate: new Date(2024, 6, 20, 11, 0).toISOString(), 
-      reportType: 'suministro',
-      supplierName: 'Farmacia Central',
-      supplyDate: '2024-07-20',
-      supplyDescription: 'Entrega de medicamentos mensuales (Lisinopril, Metformina).',
-      supplyNotes: 'Se almacenaron correctamente en el dispensario.',
-    }
-];
-
-const LOGS_STORAGE_KEY = 'daily_reports'; // Renamed key for clarity
+const logsCollection = collection(db, 'logs');
 
 export function useLogs() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadLogs = useCallback(() => {
-    try {
-      const storedLogs = localStorage.getItem(LOGS_STORAGE_KEY);
-      if (storedLogs) {
-        setLogs(JSON.parse(storedLogs));
-      } else {
-        localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(initialLogs));
-        setLogs(initialLogs);
-      }
-    } catch (error) {
-      console.error("Failed to access localStorage", error);
-      setLogs(initialLogs);
-    }
-    setIsLoading(false);
+  useEffect(() => {
+    setIsLoading(true);
+    const unsubscribe = onSnapshot(logsCollection, (snapshot) => {
+        const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Log));
+        setLogs(logsData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching logs from Firestore: ", error);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    loadLogs();
-    
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === LOGS_STORAGE_KEY) {
-        loadLogs();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [loadLogs]);
-
-  const addLog = useCallback((newLogData: Omit<Log, 'id'>) => {
-    const storedLogs = JSON.parse(localStorage.getItem(LOGS_STORAGE_KEY) || '[]');
-    const logWithId: Log = { ...newLogData, id: `log-${Date.now()}` } as Log;
-    const updatedLogs = [logWithId, ...storedLogs];
-     try {
-        localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(updatedLogs));
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: LOGS_STORAGE_KEY,
-            newValue: JSON.stringify(updatedLogs),
-        }));
+  const addLog = useCallback(async (newLogData: Omit<Log, 'id'>) => {
+    try {
+        // We add the 'endDate' right before saving, which is more accurate.
+        const logWithEndDate = { ...newLogData, endDate: new Date().toISOString() };
+        await addDoc(logsCollection, logWithEndDate);
     } catch (error) {
-        console.error("Failed to save to localStorage", error);
+        console.error("Error adding log to Firestore: ", error);
     }
   }, []);
 

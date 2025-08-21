@@ -2,6 +2,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export type Settings = {
   prices: {
@@ -21,78 +23,47 @@ const initialSettings: Settings = {
     vatRate: 19,
 };
 
-const SETTINGS_STORAGE_KEY = 'app_settings';
+const settingsDocRef = doc(db, 'settings', 'global');
 
 export function useSettings() {
   const [settings, setSettingsState] = useState<Settings>(initialSettings);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadSettings = useCallback(() => {
-    try {
-      const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (storedSettings) {
-        let parsedSettings = JSON.parse(storedSettings);
-        
-        // Migration logic for old contractTemplate key
-        if (parsedSettings.contractTemplate || parsedSettings.contractTemplates) {
-            delete parsedSettings.contractTemplate;
-            delete parsedSettings.contractTemplates;
-        }
-
-        // Migration from old price keys
-        if (parsedSettings.prices && parsedSettings.prices['Básica']) {
-            parsedSettings.prices['Habitación compartida'] = parsedSettings.prices['Básica'];
-            delete parsedSettings.prices['Básica'];
-        }
-        if (parsedSettings.prices && parsedSettings.prices['Premium']) {
-            parsedSettings.prices['Habitación individual'] = parsedSettings.prices['Premium'];
-            delete parsedSettings.prices['Premium'];
-        }
-
-        setSettingsState(parsedSettings);
-      } else {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(initialSettings));
-        setSettingsState(initialSettings);
-      }
-    } catch (error) {
-      console.error("Failed to access localStorage for settings", error);
-      setSettingsState(initialSettings);
-    }
-    setIsLoading(false);
-  }, []);
-
   useEffect(() => {
-    loadSettings();
-    
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === SETTINGS_STORAGE_KEY) {
-        loadSettings();
-      }
-    };
+    setIsLoading(true);
+    const unsubscribe = onSnapshot(settingsDocRef, (doc) => {
+        if (doc.exists()) {
+            setSettingsState(doc.data() as Settings);
+        } else {
+            // Document doesn't exist, so create it with initial settings
+            setDoc(settingsDocRef, initialSettings).catch(error => {
+                 console.error("Failed to initialize settings in Firestore", error);
+            });
+            setSettingsState(initialSettings);
+        }
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching settings from Firestore: ", error);
+        setSettingsState(initialSettings); // Fallback to initial settings on error
+        setIsLoading(false);
+    });
 
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [loadSettings]);
+    return () => unsubscribe();
+  }, []);
   
-  const setSettings = useCallback((newSettings: Settings | ((prev: Settings) => Settings)) => {
-    const storedSettings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
-    const updatedSettings = typeof newSettings === 'function' ? newSettings(storedSettings) : newSettings;
+  const setSettings = useCallback(async (newSettings: Settings | ((prev: Settings) => Settings)) => {
+    const updatedSettings = typeof newSettings === 'function' ? newSettings(settings) : newSettings;
     
-    setSettingsState(updatedSettings);
+    setSettingsState(updatedSettings); // Optimistic update
 
     try {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updatedSettings));
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: SETTINGS_STORAGE_KEY,
-            newValue: JSON.stringify(updatedSettings),
-        }));
+        await setDoc(settingsDocRef, updatedSettings, { merge: true });
     } catch (error) {
-        console.error("Failed to save settings to localStorage", error);
+        console.error("Failed to save settings to Firestore", error);
+        // Optionally revert optimistic update or show error to user
+        // For simplicity, we'll just log the error here.
     }
-  }, []);
+  }, [settings]);
 
 
   return { settings, setSettings, isLoading };
