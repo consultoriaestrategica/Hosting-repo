@@ -55,6 +55,8 @@ export default function NewStaffPage() {
       address: "",
       status: "Activo",
       hireDate: new Date().toISOString().split('T')[0],
+      role: undefined,
+      salary: 0,
     },
   })
 

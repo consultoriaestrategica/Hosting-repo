@@ -1,7 +1,7 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Tus otras configuraciones (typescript, eslint, images) se quedan igual
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -24,10 +24,22 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  // This is to allow cross-origin requests in development.
-  // The preview environment uses a dynamic URL, so we allow any origin
-  // that ends with cloudworkstations.dev.
-  allowedDevOrigins: ["*.cloudworkstations.dev"],
+  
+  // AÑADE ESTA FUNCIÓN PARA SOLUCIONAR EL PROBLEMA DE CROSS-ORIGIN ✅
+  async headers() {
+    return [
+      {
+        // Se aplica a todas las rutas de la aplicación
+        source: "/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Credentials", value: "true" },
+          { key: "Access-Control-Allow-Origin", value: "*" }, // Permite cualquier origen
+          { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+          { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

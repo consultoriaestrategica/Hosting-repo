@@ -1,4 +1,3 @@
-
 "use client"
 import { useResidents, Resident, DischargeDetails, AgendaEvent } from "@/hooks/use-residents";
 import { useLogs, Log } from "@/hooks/use-logs";
@@ -62,7 +61,6 @@ import { useSearchParams } from "next/navigation";
 import AlertForm from "./alert-form";
 import NewLogForm from "./new-log-form";
 import AgendaForm from "../../components/agenda-form";
-
 
 const ITEMS_PER_PAGE = 10;
 
