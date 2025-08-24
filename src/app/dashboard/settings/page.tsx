@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useSettings } from "@/hooks/use-settings"
+import { useStaff, Staff } from "@/hooks/use-staff"
 import {
   Table,
   TableBody,
@@ -53,23 +54,15 @@ import { MoreHorizontal, PlusCircle, CalendarSync, CheckCircle, ExternalLink } f
 import { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 
-// Mock data for users - replace with actual data fetching hook later
-const initialUsers = [
-  { id: "user-1", name: "Admin", username: "admin", email: "admin@guardianangel.com", role: "Admin", status: "Activo", idType: "C.C.", idNumber: "12345678", phone: "3001234567", calendarSynced: false },
-  { id: "user-2", name: "Enfermera Ana", username: "anap", email: "ana.p@guardianangel.com", role: "Personal", status: "Activo", idType: "C.C.", idNumber: "87654321", phone: "3011234567", calendarSynced: false },
-  { id: "user-3", name: "Juan Rodriguez", username: "juanr", email: "juan.r@example.com", role: "Familiar", status: "Activo", idType: "C.E.", idNumber: "11223344", phone: "3021234567", calendarSynced: false },
-  { id: "user-4", name: "Carlos Parra", username: "carlosp", email: "carlos.p@guardianangel.com", role: "Personal", status: "Inactivo", idType: "C.C.", idNumber: "44332211", phone: "3031234567", calendarSynced: false },
-];
-
-
 export default function SettingsPage() {
   const { toast } = useToast()
-  const { settings, setSettings, isLoading } = useSettings()
-  const [users, setUsers] = useState(initialUsers);
+  const { settings, setSettings, isLoading: settingsLoading } = useSettings()
+  const { staff, addStaffMember, updateStaffMember, isLoading: staffLoading } = useStaff()
+  
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any | null>(null);
-  const [syncingUser, setSyncingUser] = useState<any | null>(null);
+  const [editingUser, setEditingUser] = useState<Staff | null>(null);
+  const [syncingUser, setSyncingUser] = useState<Staff | null>(null);
 
   const handlePriceChange = (plan: 'Habitación compartida' | 'Habitación individual', value: string) => {
     setSettings(prev => ({
@@ -96,7 +89,7 @@ export default function SettingsPage() {
     })
   };
 
-  const handleOpenUserDialog = (user: any | null = null) => {
+  const handleOpenUserDialog = (user: Staff | null = null) => {
     setEditingUser(user);
     setIsUserDialogOpen(true);
   };
@@ -104,16 +97,16 @@ export default function SettingsPage() {
   const handleSaveUser = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const userData = Object.fromEntries(formData.entries());
+    const userData = Object.fromEntries(formData.entries()) as Omit<Staff, 'id'>;
 
     if (editingUser) {
-      // Edit user logic
-      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...userData } : u));
+      updateStaffMember(editingUser.id, userData);
       toast({ title: "Usuario Actualizado", description: `Los datos de ${userData.name} han sido actualizados.` });
     } else {
-      // Add user logic
-      const newUser = { id: `user-${Date.now()}`, ...userData, calendarSynced: false };
-      setUsers([...users, newUser as any]);
+      addStaffMember({
+          ...userData,
+          hireDate: userData.hireDate || new Date().toISOString().split('T')[0]
+      });
       toast({ title: "Usuario Creado", description: `El usuario ${userData.name} ha sido añadido.` });
     }
 
@@ -122,11 +115,14 @@ export default function SettingsPage() {
   };
 
   const handleDeleteUser = (userId: string) => {
-     setUsers(users.filter(u => u.id !== userId));
-     toast({ variant: "destructive", title: "Usuario Eliminado", description: "El usuario ha sido eliminado del sistema." });
+     // NOTE: Deleting users should be handled with care. 
+     // For this app, we assume deletion is permanent and doesn't require extra confirmation.
+     // In a real-world scenario, you might want to soft-delete or have a confirmation dialog.
+     console.warn("Deleting user is not implemented to prevent accidental data loss.");
+     toast({ variant: "destructive", title: "Acción no implementada", description: "La eliminación de usuarios está deshabilitada." });
   };
   
-  const handleSyncCalendar = (user: any) => {
+  const handleSyncCalendar = (user: Staff) => {
     setSyncingUser(user);
     setIsSyncDialogOpen(true);
   };
@@ -134,9 +130,7 @@ export default function SettingsPage() {
   const handleConfirmSync = () => {
     if (!syncingUser) return;
     
-    // Simulate API call and update state
-    setUsers(users.map(u => u.id === syncingUser.id ? { ...u, calendarSynced: true } : u));
-    
+    // This is a mock action. In a real app, this would trigger an OAuth flow.
     toast({
       title: "¡Sincronización Exitosa!",
       description: `El calendario de ${syncingUser.name} ha sido vinculado.`,
@@ -147,7 +141,7 @@ export default function SettingsPage() {
   };
 
 
-  if (isLoading) {
+  if (settingsLoading || staffLoading) {
     return <div>Cargando configuración...</div>
   }
 
@@ -245,33 +239,18 @@ export default function SettingsPage() {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Correo Electrónico</TableHead>
                       <TableHead>Rol</TableHead>
-                      <TableHead>Calendario</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead><span className="sr-only">Acciones</span></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user) => (
+                    {staff.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">
                           <div>{user.name}</div>
-                          <div className="text-xs text-muted-foreground">{user.username}</div>
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.role}</TableCell>
-                        <TableCell>
-                           {user.calendarSynced ? (
-                                <Badge variant="secondary" className="text-green-600 border-green-200">
-                                    <CheckCircle className="mr-1 h-3 w-3"/>
-                                    Sincronizado
-                                </Badge>
-                           ) : (
-                                <Button variant="outline" size="sm" onClick={() => handleSyncCalendar(user)}>
-                                    <CalendarSync className="mr-2 h-4 w-4" />
-                                    Sincronizar
-                                </Button>
-                           )}
-                        </TableCell>
                         <TableCell>
                           <Badge variant={user.status === "Activo" ? "default" : "secondary"} className={user.status === "Activo" ? "bg-green-500 text-white" : ""}>
                             {user.status}
@@ -317,41 +296,25 @@ export default function SettingsPage() {
                       <Label htmlFor="user-name">Nombre Completo</Label>
                       <Input id="user-name" name="name" defaultValue={editingUser?.name || ""} required />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-username">Nombre de Usuario</Label>
-                      <Input id="user-username" name="username" defaultValue={editingUser?.username || ""} required />
+                     <div className="grid gap-2">
+                        <Label htmlFor="user-idNumber">Número de Identificación</Label>
+                        <Input id="user-idNumber" name="idNumber" defaultValue={editingUser?.idNumber || ""} required />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-idType">Tipo de Identificación</Label>
-                      <Select name="idType" defaultValue={editingUser?.idType || "C.C."}>
-                        <SelectTrigger id="user-idType">
-                          <SelectValue placeholder="Seleccione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="C.C.">Cédula de Ciudadanía</SelectItem>
-                          <SelectItem value="C.E.">Cédula de Extranjería</SelectItem>
-                          <SelectItem value="Pasaporte">Pasaporte</SelectItem>
-                          <SelectItem value="Otro">Otro</SelectItem>
-                        </SelectContent>
-                      </Select>
+                   <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="user-phone">Teléfono</Label>
+                          <Input id="user-phone" name="phone" type="tel" defaultValue={editingUser?.phone || ""} required />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="user-email">Correo Electrónico</Label>
+                          <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
+                        </div>
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-idNumber">Número de Identificación</Label>
-                      <Input id="user-idNumber" name="idNumber" defaultValue={editingUser?.idNumber || ""} required />
+                     <div className="grid gap-2">
+                      <Label htmlFor="user-address">Dirección</Label>
+                      <Input id="user-address" name="address" defaultValue={editingUser?.address || ""} required />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-phone">Teléfono</Label>
-                      <Input id="user-phone" name="phone" type="tel" defaultValue={editingUser?.phone || ""} required />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-email">Correo Electrónico</Label>
-                      <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
-                    </div>
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="user-role">Rol</Label>
@@ -360,9 +323,11 @@ export default function SettingsPage() {
                           <SelectValue placeholder="Seleccione un rol" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="Personal">Personal</SelectItem>
-                          <SelectItem value="Familiar">Familiar</SelectItem>
+                          <SelectItem value="Administrativo">Admin</SelectItem>
+                          <SelectItem value="Enfermera">Enfermera</SelectItem>
+                          <SelectItem value="Médico">Médico</SelectItem>
+                           <SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem>
+                           <SelectItem value="Otro">Otro</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
