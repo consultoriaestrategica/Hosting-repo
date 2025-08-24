@@ -230,10 +230,6 @@ function ContractDetailPageContent({ id }: { id: string }) {
                             </div>
                              {contract.documentUrl && (
                                 <div className="flex gap-2">
-                                     <Button onClick={() => handleFileAction('view')} variant="outline">
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        Ver Archivo
-                                    </Button>
                                     <Button onClick={() => handleFileAction('download')}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Descargar
