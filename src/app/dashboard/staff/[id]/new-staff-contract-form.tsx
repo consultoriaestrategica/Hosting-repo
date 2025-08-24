@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
-import { Loader2, UploadCloud, File, X } from "lucide-react"
+import { Loader2, UploadCloud, File as FileIcon, X } from "lucide-react"
 import { Staff } from "@/hooks/use-staff"
 import { useStaffContracts } from "@/hooks/use-staff-contracts"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
@@ -28,7 +28,7 @@ const contractFormSchema = z.object({
   salary: z.coerce.number().min(0, "El salario debe ser un número positivo."),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de inicio inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
-  document: z.any().refine(file => file?.name, "Debe adjuntar un archivo de contrato."),
+  document: z.any().refine(file => file instanceof File, "Debe adjuntar el documento del contrato en formato PDF."),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
     message: "La fecha de fin debe ser posterior a la fecha de inicio.",
     path: ["endDate"],
@@ -47,7 +47,6 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
   const router = useRouter()
   const { addContract } = useStaffContracts()
   const [isSaving, setIsSaving] = useState(false)
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -59,48 +58,55 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
       endDate: "",
     },
   })
+  
+  const documentFile = form.watch("document");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
-      setUploadedFile(file);
-      form.setValue("document", file);
+      if (file.type !== "application/pdf") {
+          toast({ variant: "destructive", title: "Archivo inválido", description: "Por favor, suba un archivo en formato PDF." });
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          form.resetField("document");
+          return;
+      }
+      form.setValue("document", file, { shouldValidate: true });
     }
   };
 
   const removeFile = () => {
-    setUploadedFile(null);
-    form.setValue("document", null);
     if(fileInputRef.current) {
         fileInputRef.current.value = "";
     }
+    form.resetField("document");
   };
 
  async function onSubmit(data: ContractFormValues) {
-    setIsSaving(true)
+    setIsSaving(true);
    
-     if (!uploadedFile) {
+     if (!(data.document instanceof File)) {
       toast({ variant: "destructive", title: "Error", description: "Debe adjuntar el archivo del contrato." });
       setIsSaving(false);
       return;
     }
 
     try {
+        const fileToUpload = data.document;
         // 1. Upload file to Firebase Storage
-        const storageRef = ref(storage, `contracts/staff/${staffMember.id}/${uploadedFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, uploadedFile);
+        const storageRef = ref(storage, `contracts/staff/${staffMember.id}/${Date.now()}-${fileToUpload.name}`);
+        await uploadBytes(storageRef, fileToUpload);
         
         // 2. Get download URL
-        const documentUrl = await getDownloadURL(uploadResult.ref);
+        const documentUrl = await getDownloadURL(storageRef);
 
         // 3. Create contract object with the new URL
         const newContract = {
             staffId: staffMember.id,
             startDate: data.startDate,
             endDate: data.endDate,
-            status: 'Activo',
+            status: 'Activo' as const,
             salary: data.salary,
-            documentName: uploadedFile.name,
+            documentName: fileToUpload.name,
             documentUrl: documentUrl,
             createdAt: new Date().toISOString()
         };
@@ -120,7 +126,7 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
         toast({
             variant: "destructive",
             title: "Error al Guardar Contrato",
-            description: "No se pudo guardar el contrato. Verifique las reglas de Firebase Storage.",
+            description: "No se pudo guardar el contrato. Verifique la consola y las reglas de Firebase Storage.",
         });
     } finally {
         setIsSaving(false);
@@ -143,11 +149,11 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Documento del Contrato (PDF)</FormLabel>
-                                {uploadedFile ? (
+                                {documentFile instanceof File ? (
                                      <div className="p-3 rounded-lg border bg-muted/50 flex justify-between items-center text-sm">
                                         <div className="flex items-center gap-2">
-                                            <File className="h-5 w-5 text-muted-foreground" />
-                                            <span>{uploadedFile.name}</span>
+                                            <FileIcon className="h-5 w-5 text-muted-foreground" />
+                                            <span className="truncate max-w-xs">{documentFile.name}</span>
                                         </div>
                                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={removeFile}>
                                             <X className="h-4 w-4" />
