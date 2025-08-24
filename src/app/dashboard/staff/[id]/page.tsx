@@ -141,9 +141,9 @@ function StaffProfilePageContent({ id }: { id: string }) {
                 </div>
                  <div className="flex items-start gap-3">
                   <p className="font-semibold mt-1">Estado</p>
-                  <p><Badge variant={getStatusVariant(staffMember.status)} className={staffMember.status === 'Activo' ? 'bg-green-500' : ''}>
+                  <div><Badge variant={getStatusVariant(staffMember.status)} className={staffMember.status === 'Activo' ? 'bg-green-500' : ''}>
                       {staffMember.status}
-                    </Badge></p>
+                    </Badge></div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Home className="h-5 w-5 mt-1 text-muted-foreground" />
