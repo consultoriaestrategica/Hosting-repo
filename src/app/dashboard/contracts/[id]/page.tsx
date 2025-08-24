@@ -88,7 +88,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
     const contractValues = contractType === 'resident' ? getResidentContractValueDetails((contract as any).contractType) : null;
     const staffSalaryFormatted = contractType === 'staff' ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((contract as any).salary) : null;
 
-    const handleFileAction = (action: 'view' | 'download') => {
+    const handleDownloadFile = () => {
         if (!contract?.documentUrl) {
             toast({
                 variant: 'destructive',
@@ -98,17 +98,17 @@ function ContractDetailPageContent({ id }: { id: string }) {
             return;
         }
 
-        if (action === 'view') {
-            window.open(contract.documentUrl, '_blank');
-        } else {
-             const link = document.createElement('a');
-             link.href = contract.documentUrl;
-             link.setAttribute('download', contract.documentName || 'contrato'); 
-             link.target = '_blank';
-             document.body.appendChild(link);
-             link.click();
-             document.body.removeChild(link);
-        }
+         const link = document.createElement('a');
+         link.href = contract.documentUrl;
+         // Setting the download attribute to the file's name (or a default name)
+         // This is a hint to the browser to download the file instead of navigating.
+         link.setAttribute('download', contract.documentName || 'contrato'); 
+         // For security reasons, browsers might block this if not opened in a new tab
+         link.target = '_blank';
+         link.rel = 'noopener noreferrer';
+         document.body.appendChild(link);
+         link.click();
+         document.body.removeChild(link);
     };
 
 
@@ -230,7 +230,7 @@ function ContractDetailPageContent({ id }: { id: string }) {
                             </div>
                              {contract.documentUrl && (
                                 <div className="flex gap-2">
-                                    <Button onClick={() => handleFileAction('download')}>
+                                    <Button onClick={handleDownloadFile}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Descargar
                                     </Button>
