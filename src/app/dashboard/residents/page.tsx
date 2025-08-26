@@ -1,12 +1,11 @@
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, FileText, ClipboardList, Search, Eye, Users } from "lucide-react"
+import { PlusCircle, MoreHorizontal, FileText, ClipboardList, Search, Eye, Users, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -233,11 +232,18 @@ function ResidentsPageContent() {
                           <DropdownMenuItem asChild>
                             <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
                                 <FileText className="mr-2 h-4 w-4" />
-                                Ver Perfil
+                                Ver Perfil Completo
                             </Link>
                           </DropdownMenuItem>
                         )}
                         
+                        <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Ver Agenda
+                            </Link>
+                        </DropdownMenuItem>
+
                         {isStaffRole && (
                           <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
                             <Eye className="mr-2 h-4 w-4" />
