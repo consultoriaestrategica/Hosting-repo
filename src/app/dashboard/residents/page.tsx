@@ -1,3 +1,4 @@
+
 "use client"
 import Link from "next/link"
 import { PlusCircle, MoreHorizontal, FileText, ClipboardList, Search, Eye, Users, Calendar } from "lucide-react"
@@ -40,6 +41,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./[id]/new-log-form"
 import ResidentPreviewDialog from "./resident-preview-dialog"
+import AgendaPreviewDialog from "../components/agenda-preview-dialog"
 
 const ITEMS_PER_PAGE = 8;
 
@@ -51,6 +53,7 @@ function ResidentsPageContent() {
   const role = searchParams.get('role') || 'admin';
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [isAgendaDialogOpen, setIsAgendaDialogOpen] = useState(false);
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -87,14 +90,11 @@ function ResidentsPageContent() {
     })
   }
   
-  const handleAddLogClick = (resident: Resident) => {
+  const handleActionClick = (resident: Resident, action: 'log' | 'preview' | 'agenda') => {
     setSelectedResident(resident);
-    setIsLogDialogOpen(true);
-  }
-
-  const handlePreviewClick = (resident: Resident) => {
-    setSelectedResident(resident);
-    setIsPreviewDialogOpen(true);
+    if (action === 'log') setIsLogDialogOpen(true);
+    if (action === 'preview') setIsPreviewDialogOpen(true);
+    if (action === 'agenda') setIsAgendaDialogOpen(true);
   }
 
   if (!isClient || isLoading) {
@@ -238,21 +238,19 @@ function ResidentsPageContent() {
                           </DropdownMenuItem>
                         )}
                         
-                        <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
-                                <Calendar className="mr-2 h-4 w-4" />
-                                Ver Agenda
-                            </Link>
+                        <DropdownMenuItem onClick={() => handleActionClick(resident, 'agenda')}>
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Ver Agenda
                         </DropdownMenuItem>
 
                         {isStaffRole && (
-                          <DropdownMenuItem onClick={() => handlePreviewClick(resident)}>
+                          <DropdownMenuItem onClick={() => handleActionClick(resident, 'preview')}>
                             <Eye className="mr-2 h-4 w-4" />
                             Ver Ficha Rápida
                           </DropdownMenuItem>
                         )}
                         {!isFamilyRole && (
-                          <DropdownMenuItem onClick={() => handleAddLogClick(resident)}>
+                          <DropdownMenuItem onClick={() => handleActionClick(resident, 'log')}>
                             <ClipboardList className="mr-2 h-4 w-4" />
                             Agregar Reporte
                           </DropdownMenuItem>
@@ -314,6 +312,14 @@ function ResidentsPageContent() {
         <ResidentPreviewDialog 
             isOpen={isPreviewDialogOpen} 
             onOpenChange={setIsPreviewDialogOpen} 
+            resident={selectedResident}
+        />
+      )}
+
+      {selectedResident && (
+        <AgendaPreviewDialog
+            isOpen={isAgendaDialogOpen}
+            onOpenChange={setIsAgendaDialogOpen}
             resident={selectedResident}
         />
       )}
