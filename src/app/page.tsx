@@ -1,12 +1,63 @@
 
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Stethoscope, Users, HeartHandshake } from 'lucide-react';
+"use client"
+
+import { useState }from "react"
+import { useRouter } from "next/navigation"
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth"
+import { app } from "@/lib/firebase"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
+
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const auth = getAuth(app);
+      await signInWithEmailAndPassword(auth, email, password);
+      
+      toast({
+        title: "Inicio de Sesión Exitoso",
+        description: "Bienvenido de nuevo.",
+      });
+
+      // Redirect based on a predefined role or fetch it after login
+      // For now, defaulting to admin role on successful login
+      router.push("/dashboard?role=admin");
+
+    } catch (err: any) {
+      console.error("Error de autenticación:", err);
+      let errorMessage = "Ocurrió un error al intentar iniciar sesión.";
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        errorMessage = "El correo o la contraseña son incorrectos.";
+      }
+       if (err.code === 'auth/invalid-email') {
+        errorMessage = "El formato del correo electrónico no es válido.";
+      }
+      toast({
+        variant: "destructive",
+        title: "Error de Autenticación",
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   return (
     <div
       className="relative flex flex-col items-center justify-center w-full h-screen bg-cover bg-center"
@@ -31,42 +82,40 @@ export default function LoginPage() {
                     Bienvenido de nuevo. Acceda a su cuenta.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent>
+               <form onSubmit={handleLogin} className="space-y-4">
                  <div className="grid gap-2">
-                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Label htmlFor="email" className="text-white">Correo Electrónico</Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="m@ejemplo.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                       className="bg-white/20 placeholder:text-gray-300 border-white/30"
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="password">Contraseña</Label>
-                    <Input id="password" type="password" required  className="bg-white/20 placeholder:text-gray-300 border-white/30" />
+                    <Label htmlFor="password" className="text-white">Contraseña</Label>
+                    <Input 
+                        id="password" 
+                        type="password" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required  
+                        className="bg-white/20 placeholder:text-gray-300 border-white/30" 
+                    />
                 </div>
                  <div className="grid gap-2 mt-4">
-                    <Button asChild className="w-full bg-primary/80 hover:bg-primary">
-                      <Link href="/dashboard?role=admin">
-                        <Users className="mr-2 h-4 w-4" /> Acceso Administrador
-                      </Link>
-                    </Button>
-                    <Button asChild variant="secondary" className="w-full bg-secondary/80 hover:bg-secondary/90 text-secondary-foreground">
-                      <Link href="/dashboard?role=staff">
-                        <Stethoscope className="mr-2 h-4 w-4" /> Acceso Personal
-                      </Link>
+                    <Button type="submit" className="w-full bg-primary/80 hover:bg-primary" disabled={isLoading}>
+                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                       {isLoading ? "Ingresando..." : "Acceder"}
                     </Button>
                 </div>
+               </form>
             </CardContent>
         </Card>
-        
-        <div className="mt-6 text-center text-sm text-gray-200">
-            ¿No tienes una cuenta?{' '}
-            <Link href="#" className="underline hover:text-white">
-            Regístrate
-            </Link>
-        </div>
       </div>
     </div>
   );
