@@ -30,6 +30,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { 
     FileText, 
     User, 
@@ -52,7 +59,8 @@ import {
     Edit,
     PlusCircle,
     Trash2,
-    Download
+    Download,
+    MoreHorizontal
 } from "lucide-react";
 import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
@@ -455,12 +463,29 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                                                 <TableCell className="font-medium">{doc.type}</TableCell>
                                                 <TableCell>{doc.name}</TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="outline" size="sm" className="mr-2" onClick={() => toast({title: "Función no implementada"})}>
-                                                        <Eye className="mr-2 h-4 w-4" /> Ver
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" onClick={() => toast({title: "Función no implementada"})}>
-                                                        <Download className="mr-2 h-4 w-4" /> Descargar
-                                                    </Button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                <span className="sr-only">Abrir menú</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                            <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
+                                                                <Eye className="mr-2 h-4 w-4" />
+                                                                Ver
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
+                                                                <Download className="mr-2 h-4 w-4" />
+                                                                Descargar
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive" onClick={() => toast({title: "Función no implementada"})}>
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Eliminar
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -702,5 +727,3 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
       </Suspense>
     );
 }
-
-    
