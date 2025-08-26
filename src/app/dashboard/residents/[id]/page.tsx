@@ -419,7 +419,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                         <CardContent className="space-y-4">
                             {resident.familyContacts?.length ? resident.familyContacts.map((contact, index) => (
                                 <div key={index} className="p-4 border rounded-lg">
-                                    <p className="font-bold text-lg">{contact.name} <Badge variant="secondary">{contact.kinship}</Badge></p>
+                                    <div className="font-bold text-lg">{contact.name} <Badge variant="secondary">{contact.kinship}</Badge></div>
                                     <div className="text-sm mt-2 space-y-2 text-muted-foreground">
                                         <p className="flex items-center gap-2"><Mail className="h-4 w-4"/> {contact.email}</p>
                                         <p className="flex items-center gap-2"><Phone className="h-4 w-4"/> {contact.phones.map(p => p.number).join(', ')}</p>
