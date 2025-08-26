@@ -51,7 +51,8 @@ import {
     MessageSquareWarning,
     Edit,
     PlusCircle,
-    Trash2
+    Trash2,
+    Download
 } from "lucide-react";
 import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
@@ -299,9 +300,10 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
             </div>
             
             <Tabs defaultValue="general">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-6">
                     <TabsTrigger value="general">Perfil General</TabsTrigger>
                     <TabsTrigger value="contacts">Contactos</TabsTrigger>
+                    <TabsTrigger value="documents">Documentos</TabsTrigger>
                     <TabsTrigger value="contracts">Contratos</TabsTrigger>
                     <TabsTrigger value="agenda">Agenda</TabsTrigger>
                     <TabsTrigger value="logs">Registros</TabsTrigger>
@@ -429,6 +431,48 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                             )}
                         </CardContent>
                      </Card>
+                </TabsContent>
+
+                <TabsContent value="documents" className="mt-4">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><FileText />Documentos Adjuntos</CardTitle>
+                            <CardDescription>Archivos y documentos asociados a {resident.name}.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Tipo de Documento</TableHead>
+                                        <TableHead>Nombre del Archivo</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {resident.documents?.length > 0 ? (
+                                        resident.documents.map((doc, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">{doc.type}</TableCell>
+                                                <TableCell>{doc.name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="outline" size="sm" className="mr-2" onClick={() => toast({title: "Función no implementada"})}>
+                                                        <Eye className="mr-2 h-4 w-4" /> Ver
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" onClick={() => toast({title: "Función no implementada"})}>
+                                                        <Download className="mr-2 h-4 w-4" /> Descargar
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="h-24 text-center">No se han adjuntado documentos.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
                 
                 <TabsContent value="contracts" className="mt-4">
@@ -658,3 +702,5 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
       </Suspense>
     );
 }
+
+    
