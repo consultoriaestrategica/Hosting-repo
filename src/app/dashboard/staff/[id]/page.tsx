@@ -1,14 +1,9 @@
 "use client"
-import { useState, useEffect, use } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useState, use } from "react";
+import { useStaff } from "@/hooks/use-staff"; 
+import NewStaffContractForm from "./new-staff-contract-form"; // <-- Importa tu nuevo formulario
 
-// Hooks personalizados
-import { useToast } from "@/hooks/use-toast";
-import { useStaff } from "@/hooks/use-staff"; // <-- Se importa el hook real
-import NewStaffContractForm from "./new-staff-contract-form";
-
-// Componentes de UI (shadcn/ui)
+// Componentes de UI
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,8 +15,7 @@ import { User, Mail, Phone, FileText } from "lucide-react";
 
 export default function StaffProfilePage({ params }: { params: { id: string } }) {
   const staffId = use(params).id;
-  const { staff, isLoading } = useStaff(); // <-- Se usa el hook real
-  const { toast } = useToast();
+  const { staff, isLoading } = useStaff();
   
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
 
@@ -83,9 +77,10 @@ export default function StaffProfilePage({ params }: { params: { id: string } })
                     <DialogHeader>
                         <DialogTitle>Generar Nuevo Contrato Laboral</DialogTitle>
                         <DialogDescription>
-                            Complete los detalles para generar un nuevo contrato de trabajo para {staffMember.name}.
+                            Complete los detalles para generar un nuevo contrato para {staffMember.name}.
                         </DialogDescription>
                     </DialogHeader>
+                    {/* Aquí se llama a tu componente de formulario */}
                     <NewStaffContractForm 
                         staffMember={staffMember} 
                         onFormSubmit={() => setIsContractDialogOpen(false)} 
