@@ -1,7 +1,7 @@
 "use client"
-import { useState, use } from "react";
+import { useState } from "react"; // <-- Se eliminó 'use' de esta línea
 import { useStaff } from "@/hooks/use-staff"; 
-import NewStaffContractForm from "./new-staff-contract-form"; // <-- Importa tu nuevo formulario
+import NewStaffContractForm from "./new-staff-contract-form";
 
 // Componentes de UI
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { User, Mail, Phone, FileText } from "lucide-react";
 
 export default function StaffProfilePage({ params }: { params: { id: string } }) {
-  const staffId = use(params).id;
+  const staffId = params.id; // <-- AJUSTE: Se accede directamente, sin 'use()'
   const { staff, isLoading } = useStaff();
   
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
@@ -80,7 +80,6 @@ export default function StaffProfilePage({ params }: { params: { id: string } })
                             Complete los detalles para generar un nuevo contrato para {staffMember.name}.
                         </DialogDescription>
                     </DialogHeader>
-                    {/* Aquí se llama a tu componente de formulario */}
                     <NewStaffContractForm 
                         staffMember={staffMember} 
                         onFormSubmit={() => setIsContractDialogOpen(false)} 
