@@ -35,25 +35,31 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useResidents, Resident } from "@/hooks/use-residents"
+import { useResidents, Resident, AgendaEvent } from "@/hooks/use-residents"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useSearchParams } from "next/navigation"
 import NewLogForm from "./[id]/new-log-form"
 import ResidentPreviewDialog from "./resident-preview-dialog"
 import AgendaPreviewDialog from "../components/agenda-preview-dialog"
+import AgendaForm from "../components/agenda-form"
+import { useUser } from "@/hooks/use-user"
+
 
 const ITEMS_PER_PAGE = 8;
 
 function ResidentsPageContent() {
-  const { residents, isLoading } = useResidents()
+  const { residents, addAgendaEvent, isLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'admin';
+  const { user } = useUser()
+
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [isAgendaDialogOpen, setIsAgendaDialogOpen] = useState(false);
+  const [isAgendaFormOpen, setIsAgendaFormOpen] = useState(false);
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -90,12 +96,48 @@ function ResidentsPageContent() {
     })
   }
   
-  const handleActionClick = (resident: Resident, action: 'log' | 'preview' | 'agenda') => {
+  const handleActionClick = (resident: Resident, action: 'log' | 'preview' | 'agenda' | 'addEvent') => {
     setSelectedResident(resident);
     if (action === 'log') setIsLogDialogOpen(true);
     if (action === 'preview') setIsPreviewDialogOpen(true);
     if (action === 'agenda') setIsAgendaDialogOpen(true);
+    if (action === 'addEvent') setIsAgendaFormOpen(true);
   }
+
+  const generateGoogleCalendarLink = (event: Omit<AgendaEvent, 'id' | 'status'>, userEmail?: string) => {
+    const startTime = new Date(event.date).toISOString().replace(/-|:|\.\d\d\d/g, "");
+    const endTime = new Date(new Date(event.date).getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, ""); // Add 1 hour duration
+    const details = encodeURIComponent(event.description || '');
+    const text = encodeURIComponent(event.title);
+    const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
+    
+    if (userEmail) {
+        return `${calendarUrl}&add=${encodeURIComponent(userEmail)}`;
+    }
+    return calendarUrl;
+  };
+
+  const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
+    if (!selectedResident) return;
+
+    addAgendaEvent(selectedResident.id, data);
+    
+    const calendarLink = generateGoogleCalendarLink(data, user?.email);
+
+    toast({ 
+        title: "Evento Agendado", 
+        description: `Se ha añadido un nuevo evento para ${selectedResident.name}.`,
+        action: (
+            <a href={calendarLink} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm">Añadir a Google Calendar</Button>
+            </a>
+        )
+    });
+    
+    setIsAgendaFormOpen(false);
+    setSelectedResident(null);
+  };
+
 
   if (!isClient || isLoading) {
     return <div>Cargando residentes...</div>
@@ -243,6 +285,11 @@ function ResidentsPageContent() {
                           Ver Agenda
                         </DropdownMenuItem>
 
+                         <DropdownMenuItem onClick={() => handleActionClick(resident, 'addEvent')}>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Agendar Evento
+                        </DropdownMenuItem>
+
                         {isStaffRole && (
                           <DropdownMenuItem onClick={() => handleActionClick(resident, 'preview')}>
                             <Eye className="mr-2 h-4 w-4" />
@@ -304,6 +351,25 @@ function ResidentsPageContent() {
                     <DialogDescription>Complete la información de la evolución diaria del residente.</DialogDescription>
                 </DialogHeader>
                 <NewLogForm residentId={selectedResident.id} onFormSubmit={() => setIsLogDialogOpen(false)} />
+            </DialogContent>
+        </Dialog>
+      )}
+
+       {selectedResident && (
+         <Dialog open={isAgendaFormOpen} onOpenChange={setIsAgendaFormOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Agendar Nuevo Evento</DialogTitle>
+                    <DialogDescription>
+                        Complete los detalles del evento para {selectedResident.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <AgendaForm 
+                    residentId={selectedResident.id}
+                    event={null} 
+                    onSubmit={handleAgendaFormSubmit}
+                    onCancel={() => setIsAgendaFormOpen(false)}
+                />
             </DialogContent>
         </Dialog>
       )}
