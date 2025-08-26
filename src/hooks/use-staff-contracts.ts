@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, query } from 'firebase/firestore';
 
 
 export type StaffContract = {
@@ -27,10 +27,12 @@ export function useStaffContracts() {
 
   useEffect(() => {
     setIsLoading(true);
-    // Simpler query to start, sorting is done client-side.
-    const q = query(staffContractsCollection, orderBy("createdAt", "desc"));
+    // Simpler query to start, sorting is done client-side to avoid indexing issues.
+    const q = query(staffContractsCollection);
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const contractsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StaffContract));
+        // Sort client-side
+        contractsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setContracts(contractsData);
         setIsLoading(false);
     }, (error) => {
