@@ -24,7 +24,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { AgendaEvent, useResidents } from "@/hooks/use-residents"
 import { DialogFooter } from "@/components/ui/dialog"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { CalendarPlus } from "lucide-react"
 
 const agendaFormSchema = z.object({
   residentId: z.string().optional(),
@@ -40,13 +41,14 @@ type AgendaFormValues = Omit<AgendaEvent, 'id'> & { residentId?: string };
 interface AgendaFormProps {
   residentId?: string; // Optional residentId, for when it's known (e.g., from resident profile)
   event: AgendaEvent | null;
-  onSubmit: (residentId: string, data: Omit<AgendaEvent, 'id'>) => void;
+  onSubmit: (residentId: string, data: Omit<AgendaEvent, 'id'>, syncWithCalendar: boolean) => void;
   onCancel: () => void;
 }
 
 export default function AgendaForm({ residentId, event, onSubmit, onCancel }: AgendaFormProps) {
   const { residents } = useResidents();
   const defaultDateTime = event?.date ? new Date(event.date).toISOString().substring(0, 16) : new Date().toISOString().substring(0, 16);
+  const [sync, setSync] = useState(false);
 
   const form = useForm<AgendaFormValues>({
     resolver: zodResolver(agendaFormSchema),
@@ -75,7 +77,7 @@ export default function AgendaForm({ residentId, event, onSubmit, onCancel }: Ag
         status: data.status,
         description: data.description,
     };
-    onSubmit(finalResidentId, eventData);
+    onSubmit(finalResidentId, eventData, sync);
   }
 
   return (
@@ -148,9 +150,13 @@ export default function AgendaForm({ residentId, event, onSubmit, onCancel }: Ag
             </div>
              <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción (Opcional)</FormLabel><FormControl><Textarea placeholder="Añada detalles adicionales sobre el evento..." {...field} /></FormControl><FormMessage /></FormItem>)} />
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:justify-end">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-            <Button type="submit">Guardar Evento</Button>
+            <Button type="submit" onClick={() => setSync(false)}>Guardar Evento</Button>
+            <Button type="submit" onClick={() => setSync(true)}>
+                <CalendarPlus className="mr-2" />
+                Guardar y Sincronizar
+            </Button>
         </DialogFooter>
       </form>
     </Form>

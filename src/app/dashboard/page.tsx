@@ -47,7 +47,7 @@ export default function DashboardPage() {
     return calendarUrl;
   };
 
-  const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
+  const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>, syncWithCalendar: boolean) => {
     if (!residentId) {
         toast({ variant: 'destructive', title: 'Error', description: 'Debe seleccionar un residente.'})
         return;
@@ -57,17 +57,15 @@ export default function DashboardPage() {
 
     addAgendaEvent(residentId, data);
     
-    const calendarLink = generateGoogleCalendarLink(data, user?.email);
-
     toast({ 
         title: "Evento Agendado", 
         description: `Se ha añadido un nuevo evento para ${resident.name}.`,
-        action: (
-            <a href={calendarLink} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm">Añadir a Google Calendar</Button>
-            </a>
-        )
     });
+    
+    if (syncWithCalendar) {
+        const calendarLink = generateGoogleCalendarLink(data, user?.email);
+        window.open(calendarLink, '_blank');
+    }
     
     setIsAgendaFormOpen(false);
   };

@@ -1,3 +1,4 @@
+
 "use client"
 import { useResidents, Resident, DischargeDetails, AgendaEvent } from "@/hooks/use-residents";
 import { useLogs, Log } from "@/hooks/use-logs";
@@ -161,34 +162,28 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
     return calendarUrl;
   };
 
-  const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>) => {
+  const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>, syncWithCalendar: boolean) => {
     if (!resident) return;
     
-    const calendarLink = generateGoogleCalendarLink(data, user?.email);
-
     if (selectedEvent) {
       updateAgendaEvent(resident.id, selectedEvent.id, data);
       toast({ 
           title: "Evento Actualizado", 
           description: `El evento "${data.title}" ha sido actualizado.`,
-          action: (
-              <a href={calendarLink} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm">Actualizar en Google Calendar</Button>
-              </a>
-          )
       });
     } else {
       addAgendaEvent(resident.id, data);
       toast({ 
           title: "Evento Agendado", 
           description: `Se ha añadido un nuevo evento para ${resident.name}.`,
-           action: (
-            <a href={calendarLink} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm">Añadir a Google Calendar</Button>
-            </a>
-        )
       });
     }
+
+    if (syncWithCalendar) {
+        const calendarLink = generateGoogleCalendarLink(data, user?.email);
+        window.open(calendarLink, '_blank');
+    }
+
     setIsAgendaFormOpen(false);
     setSelectedEvent(null);
   };
