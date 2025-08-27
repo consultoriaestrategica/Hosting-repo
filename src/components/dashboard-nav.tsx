@@ -16,6 +16,8 @@ export function DashboardNav() {
   const pathname = usePathname()
   const { user } = useUser();
   const searchParams = useSearchParams()
+  // The role from the authenticated user object is the source of truth.
+  // The searchParam is a fallback during initial load or for non-authenticated roles.
   const role = user?.role || searchParams.get('role') || 'staff'; 
 
 
@@ -24,30 +26,21 @@ export function DashboardNav() {
   }
   
   const allNavItems = [
-    { href: "/dashboard", label: "Inicio", icon: <Home />, roles: ['Admin', 'Family', 'Staff'] },
-    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['Admin', 'Family', 'Staff'] },
-    { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['Admin'] },
-    { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['Admin', 'Staff'] },
-    { href: "/dashboard/visitors", label: "Visitantes", icon: <Car />, roles: ['Admin', 'Staff'] },
-    { href: "/dashboard/contracts", label: "Contratos", icon: <BookUser />, roles: ['Admin'] },
-    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['Admin'] },
-    { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['Admin'] },
+    { href: "/dashboard", label: "Inicio", icon: <Home />, roles: ['admin', 'family', 'staff'] },
+    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['admin', 'family', 'staff'] },
+    { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['admin'] },
+    { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['admin', 'staff'] },
+    { href: "/dashboard/visitors", label: "Visitantes", icon: <Car />, roles: ['admin', 'staff'] },
+    { href: "/dashboard/contracts", label: "Contratos", icon: <BookUser />, roles: ['admin'] },
+    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['admin'] },
+    { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['admin'] },
   ]
 
   const navItems = allNavItems.filter(item => {
     // Hide dashboard home for staff, it's not very useful for them
     if (item.href === "/dashboard" && role === 'staff') return false;
      
-    // Determine the main role category for permission checking
-    let userRoleCategory = 'Staff'; // Default to staff
-    if (role === 'admin' || role === 'Administrativo') {
-        userRoleCategory = 'Admin';
-    } else if (role === 'family') {
-        userRoleCategory = 'Family';
-    }
-
-    // Check if the item's roles array includes the user's category
-    return item.roles.includes(userRoleCategory);
+    return item.roles.includes(role);
   });
 
 
