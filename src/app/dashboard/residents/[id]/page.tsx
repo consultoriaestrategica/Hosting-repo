@@ -67,7 +67,6 @@ import { useState, useMemo, useEffect, Suspense, use } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
 import DischargeForm from "./discharge-form"
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import AlertForm from "./alert-form";
 import NewLogForm from "./new-log-form";
 import AgendaForm from "../../components/agenda-form";
@@ -85,13 +84,11 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
 }
 
 function ResidentProfilePageContent({ id: residentId }: { id: string }) {
-  const searchParams = useSearchParams();
-  const role = searchParams.get('role') || 'admin';
   const { residents, dischargeResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, isLoading: residentsLoading } = useResidents();
   const { logs, isLoading: logsLoading } = useLogs();
   const { contracts: residentContracts, isLoading: contractsLoading } = useResidentContracts();
   const { toast } = useToast()
-  const { user } = useUser();
+  const { user, role } = useUser();
 
   const [isClient, setIsClient] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
@@ -520,7 +517,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                                                 <TableCell><Badge variant={getStatusVariant(c.status)}>{c.status}</Badge></TableCell>
                                                 <TableCell className="text-right">
                                                     <Button asChild variant="outline" size="sm">
-                                                        <Link href={`/dashboard/contracts/${c.id}?role=${role}&type=resident`}>
+                                                        <Link href={`/dashboard/contracts/${c.id}?type=resident`}>
                                                             <Eye className="mr-2 h-4 w-4"/> Ver Detalle
                                                         </Link>
                                                     </Button>

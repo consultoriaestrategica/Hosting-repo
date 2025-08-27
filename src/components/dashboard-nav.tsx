@@ -2,7 +2,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Home, Users, ClipboardList, FileText, Settings, BookUser, HardHat, Car } from "lucide-react"
 
 import {
@@ -14,12 +14,7 @@ import { useUser } from "@/hooks/use-user"
 
 export function DashboardNav() {
   const pathname = usePathname()
-  const { user } = useUser();
-  const searchParams = useSearchParams()
-  // The role from the authenticated user object is the source of truth.
-  // The searchParam is a fallback during initial load or for non-authenticated roles.
-  const role = user?.role || searchParams.get('role') || 'staff'; 
-
+  const { user, role } = useUser();
 
   const isActive = (path: string) => {
     return pathname === path || (path !== "/dashboard" && pathname.startsWith(path))
@@ -37,6 +32,8 @@ export function DashboardNav() {
   ]
 
   const navItems = allNavItems.filter(item => {
+    if (!role) return false;
+    
     // Hide dashboard home for staff, it's not very useful for them
     if (item.href === "/dashboard" && role === 'staff') return false;
      
@@ -53,7 +50,7 @@ export function DashboardNav() {
             isActive={isActive(item.href)}
             tooltip={item.label}
           >
-            <Link href={`${item.href}?role=${role.toLowerCase()}`}>
+            <Link href={item.href}>
               {item.icon}
               <span>{item.label}</span>
             </Link>

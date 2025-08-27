@@ -38,7 +38,6 @@ import { useStaffContracts } from "@/hooks/use-staff-contracts"
 import { useResidents } from "@/hooks/use-residents"
 import { useStaff } from "@/hooks/use-staff"
 import { useEffect, useState, useMemo, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
 
 function ContractsPageContent() {
   const { contracts: residentContracts, isLoading: residentContractsLoading } = useResidentContracts()
@@ -50,9 +49,6 @@ function ContractsPageContent() {
   const [personFilter, setPersonFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   
-  const searchParams = useSearchParams()
-  const role = searchParams.get('role') || 'admin';
-
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -96,9 +92,9 @@ function ContractsPageContent() {
 
   const getPersonLink = (contract: any) => {
     if (contract.contractPartyType === 'resident') {
-        return `/dashboard/residents/${contract.residentId}?role=${role}`
+        return `/dashboard/residents/${contract.residentId}`
     }
-    return `/dashboard/staff/${contract.staffId}?role=${role}`
+    return `/dashboard/staff/${contract.staffId}`
   }
   
   const getStatusVariant = (status: string) => {
@@ -121,7 +117,7 @@ function ContractsPageContent() {
         <h1 className="text-3xl font-bold font-headline">Gestión de Contratos</h1>
         <div className="ml-auto flex items-center gap-2">
             <Button size="sm" className="h-8 gap-1" asChild>
-                <Link href={`/dashboard/contracts/new?role=${role}`}>
+                <Link href="/dashboard/contracts/new">
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                         Generar Contrato Residente
@@ -225,7 +221,7 @@ function ContractsPageContent() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                             <Link href={`/dashboard/contracts/${contract.id}?role=${role}&type=${contract.contractPartyType}`}>
+                             <Link href={`/dashboard/contracts/${contract.id}?type=${contract.contractPartyType}`}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   Ver Detalle
                              </Link>

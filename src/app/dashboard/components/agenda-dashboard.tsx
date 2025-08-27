@@ -81,7 +81,7 @@ export default function AgendaDashboard() {
                                 {new Date(event.date).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
                             </TableCell>
                             <TableCell>
-                                <Link href={`/dashboard/residents/${event.residentId}?role=admin`} className="font-semibold hover:underline">
+                                <Link href={`/dashboard/residents/${event.residentId}`} className="font-semibold hover:underline">
                                     {event.residentName}
                                 </Link>
                             </TableCell>

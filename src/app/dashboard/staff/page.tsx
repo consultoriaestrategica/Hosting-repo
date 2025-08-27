@@ -29,14 +29,13 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Staff, useStaff } from "@/hooks/use-staff"
 import { useEffect, useState, useMemo, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useUser } from "@/hooks/use-user"
 
 function StaffPageContent() {
   const { staff, isLoading } = useStaff()
+  const { user, role } = useUser();
   const [isClient, setIsClient] = useState(false)
   const [searchTerm, setSearchTerm] = useState("");
-  const searchParams = useSearchParams()
-  const role = searchParams.get('role') || 'admin';
   
   useEffect(() => {
     setIsClient(true)
@@ -66,7 +65,7 @@ function StaffPageContent() {
         <h1 className="text-3xl font-bold font-headline">Gestión de Personal</h1>
         <div className="ml-auto flex items-center gap-2">
             <Button size="sm" className="h-8 gap-1" asChild>
-                <Link href={`/dashboard/staff/new?role=${role}`}>
+                <Link href="/dashboard/staff/new">
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                         Agregar Personal
@@ -135,13 +134,13 @@ function StaffPageContent() {
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                          {isAdminRole && (
                             <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/staff/${member.id}?role=${role}`}>
+                                <Link href={`/dashboard/staff/${member.id}`}>
                                     <Eye className="mr-2 h-4 w-4" /> Ver Perfil
                                 </Link>
                             </DropdownMenuItem>
                          )}
                          <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/staff/edit/${member.id}?role=${role}`}>
+                            <Link href={`/dashboard/staff/edit/${member.id}`}>
                                 <Edit className="mr-2 h-4 w-4" /> Editar
                             </Link>
                          </DropdownMenuItem>

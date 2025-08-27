@@ -38,12 +38,11 @@ import { Badge } from "@/components/ui/badge"
 import { useResidents, Resident, AgendaEvent } from "@/hooks/use-residents"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { useSearchParams } from "next/navigation"
+import { useUser } from "@/hooks/use-user"
 import NewLogForm from "./[id]/new-log-form"
 import ResidentPreviewDialog from "./resident-preview-dialog"
 import AgendaPreviewDialog from "../components/agenda-preview-dialog"
 import AgendaForm from "../components/agenda-form"
-import { useUser } from "@/hooks/use-user"
 
 
 const ITEMS_PER_PAGE = 8;
@@ -52,9 +51,7 @@ function ResidentsPageContent() {
   const { residents, addAgendaEvent, isLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
-  const searchParams = useSearchParams()
-  const role = searchParams.get('role') || 'admin';
-  const { user } = useUser()
+  const { user, role } = useUser()
 
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
@@ -152,7 +149,7 @@ function ResidentsPageContent() {
         <div className="ml-auto flex items-center gap-2">
           {isAdminRole && (
             <Button size="sm" className="h-8 gap-1" asChild>
-              <Link href={`/dashboard/residents/new?role=${role}`}>
+              <Link href="/dashboard/residents/new">
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Agregar Nuevo Residente
@@ -238,7 +235,7 @@ function ResidentsPageContent() {
               {paginatedResidents.map((resident) => (
                 <TableRow key={resident.id}>
                   <TableCell className="font-medium">
-                     <Link href={`/dashboard/residents/${resident.id}?role=${role}`} className="hover:underline">
+                     <Link href={`/dashboard/residents/${resident.id}`} className="hover:underline">
                         {resident.name}
                      </Link>
                   </TableCell>
@@ -271,7 +268,7 @@ function ResidentsPageContent() {
                         
                         {isAdminRole && (
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/residents/${resident.id}?role=${role}`}>
+                            <Link href={`/dashboard/residents/${resident.id}`}>
                                 <FileText className="mr-2 h-4 w-4" />
                                 Ver Perfil Completo
                             </Link>

@@ -4,7 +4,7 @@
 import { useState }from "react"
 import { useRouter } from "next/navigation"
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { app, db } from "@/lib/firebase"
 
 import { Button } from "@/components/ui/button"
@@ -30,34 +30,36 @@ export default function LoginPage() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      const staffQuery = query(collection(db, "staff"), where("email", "==", userCredential.user.email));
-      const querySnapshot = await getDocs(staffQuery);
-
-      let userRole = 'staff';
-      if (!querySnapshot.empty) {
-        const staffData = querySnapshot.docs[0].data();
-        if (staffData.role === 'Administrativo') {
-          userRole = 'admin';
-        }
-      }
-
       toast({
         title: "Inicio de Sesión Exitoso",
         description: "Bienvenido de nuevo.",
       });
       
-      router.push(`/dashboard?role=${userRole}`);
+      router.push(`/dashboard`);
 
     } catch (err: any) {
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
         // If user not found, try to create a new one. This is for demo purposes.
         try {
-            const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await createUserWithEmailAndPassword(auth, email, password);
+
+            // Add an admin user to the staff collection as well
+            await addDoc(collection(db, "staff"), {
+                name: "Administrador",
+                email: email,
+                role: 'Administrativo',
+                status: 'Activo',
+                hireDate: new Date().toISOString().split('T')[0],
+                idNumber: '00000000',
+                phone: '00000000',
+                address: 'N/A'
+            });
+
             toast({
                 title: "Cuenta de Administrador Creada",
-                description: "Se ha creado una nueva cuenta de administrador para ti.",
+                description: "Se ha creado una nueva cuenta de administrador para ti. Serás redirigido.",
             });
-            router.push('/dashboard?role=admin');
+            router.push('/dashboard');
         } catch (createErr: any) {
             let createErrorMessage = "No se pudo crear la cuenta. Intente con una contraseña más segura.";
             if (createErr.code === 'auth/email-already-in-use') {

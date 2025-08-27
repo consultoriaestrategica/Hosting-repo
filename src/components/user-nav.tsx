@@ -72,7 +72,7 @@ export function UserNav() {
             Perfil
           </DropdownMenuItem>
            <DropdownMenuItem asChild>
-             <Link href={`/dashboard/settings?role=${role.toLowerCase()}`}>Configuración</Link>
+             <Link href="/dashboard/settings">Configuración</Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

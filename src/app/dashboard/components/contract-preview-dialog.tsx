@@ -22,10 +22,9 @@ interface ContractPreviewDialogProps {
   onOpenChange: (isOpen: boolean) => void
   contract: Contract | null
   residentName: string
-  role: string
 }
 
-export default function ContractPreviewDialog({ isOpen, onOpenChange, contract, residentName, role }: ContractPreviewDialogProps) {
+export default function ContractPreviewDialog({ isOpen, onOpenChange, contract, residentName }: ContractPreviewDialogProps) {
   const { settings } = useSettings();
 
   if (!contract) return null;
@@ -112,7 +111,7 @@ export default function ContractPreviewDialog({ isOpen, onOpenChange, contract, 
 
         <DialogFooter>
            <Button type="button" variant="outline" asChild>
-                <Link href={`/dashboard/contracts/${contract.id}?role=${role}`}>
+                <Link href={`/dashboard/contracts/${contract.id}`}>
                     <ExternalLink className="mr-2 h-4 w-4" />
                     Ver Contrato Completo
                 </Link>

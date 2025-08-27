@@ -33,7 +33,6 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { useResidents, Visit } from "@/hooks/use-residents"
 import { useState, useMemo, useEffect, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
 import NewVisitForm from "./new-visit-form"
 import { PlusCircle, FilterX, Calendar as CalendarIcon, User } from "lucide-react"
 import Link from "next/link"
@@ -51,9 +50,6 @@ function VisitorsPageContent() {
   const { residents, isLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
   const [isVisitFormOpen, setIsVisitFormOpen] = useState(false)
-  
-  const searchParams = useSearchParams()
-  const role = searchParams.get('role') || 'admin';
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>();
@@ -200,7 +196,7 @@ function VisitorsPageContent() {
                     <TableCell>{visit.kinship}</TableCell>
                     <TableCell>
                       <Button variant="link" asChild className="p-0 h-auto font-normal">
-                          <Link href={`/dashboard/residents/${visit.residentId}?role=${role}`}>
+                          <Link href={`/dashboard/residents/${visit.residentId}`}>
                             <User className="mr-2 h-3 w-3" />
                             {visit.residentName}
                           </Link>
