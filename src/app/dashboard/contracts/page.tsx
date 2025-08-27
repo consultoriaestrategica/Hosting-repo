@@ -31,6 +31,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useContracts as useResidentContracts } from "@/hooks/use-contracts"
@@ -150,20 +152,22 @@ function ContractsPageContent() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">Todas las Personas</SelectItem>
-                    <optgroup label="Residentes">
+                     <SelectGroup>
+                        <SelectLabel>Residentes</SelectLabel>
                         {residents.map((resident) => (
                         <SelectItem key={`resident-${resident.id}`} value={`resident-${resident.id}`}>
                             {resident.name}
                         </SelectItem>
                         ))}
-                    </optgroup>
-                    <optgroup label="Personal">
+                    </SelectGroup>
+                     <SelectGroup>
+                         <SelectLabel>Personal</SelectLabel>
                          {staff.map((member) => (
                         <SelectItem key={`staff-${member.id}`} value={`staff-${member.id}`}>
                             {member.name}
                         </SelectItem>
                         ))}
-                    </optgroup>
+                    </SelectGroup>
                 </SelectContent>
              </Select>
              <Button variant="outline" onClick={handleClearFilters} disabled={personFilter === 'all' && typeFilter === 'all'}>
