@@ -3,7 +3,7 @@
 
 import { useState }from "react"
 import { useRouter } from "next/navigation"
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth"
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { app, db } from "@/lib/firebase"
 
@@ -25,16 +25,15 @@ export default function LoginPage() {
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
+    const auth = getAuth(app);
 
     try {
-      const auth = getAuth(app);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // After successful login, find the user's role in the 'staff' collection
       const staffQuery = query(collection(db, "staff"), where("email", "==", userCredential.user.email));
       const querySnapshot = await getDocs(staffQuery);
 
-      let userRole = 'staff'; // Default role
+      let userRole = 'staff';
       if (!querySnapshot.empty) {
         const staffData = querySnapshot.docs[0].data();
         if (staffData.role === 'Administrativo') {
@@ -50,19 +49,40 @@ export default function LoginPage() {
       router.push(`/dashboard?role=${userRole}`);
 
     } catch (err: any) {
-      console.error("Error de autenticación:", err);
-      let errorMessage = "Ocurrió un error al intentar iniciar sesión.";
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        errorMessage = "El correo o la contraseña son incorrectos.";
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+        // If user not found, try to create a new one. This is for demo purposes.
+        try {
+            const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
+            toast({
+                title: "Cuenta de Administrador Creada",
+                description: "Se ha creado una nueva cuenta de administrador para ti.",
+            });
+            router.push('/dashboard?role=admin');
+        } catch (createErr: any) {
+            let createErrorMessage = "No se pudo crear la cuenta. Intente con una contraseña más segura.";
+            if (createErr.code === 'auth/email-already-in-use') {
+                 createErrorMessage = "El correo o la contraseña son incorrectos.";
+            }
+             toast({
+                variant: "destructive",
+                title: "Error de Creación de Cuenta",
+                description: createErrorMessage,
+            });
+        }
+      } else {
+         let errorMessage = "Ocurrió un error al intentar iniciar sesión.";
+         if (err.code === 'auth/invalid-email') {
+            errorMessage = "El formato del correo electrónico no es válido.";
+         }
+         if (err.code === 'auth/wrong-password') {
+            errorMessage = "El correo o la contraseña son incorrectos.";
+         }
+          toast({
+            variant: "destructive",
+            title: "Error de Autenticación",
+            description: errorMessage,
+          });
       }
-       if (err.code === 'auth/invalid-email') {
-        errorMessage = "El formato del correo electrónico no es válido.";
-      }
-      toast({
-        variant: "destructive",
-        title: "Error de Autenticación",
-        description: errorMessage,
-      });
     } finally {
       setIsLoading(false);
     }
