@@ -76,23 +76,14 @@ export function DashboardNav() {
 
   const getVisibleGroups = () => {
     if (!role) return [];
-    
-    return navGroups
-        .map(group => {
-            const visibleItems = group.items.filter(item => {
-                const userRole = role === 'Admin' ? 'Admin' : 'staff'; // Simplify role for checks
-                return item.roles.includes(userRole);
-            });
 
-            if (visibleItems.length > 0) {
-                const userRole = role === 'Admin' ? 'Admin' : 'staff';
-                if (group.roles.includes(userRole)) {
-                    return { ...group, items: visibleItems };
-                }
-            }
-            return null;
-        })
-        .filter(Boolean) as NavGroup[];
+    return navGroups
+      .filter(group => group.roles.includes(role)) // Filtra grupos basados en el rol
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item => item.roles.includes(role)) // Filtra ítems dentro de cada grupo
+      }))
+      .filter(group => group.items.length > 0); // Solo muestra grupos que tengan al menos un ítem visible
   };
 
   const visibleGroups = getVisibleGroups();
@@ -103,7 +94,7 @@ export function DashboardNav() {
             return group.title;
         }
     }
-    return "";
+    return visibleGroups.length > 0 ? visibleGroups[0].title : "";
   }
   
   return (
