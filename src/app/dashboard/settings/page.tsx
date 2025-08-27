@@ -318,12 +318,12 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="user-role">Rol</Label>
-                      <Select name="role" defaultValue={editingUser?.role || "Personal"}>
+                      <Select name="role" defaultValue={editingUser?.role || "Enfermera"}>
                         <SelectTrigger id="user-role">
                           <SelectValue placeholder="Seleccione un rol" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Administrativo">Admin</SelectItem>
+                          <SelectItem value="Admin">Admin</SelectItem>
                           <SelectItem value="Enfermera">Enfermera</SelectItem>
                           <SelectItem value="Médico">Médico</SelectItem>
                            <SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem>

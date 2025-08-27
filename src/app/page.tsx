@@ -47,7 +47,7 @@ export default function LoginPage() {
             await addDoc(collection(db, "staff"), {
                 name: "Administrador",
                 email: email,
-                role: 'Administrativo',
+                role: 'Admin', // Changed from 'Administrativo'
                 status: 'Activo',
                 hireDate: new Date().toISOString().split('T')[0],
                 idNumber: '00000000',

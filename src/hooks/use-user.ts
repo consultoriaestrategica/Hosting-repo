@@ -19,7 +19,8 @@ export function useUser() {
       const unsubscribe = onSnapshot(staffQuery, (querySnapshot) => {
         if (!querySnapshot.empty) {
           const staffData = querySnapshot.docs[0].data() as Staff;
-          const userRole = staffData.role === 'Administrativo' ? 'admin' : 'staff';
+          // Directly use the role from DB. 'Admin' for admins, other roles are 'staff'.
+          const userRole = staffData.role === 'Admin' ? 'Admin' : 'staff';
           setAppUser({
               id: querySnapshot.docs[0].id,
               ...staffData,
@@ -27,7 +28,6 @@ export function useUser() {
           });
         } else {
             // Handle case where user is authenticated but not in staff collection
-            // Or create a mock user for 'family' role based on URL
             setAppUser(null);
         }
       });
@@ -39,7 +39,7 @@ export function useUser() {
   }, [authUser]);
 
   const role = useMemo(() => {
-      if (!appUser) return 'staff'; // Default for safety
+      if (!appUser) return null; // Return null if no user
       return appUser.role;
   }, [appUser]);
 

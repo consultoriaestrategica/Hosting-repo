@@ -21,25 +21,36 @@ export function DashboardNav() {
   }
   
   const allNavItems = [
-    { href: "/dashboard", label: "Inicio", icon: <Home />, roles: ['admin', 'family', 'staff'] },
-    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['admin', 'family', 'staff'] },
-    { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['admin'] },
-    { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['admin', 'staff'] },
-    { href: "/dashboard/visitors", label: "Visitantes", icon: <Car />, roles: ['admin', 'staff'] },
-    { href: "/dashboard/contracts", label: "Contratos", icon: <BookUser />, roles: ['admin'] },
-    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['admin'] },
-    { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['admin'] },
+    { href: "/dashboard", label: "Inicio", icon: <Home />, roles: ['Admin', 'family', 'staff'] },
+    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['Admin', 'family', 'staff'] },
+    { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['Admin'] },
+    { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['Admin', 'staff'] },
+    { href: "/dashboard/visitors", label: "Visitantes", icon: <Car />, roles: ['Admin', 'staff'] },
+    { href: "/dashboard/contracts", label: "Contratos", icon: <BookUser />, roles: ['Admin'] },
+    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['Admin'] },
+    { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['Admin'] },
   ]
 
   const navItems = allNavItems.filter(item => {
     if (!role) return false;
     
-    // Hide dashboard home for staff, it's not very useful for them
-    if (item.href === "/dashboard" && role === 'staff') return false;
-     
-    return item.roles.includes(role);
-  });
+    // Admin sees everything in their list
+    if (role === 'Admin') {
+        return item.roles.includes('Admin');
+    }
 
+    // Staff sees their specific items
+    if (role === 'staff') {
+      return item.roles.includes('staff');
+    }
+
+    // Family sees their specific items
+    if (role === 'family') {
+      return item.roles.includes('family');
+    }
+
+    return false;
+  });
 
   return (
     <SidebarMenu>
