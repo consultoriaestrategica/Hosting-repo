@@ -14,7 +14,7 @@ import { useUser } from "@/hooks/use-user"
 
 export function DashboardNav() {
   const pathname = usePathname()
-  const { user, role } = useUser();
+  const { role } = useUser();
 
   const isActive = (path: string) => {
     return pathname === path || (path !== "/dashboard" && pathname.startsWith(path))
@@ -33,23 +33,10 @@ export function DashboardNav() {
 
   const navItems = allNavItems.filter(item => {
     if (!role) return false;
-    
-    // Admin sees everything in their list
-    if (role === 'Admin') {
-        return item.roles.includes('Admin');
-    }
-
-    // Staff sees their specific items
-    if (role === 'staff') {
-      return item.roles.includes('staff');
-    }
-
-    // Family sees their specific items
-    if (role === 'family') {
-      return item.roles.includes('family');
-    }
-
-    return false;
+    // The role from the hook can be 'Admin' or a specific staff role like 'Enfermera'
+    // We treat all non-Admin staff roles as 'staff' for permissions.
+    const userRole = role === 'Admin' ? 'Admin' : 'staff';
+    return item.roles.includes(userRole);
   });
 
   return (
