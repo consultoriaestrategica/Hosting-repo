@@ -1,40 +1,48 @@
 
 "use client"
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from './use-auth';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import type { Staff } from './use-staff';
 
-import { useSearchParams } from "next/navigation"
-import { useMemo } from "react"
-import { useStaff } from "./use-staff";
+type AppUser = Staff & { role: string };
 
 export function useUser() {
-  const searchParams = useSearchParams();
-  const { staff } = useStaff(); // Use the real staff data
-  const role = searchParams.get('role');
+  const { user: authUser } = useAuth();
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
 
-  const user = useMemo(() => {
-    // In a real app, you'd likely have a separate 'users' collection and proper auth.
-    // For this app's structure, we map roles to the 'staff' collection.
-    // We create a default admin user if no staff members exist yet.
-    const defaultAdmin = { id: "user-1", name: "Admin", username: "admin", email: "admin@guardianangel.com", role: "Admin" };
+  useEffect(() => {
+    if (authUser?.email) {
+      const staffQuery = query(collection(db, "staff"), where("email", "==", authUser.email));
+      
+      const unsubscribe = onSnapshot(staffQuery, (querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const staffData = querySnapshot.docs[0].data() as Staff;
+          const userRole = staffData.role === 'Administrativo' ? 'admin' : 'staff';
+          setAppUser({
+              id: querySnapshot.docs[0].id,
+              ...staffData,
+              role: userRole
+          });
+        } else {
+            // Handle case where user is authenticated but not in staff collection
+            // Or create a mock user for 'family' role based on URL
+            setAppUser(null);
+        }
+      });
 
-    if (staff.length === 0) {
-        return defaultAdmin;
+      return () => unsubscribe();
+    } else {
+      setAppUser(null);
     }
+  }, [authUser]);
 
-    if (!role) return staff.find(u => u.role === 'Administrativo') || defaultAdmin;
+  const role = useMemo(() => {
+      if (!appUser) return 'staff'; // Default for safety
+      return appUser.role;
+  }, [appUser]);
 
-    switch (role.toLowerCase()) {
-        case 'admin':
-            return staff.find(u => u.role === 'Administrativo') || defaultAdmin;
-        case 'staff':
-            // Find a non-admin staff member, or fall back to any staff, then default admin
-            return staff.find(u => u.role !== 'Administrativo') || staff[0] || defaultAdmin;
-        case 'family':
-            // Family role is not in the staff list, so we create a mock for it.
-            return { id: "user-3", name: "Juan Rodriguez", username: "juanr", email: "juan.r@example.com", role: "Family" };
-        default:
-            return staff.find(u => u.role === 'Administrativo') || defaultAdmin;
-    }
-  }, [role, staff]);
 
-  return { user };
+  return { user: appUser, role };
 }

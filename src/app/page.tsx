@@ -4,7 +4,8 @@
 import { useState }from "react"
 import { useRouter } from "next/navigation"
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth"
-import { app } from "@/lib/firebase"
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { app, db } from "@/lib/firebase"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,16 +28,26 @@ export default function LoginPage() {
 
     try {
       const auth = getAuth(app);
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
+      // After successful login, find the user's role in the 'staff' collection
+      const staffQuery = query(collection(db, "staff"), where("email", "==", userCredential.user.email));
+      const querySnapshot = await getDocs(staffQuery);
+
+      let userRole = 'staff'; // Default role
+      if (!querySnapshot.empty) {
+        const staffData = querySnapshot.docs[0].data();
+        if (staffData.role === 'Administrativo') {
+          userRole = 'admin';
+        }
+      }
+
       toast({
         title: "Inicio de Sesión Exitoso",
         description: "Bienvenido de nuevo.",
       });
-
-      // Redirect based on a predefined role or fetch it after login
-      // For now, defaulting to admin role on successful login
-      router.push("/dashboard?role=admin");
+      
+      router.push(`/dashboard?role=${userRole}`);
 
     } catch (err: any) {
       console.error("Error de autenticación:", err);

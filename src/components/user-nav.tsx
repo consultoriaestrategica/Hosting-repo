@@ -13,11 +13,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
+import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
+import { getAuth, signOut } from "firebase/auth"
 
 export function UserNav() {
-  const { user } = useUser();
+  const { user: appUser, role } = useUser();
+  const { user: authUser } = useAuth();
+  const router = useRouter();
 
-  if (!user) {
+  if (!authUser || !appUser) {
     return (
        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
@@ -26,8 +31,15 @@ export function UserNav() {
         </Button>
     )
   }
+  
+  const handleLogout = async () => {
+    const auth = getAuth();
+    await signOut(auth);
+    router.push('/');
+  }
 
   const getInitials = (name: string) => {
+    if (!name) return "--";
     const names = name.split(' ');
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`;
@@ -40,17 +52,17 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(user.name)}`} alt={`@${user.username}`} />
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(appUser.name)}`} alt={`@${appUser.email}`} />
+            <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-sm font-medium leading-none">{appUser.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
+              {appUser.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -60,12 +72,12 @@ export function UserNav() {
             Perfil
           </DropdownMenuItem>
            <DropdownMenuItem asChild>
-             <Link href={`/dashboard/settings?role=${user.role.toLowerCase()}`}>Configuración</Link>
+             <Link href={`/dashboard/settings?role=${role.toLowerCase()}`}>Configuración</Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/">Cerrar Sesión</Link>
+        <DropdownMenuItem onClick={handleLogout}>
+          Cerrar Sesión
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

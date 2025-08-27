@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -9,30 +10,42 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar"
+import { useUser } from "@/hooks/use-user"
 
 export function DashboardNav() {
   const pathname = usePathname()
+  const { user } = useUser();
   const searchParams = useSearchParams()
-  const role = searchParams.get('role') || 'admin'; // Default to admin if no role
+  const role = user?.role || searchParams.get('role') || 'staff'; 
+
 
   const isActive = (path: string) => {
     return pathname === path || (path !== "/dashboard" && pathname.startsWith(path))
   }
   
   const allNavItems = [
-    { href: "/dashboard", label: "Inicio", icon: <Home />, roles: ['admin', 'family', 'staff'] },
-    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['admin', 'family', 'staff'] },
-    { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['admin'] },
-    { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['admin', 'staff'] },
-    { href: "/dashboard/visitors", label: "Visitantes", icon: <Car />, roles: ['admin', 'staff'] },
-    { href: "/dashboard/contracts", label: "Contratos", icon: <BookUser />, roles: ['admin'] },
-    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['admin'] },
-    { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['admin'] },
+    { href: "/dashboard", label: "Inicio", icon: <Home />, roles: ['Admin', 'Family', 'Staff'] },
+    { href: "/dashboard/residents", label: "Residentes", icon: <Users />, roles: ['Admin', 'Family', 'Staff'] },
+    { href: "/dashboard/staff", label: "Personal", icon: <HardHat />, roles: ['Admin'] },
+    { href: "/dashboard/logs", label: "Registro Diario", icon: <ClipboardList />, roles: ['Admin', 'Staff'] },
+    { href: "/dashboard/visitors", label: "Visitantes", icon: <Car />, roles: ['Admin', 'Staff'] },
+    { href: "/dashboard/contracts", label: "Contratos", icon: <BookUser />, roles: ['Admin'] },
+    { href: "/dashboard/reports", label: "Reportes", icon: <FileText />, roles: ['Admin'] },
+    { href: "/dashboard/settings", label: "Configuración", icon: <Settings />, roles: ['Admin'] },
   ]
 
   const navItems = allNavItems.filter(item => {
-     if (item.href === "/dashboard" && role === 'staff') return false;
-    return item.roles.includes(role)
+     if (item.href === "/dashboard" && role === 'Staff') return false;
+     
+     // Match user.role which can be "Administrativo", "Enfermera", etc.
+     if (role === "Admin" || role === "Administrativo") {
+        return item.roles.includes("Admin");
+     }
+      if (role === "Family") {
+        return item.roles.includes("Family");
+      }
+     // Any other role is considered 'Staff' for navigation purposes
+     return item.roles.includes("Staff");
   });
 
 
@@ -45,7 +58,7 @@ export function DashboardNav() {
             isActive={isActive(item.href)}
             tooltip={item.label}
           >
-            <Link href={`${item.href}?role=${role}`}>
+            <Link href={`${item.href}?role=${role.toLowerCase()}`}>
               {item.icon}
               <span>{item.label}</span>
             </Link>
