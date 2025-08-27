@@ -41,11 +41,13 @@ export function useStaff() {
   }, []);
 
 
-  const addStaffMember = useCallback(async (newStaffData: Omit<Staff, 'id'>) => {
+  const addStaffMember = useCallback(async (newStaffData: Omit<Staff, 'id'>): Promise<Staff> => {
     try {
-        await addDoc(staffCollection, newStaffData);
+        const docRef = await addDoc(staffCollection, newStaffData);
+        return { id: docRef.id, ...newStaffData };
     } catch (error) {
         console.error("Error adding staff member to Firestore: ", error);
+        throw error;
     }
   }, []);
 
