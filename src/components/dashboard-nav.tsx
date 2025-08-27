@@ -83,7 +83,6 @@ export function DashboardNav() {
                              {group.icon}
                             <span>{group.title}</span>
                         </div>
-                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                     </AccordionTrigger>
                     <AccordionContent className="pl-4">
                         {group.items.map((item) => (
