@@ -35,17 +35,19 @@ export function DashboardNav() {
   ]
 
   const navItems = allNavItems.filter(item => {
-     if (item.href === "/dashboard" && role === 'Staff') return false;
+    // Hide dashboard home for staff, it's not very useful for them
+    if (item.href === "/dashboard" && role === 'staff') return false;
      
-     // Match user.role which can be "Administrativo", "Enfermera", etc.
-     if (role === "Admin" || role === "Administrativo") {
-        return item.roles.includes("Admin");
-     }
-      if (role === "Family") {
-        return item.roles.includes("Family");
-      }
-     // Any other role is considered 'Staff' for navigation purposes
-     return item.roles.includes("Staff");
+    // Determine the main role category for permission checking
+    let userRoleCategory = 'Staff'; // Default to staff
+    if (role === 'admin' || role === 'Administrativo') {
+        userRoleCategory = 'Admin';
+    } else if (role === 'family') {
+        userRoleCategory = 'Family';
+    }
+
+    // Check if the item's roles array includes the user's category
+    return item.roles.includes(userRoleCategory);
   });
 
 
