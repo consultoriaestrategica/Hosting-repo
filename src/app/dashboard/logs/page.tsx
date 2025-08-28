@@ -1,28 +1,56 @@
 
 "use client"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { FileWarning } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export default function LogsPage() {
 
   return (
-    <div className="w-full h-full flex items-center justify-center">
-      <Card className="w-full max-w-2xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl flex items-center justify-center gap-2">
-            <FileWarning />
-            Página de Registros en Construcción
-            </CardTitle>
+    <>
+      <div className="flex items-center">
+        <h1 className="text-3xl font-bold font-headline">Historial de Registros</h1>
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Todos los Registros</CardTitle>
           <CardDescription>
-            Esta sección mostrará un historial global de todos los registros.
+            Un listado completo de todos los registros médicos y de suministros del sistema.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-muted-foreground">
-            Actualmente, puedes agregar y ver los registros de cada residente desde su perfil individual en la pestaña "Registros".
-          </p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Residente</TableHead>
+                <TableHead>Tipo de Reporte</TableHead>
+                <TableHead>Detalle</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">
+                  Aún no hay registros globales para mostrar.
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
-    </div>
+    </>
   );
 }

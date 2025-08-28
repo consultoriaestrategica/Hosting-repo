@@ -93,10 +93,9 @@ export default function LoginPage() {
 
   return (
     <div
-      className="relative flex flex-col items-center justify-center w-full h-screen bg-cover bg-center"
-      style={{ backgroundImage: "url('https://storage.googleapis.com/monjo-social/11142024-001000-q09v0n24g7.png')" }}
+      className="relative flex flex-col items-center justify-center w-full h-screen bg-gray-500"
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-gray-700/50 backdrop-blur-sm" />
       
       <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-md p-6 text-white">
         <div className="grid gap-2 text-center mb-8">
@@ -108,10 +107,10 @@ export default function LoginPage() {
             </p>
         </div>
         
-        <Card className="w-full bg-white/10 border-white/20 text-white">
+        <Card className="w-full bg-black/10 border-white/20 text-white backdrop-blur-lg">
             <CardHeader>
                 <CardTitle className="text-2xl font-bold text-center">Iniciar Sesión</CardTitle>
-                <CardDescription className="text-center text-gray-200">
+                <CardDescription className="text-center text-gray-300">
                     Bienvenido de nuevo. Acceda a su cuenta.
                 </CardDescription>
             </CardHeader>
