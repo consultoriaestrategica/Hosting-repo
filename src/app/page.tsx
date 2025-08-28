@@ -133,14 +133,15 @@ export default function LoginPage() {
         </div>
         
         <Card className="w-full bg-black/10 border-white/20 text-white backdrop-blur-lg">
-            <Tabs defaultValue="staff">
-                <TabsList className="grid w-full grid-cols-2 bg-transparent/20">
-                    <TabsTrigger value="staff">Acceso Personal</TabsTrigger>
+            <Tabs defaultValue="admin">
+                <TabsList className="grid w-full grid-cols-3 bg-transparent/20">
+                    <TabsTrigger value="admin">Personal Administrativo</TabsTrigger>
+                    <TabsTrigger value="staff">Personal Asistencial</TabsTrigger>
                     <TabsTrigger value="family">Acceso Familiar</TabsTrigger>
                 </TabsList>
-                <TabsContent value="staff">
+                <TabsContent value="admin">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-center">Personal del Hogar</CardTitle>
+                        <CardTitle className="text-2xl font-bold text-center">Acceso Administrativo</CardTitle>
                         <CardDescription className="text-center text-gray-300">
                             Inicie sesión para gestionar el sistema.
                         </CardDescription>
@@ -148,11 +149,11 @@ export default function LoginPage() {
                     <CardContent>
                        <form onSubmit={handleStaffLogin} className="space-y-4">
                          <div className="grid gap-2">
-                            <Label htmlFor="email" className="text-white">Correo Electrónico</Label>
+                            <Label htmlFor="admin-email" className="text-white">Correo Electrónico</Label>
                             <Input
-                              id="email"
+                              id="admin-email"
                               type="email"
-                              placeholder="m@ejemplo.com"
+                              placeholder="admin@ejemplo.com"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               required
@@ -160,9 +161,9 @@ export default function LoginPage() {
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="password" className="text-white">Contraseña</Label>
+                            <Label htmlFor="admin-password" className="text-white">Contraseña</Label>
                             <Input 
-                                id="password" 
+                                id="admin-password" 
                                 type="password" 
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -173,7 +174,48 @@ export default function LoginPage() {
                          <div className="grid gap-2 mt-4">
                             <Button type="submit" className="w-full bg-primary/80 hover:bg-primary" disabled={isLoading}>
                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                               {isLoading ? "Ingresando..." : "Acceder"}
+                               {isLoading ? "Ingresando..." : "Acceder como Admin"}
+                            </Button>
+                        </div>
+                       </form>
+                    </CardContent>
+                </TabsContent>
+                 <TabsContent value="staff">
+                    <CardHeader>
+                        <CardTitle className="text-2xl font-bold text-center">Acceso Personal Asistencial</CardTitle>
+                        <CardDescription className="text-center text-gray-300">
+                           Inicie sesión con sus credenciales.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <form onSubmit={handleStaffLogin} className="space-y-4">
+                         <div className="grid gap-2">
+                            <Label htmlFor="staff-email" className="text-white">Correo Electrónico</Label>
+                            <Input
+                              id="staff-email"
+                              type="email"
+                              placeholder="personal@ejemplo.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                              className="bg-white/20 placeholder:text-gray-300 border-white/30"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="staff-password" className="text-white">Contraseña</Label>
+                            <Input 
+                                id="staff-password" 
+                                type="password" 
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required  
+                                className="bg-white/20 placeholder:text-gray-300 border-white/30" 
+                            />
+                        </div>
+                         <div className="grid gap-2 mt-4">
+                            <Button type="submit" className="w-full bg-secondary/80 hover:bg-secondary" disabled={isLoading}>
+                               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                               {isLoading ? "Ingresando..." : "Acceder como Personal"}
                             </Button>
                         </div>
                        </form>
