@@ -135,13 +135,13 @@ export default function LoginPage() {
         <Card className="w-full bg-black/10 border-white/20 text-white backdrop-blur-lg">
             <Tabs defaultValue="admin">
                 <TabsList className="grid w-full grid-cols-3 bg-transparent/20">
-                    <TabsTrigger value="admin">Personal Administrativo</TabsTrigger>
+                    <TabsTrigger value="admin">Administrador</TabsTrigger>
                     <TabsTrigger value="staff">Personal Asistencial</TabsTrigger>
                     <TabsTrigger value="family">Acceso Familiar</TabsTrigger>
                 </TabsList>
                 <TabsContent value="admin">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-center">Acceso Administrativo</CardTitle>
+                        <CardTitle className="text-2xl font-bold text-center">Acceso Administrador</CardTitle>
                         <CardDescription className="text-center text-gray-300">
                             Inicie sesión para gestionar el sistema.
                         </CardDescription>
