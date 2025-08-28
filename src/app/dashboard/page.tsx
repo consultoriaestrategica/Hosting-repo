@@ -6,7 +6,7 @@ import { Users, CalendarCheck, PlusCircle, FileText, UserCheck, AlertTriangle } 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useResidents, AgendaEvent } from "@/hooks/use-residents"
 import { useStaff } from "@/hooks/use-staff"
-import { useContracts } from "@/hooks/use-contracts"
+import { useContracts as useResidentContracts } from "@/hooks/use-contracts"
 import { useToast } from "@/hooks/use-toast"
 import AgendaDashboard from "./components/agenda-dashboard"
 import { Button } from "@/components/ui/button"
