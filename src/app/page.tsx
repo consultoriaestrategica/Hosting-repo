@@ -11,50 +11,50 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { useResidents } from "@/hooks/use-residents"
 import { Loader2 } from "lucide-react"
 
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { residents } = useResidents();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [residentId, setResidentId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isFamilyLoading, setIsFamilyLoading] = useState(false);
 
-  const handleLogin = async (event: React.FormEvent) => {
+  const handleStaffLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
     const auth = getAuth(app);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+      await signInWithEmailAndPassword(auth, email, password);
       toast({
         title: "Inicio de Sesión Exitoso",
         description: "Bienvenido de nuevo.",
       });
-      
       router.push(`/dashboard`);
 
     } catch (err: any) {
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
-        // If user not found, try to create a new one. This is for demo purposes.
         try {
             await createUserWithEmailAndPassword(auth, email, password);
-
-            // Add an admin user to the staff collection as well
             await addDoc(collection(db, "staff"), {
                 name: "Administrador",
                 email: email,
-                role: 'Admin', // Changed from 'Administrativo'
+                role: 'Admin',
                 status: 'Activo',
                 hireDate: new Date().toISOString().split('T')[0],
                 idNumber: '00000000',
                 phone: '00000000',
                 address: 'N/A'
             });
-
             toast({
                 title: "Cuenta de Administrador Creada",
                 description: "Se ha creado una nueva cuenta de administrador para ti. Serás redirigido.",
@@ -76,7 +76,7 @@ export default function LoginPage() {
          if (err.code === 'auth/invalid-email') {
             errorMessage = "El formato del correo electrónico no es válido.";
          }
-         if (err.code === 'auth/wrong-password') {
+         if (err.code === 'wrong-password') {
             errorMessage = "El correo o la contraseña son incorrectos.";
          }
           toast({
@@ -89,6 +89,31 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const handleFamilyLogin = (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsFamilyLoading(true);
+    
+    // This is a mock login. In a real app, you'd want more secure auth.
+    const foundResident = residents.find(r => r.idNumber === residentId);
+
+    setTimeout(() => {
+        if (foundResident) {
+            toast({
+                title: "Acceso Correcto",
+                description: `Mostrando el perfil de ${foundResident.name}.`,
+            });
+            router.push(`/dashboard/residents/${foundResident.id}`);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Residente no Encontrado",
+                description: "No se encontró ningún residente con esa cédula. Por favor, verifique el número.",
+            });
+        }
+        setIsFamilyLoading(false);
+    }, 1000); // Simulate network delay
+  }
 
 
   return (
@@ -108,45 +133,83 @@ export default function LoginPage() {
         </div>
         
         <Card className="w-full bg-black/10 border-white/20 text-white backdrop-blur-lg">
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold text-center">Iniciar Sesión</CardTitle>
-                <CardDescription className="text-center text-gray-300">
-                    Bienvenido de nuevo. Acceda a su cuenta.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-               <form onSubmit={handleLogin} className="space-y-4">
-                 <div className="grid gap-2">
-                    <Label htmlFor="email" className="text-white">Correo Electrónico</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="m@ejemplo.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="bg-white/20 placeholder:text-gray-300 border-white/30"
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="password" className="text-white">Contraseña</Label>
-                    <Input 
-                        id="password" 
-                        type="password" 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required  
-                        className="bg-white/20 placeholder:text-gray-300 border-white/30" 
-                    />
-                </div>
-                 <div className="grid gap-2 mt-4">
-                    <Button type="submit" className="w-full bg-primary/80 hover:bg-primary" disabled={isLoading}>
-                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                       {isLoading ? "Ingresando..." : "Acceder"}
-                    </Button>
-                </div>
-               </form>
-            </CardContent>
+            <Tabs defaultValue="staff">
+                <TabsList className="grid w-full grid-cols-2 bg-transparent/20">
+                    <TabsTrigger value="staff">Acceso Personal</TabsTrigger>
+                    <TabsTrigger value="family">Acceso Familiar</TabsTrigger>
+                </TabsList>
+                <TabsContent value="staff">
+                    <CardHeader>
+                        <CardTitle className="text-2xl font-bold text-center">Personal del Hogar</CardTitle>
+                        <CardDescription className="text-center text-gray-300">
+                            Inicie sesión para gestionar el sistema.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <form onSubmit={handleStaffLogin} className="space-y-4">
+                         <div className="grid gap-2">
+                            <Label htmlFor="email" className="text-white">Correo Electrónico</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="m@ejemplo.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                              className="bg-white/20 placeholder:text-gray-300 border-white/30"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="password" className="text-white">Contraseña</Label>
+                            <Input 
+                                id="password" 
+                                type="password" 
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required  
+                                className="bg-white/20 placeholder:text-gray-300 border-white/30" 
+                            />
+                        </div>
+                         <div className="grid gap-2 mt-4">
+                            <Button type="submit" className="w-full bg-primary/80 hover:bg-primary" disabled={isLoading}>
+                               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                               {isLoading ? "Ingresando..." : "Acceder"}
+                            </Button>
+                        </div>
+                       </form>
+                    </CardContent>
+                </TabsContent>
+                <TabsContent value="family">
+                    <CardHeader>
+                        <CardTitle className="text-2xl font-bold text-center">Familiares y Acudientes</CardTitle>
+                        <CardDescription className="text-center text-gray-300">
+                            Ingrese la cédula del residente para ver su perfil.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <form onSubmit={handleFamilyLogin} className="space-y-4">
+                         <div className="grid gap-2">
+                            <Label htmlFor="resident-id" className="text-white">Cédula del Residente</Label>
+                            <Input
+                              id="resident-id"
+                              type="text"
+                              placeholder="Número de identificación"
+                              value={residentId}
+                              onChange={(e) => setResidentId(e.target.value)}
+                              required
+                              className="bg-white/20 placeholder:text-gray-300 border-white/30"
+                            />
+                        </div>
+                         <div className="grid gap-2 mt-4">
+                            <Button type="submit" className="w-full bg-accent/80 hover:bg-accent" disabled={isFamilyLoading}>
+                               {isFamilyLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                               {isFamilyLoading ? "Buscando..." : "Consultar"}
+                            </Button>
+                        </div>
+                       </form>
+                    </CardContent>
+                </TabsContent>
+            </Tabs>
         </Card>
       </div>
     </div>
