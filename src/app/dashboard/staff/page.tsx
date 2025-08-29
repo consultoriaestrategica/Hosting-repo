@@ -1,7 +1,6 @@
-
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Search, Eye, Edit, User, Mail, Phone, Home } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Search, Eye, Edit, User, Mail, Phone, Home, Briefcase, DollarSign, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -40,6 +39,7 @@ import { Staff, useStaff } from "@/hooks/use-staff"
 import { StaffContract, useStaffContracts } from "@/hooks/use-staff-contracts"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useUser } from "@/hooks/use-user"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 function StaffPageContent() {
   const { staff, isLoading } = useStaff()
@@ -175,31 +175,71 @@ function StaffPageContent() {
       </Card>
       
       <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
             {selectedStaff && (
                 <>
                     <DialogHeader>
                         <DialogTitle>Perfil de {selectedStaff.name}</DialogTitle>
                         <DialogDescription>{selectedStaff.role}</DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 space-y-3 text-sm">
-                        <div className="flex items-center gap-2">
-                           <Mail className="h-4 w-4 text-muted-foreground"/>
-                           <span>{selectedStaff.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                           <Phone className="h-4 w-4 text-muted-foreground"/>
-                           <span>{selectedStaff.phone}</span>
-                        </div>
-                         <div className="flex items-center gap-2">
-                           <Home className="h-4 w-4 text-muted-foreground"/>
-                           <span>{selectedStaff.address}</span>
-                        </div>
-                    </div>
-                    <DialogFooter className="sm:justify-between">
+                    <Tabs defaultValue="personal">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="personal">Información Personal</TabsTrigger>
+                            <TabsTrigger value="contract">Información Contractual</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="personal">
+                           <Table className="mt-4">
+                                <TableBody>
+                                    <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground"/> Cédula</TableCell>
+                                        <TableCell>{selectedStaff.idNumber}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground"/> Correo</TableCell>
+                                        <TableCell>{selectedStaff.email}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground"/> Teléfono</TableCell>
+                                        <TableCell>{selectedStaff.phone}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><Home className="h-4 w-4 text-muted-foreground"/> Dirección</TableCell>
+                                        <TableCell>{selectedStaff.address}</TableCell>
+                                    </TableRow>
+                                </TableBody>
+                           </Table>
+                        </TabsContent>
+                        <TabsContent value="contract">
+                            <Table className="mt-4">
+                                <TableBody>
+                                     <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground"/> Salario</TableCell>
+                                        <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(getStaffContract(selectedStaff.id)?.salary || 0)}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground"/> Fecha de Inicio</TableCell>
+                                        <TableCell>{new Date(getStaffContract(selectedStaff.id)?.startDate || "").toLocaleDateString('es-ES', {dateStyle: 'long'})}</TableCell>
+                                    </TableRow>
+                                     <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground"/> Fecha de Fin</TableCell>
+                                        <TableCell>{new Date(getStaffContract(selectedStaff.id)?.endDate || "").toLocaleDateString('es-ES', {dateStyle: 'long'})}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><Briefcase className="h-4 w-4 text-muted-foreground"/> Estado Contrato</TableCell>
+                                        <TableCell><Badge variant={getStatusVariant(getStaffContract(selectedStaff.id)?.status || '')}>{getStaffContract(selectedStaff.id)?.status}</Badge></TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell className="font-medium flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground"/> Documento</TableCell>
+                                        <TableCell>{getStaffContract(selectedStaff.id)?.documentName || 'N/A'}</TableCell>
+                                    </TableRow>
+                                </TableBody>
+                           </Table>
+                        </TabsContent>
+                    </Tabs>
+                    <DialogFooter className="sm:justify-between pt-4">
                          <Button 
                             type="button" 
-                            variant="secondary"
+                            variant="outline"
                             onClick={() => {
                                 const contract = getStaffContract(selectedStaff.id);
                                 if (contract?.documentUrl) {
@@ -229,4 +269,3 @@ export default function StaffPage() {
     </Suspense>
   )
 }
-
