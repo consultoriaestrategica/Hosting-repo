@@ -61,6 +61,7 @@ export function useStaffContracts() {
         await updateDoc(contractDoc, updatedDetails);
     } catch (error) {
         console.error("Error updating staff contract in Firestore: ", error);
+        throw error;
     }
   }, []);
 
