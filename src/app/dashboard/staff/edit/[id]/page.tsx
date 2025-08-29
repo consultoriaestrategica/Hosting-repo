@@ -75,15 +75,35 @@ function EditStaffForm({ staffId }: { staffId: string }) {
 
     const form = useForm<StaffFormValues>({
         resolver: zodResolver(staffFormSchema),
-        defaultValues: {},
+        defaultValues: {
+            name: "",
+            idNumber: "",
+            role: undefined,
+            phone: "",
+            email: "",
+            address: "",
+            salary: 0,
+            status: "Activo",
+            hireDate: "",
+            endDate: "",
+            document: undefined,
+        },
     });
 
     useEffect(() => {
         if (staffMember && contract) {
             form.reset({
                 ...staffMember,
-                endDate: contract.endDate,
-                salary: contract.salary,
+                name: staffMember.name || "",
+                idNumber: staffMember.idNumber || "",
+                role: staffMember.role,
+                phone: staffMember.phone || "",
+                email: staffMember.email || "",
+                address: staffMember.address || "",
+                status: staffMember.status,
+                hireDate: staffMember.hireDate || "",
+                endDate: contract.endDate || "",
+                salary: contract.salary || 0,
                 document: contract.documentName, // Initially set to the name of the existing document
             });
         }
