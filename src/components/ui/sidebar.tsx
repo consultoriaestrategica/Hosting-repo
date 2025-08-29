@@ -59,7 +59,7 @@ const Sidebar = React.forwardRef<
         "fixed left-0 top-0 z-50 flex h-dvh flex-shrink-0 flex-col border-r bg-card transition-[width,transform] duration-300 ease-in-out md:relative",
         isMobile ? "max-w-xs" : "",
         isMobile && !isOpen ? "-translate-x-full" : "",
-        !isMobile && (isOpen ? "w-72" : "w-16"),
+        !isMobile && (isOpen ? "w-72" : "w-20"),
         className
       )}
       {...props}
@@ -77,14 +77,14 @@ function SidebarHeader({
     <div
       className={cn(
         "flex h-14 items-center border-b p-4 lg:h-[60px]",
-        !isOpen && "px-2",
+        !isOpen && "px-2 justify-center",
         className
       )}
     >
       <div className={cn("flex flex-1 items-center gap-2", !isOpen && "justify-center")}>
-        {isOpen && props.children}
+        {isOpen ? props.children : <SidebarToggle />}
       </div>
-      <SidebarToggle />
+      {isOpen && <SidebarToggle />}
     </div>
   )
 }

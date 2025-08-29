@@ -78,7 +78,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <SidebarHeader>
           <Link href="/dashboard" className="flex items-center gap-2 font-headline text-lg font-semibold">
             <Home className="h-6 w-6" />
-            <span className={cn("font-semibold", !isOpen && "hidden")}>Ángel Guardián</span>
+            <span className={cn("font-semibold")}>Ángel Guardián</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
