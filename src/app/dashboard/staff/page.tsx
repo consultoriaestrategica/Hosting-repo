@@ -1,7 +1,7 @@
 
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Search, Eye, Edit } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Search, Eye, Edit, User, Mail, Phone, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -25,17 +25,30 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Staff, useStaff } from "@/hooks/use-staff"
+import { StaffContract, useStaffContracts } from "@/hooks/use-staff-contracts"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useUser } from "@/hooks/use-user"
 
 function StaffPageContent() {
   const { staff, isLoading } = useStaff()
+  const { contracts, isLoading: contractsLoading } = useStaffContracts()
   const { user, role } = useUser();
   const [isClient, setIsClient] = useState(false)
   const [searchTerm, setSearchTerm] = useState("");
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   
   useEffect(() => {
     setIsClient(true)
@@ -49,7 +62,7 @@ function StaffPageContent() {
   }, [staff, searchTerm]);
 
 
-  if (!isClient || isLoading) {
+  if (!isClient || isLoading || contractsLoading) {
     return <div>Cargando...</div>
   }
   
@@ -58,6 +71,17 @@ function StaffPageContent() {
   }
 
   const isAdminRole = role === 'admin';
+  
+  const handleViewProfile = (staffMember: Staff) => {
+    setSelectedStaff(staffMember);
+    setIsProfileOpen(true);
+  }
+  
+  const getStaffContract = (staffId: string): StaffContract | undefined => {
+      return contracts
+            .filter(c => c.staffId === staffId)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  }
 
   return (
     <>
@@ -132,13 +156,9 @@ function StaffPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                         {isAdminRole && (
-                            <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/staff/${member.id}`}>
-                                    <Eye className="mr-2 h-4 w-4" /> Ver Perfil
-                                </Link>
-                            </DropdownMenuItem>
-                         )}
+                        <DropdownMenuItem onClick={() => handleViewProfile(member)}>
+                            <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                        </DropdownMenuItem>
                          <DropdownMenuItem asChild>
                             <Link href={`/dashboard/staff/edit/${member.id}`}>
                                 <Edit className="mr-2 h-4 w-4" /> Editar
@@ -153,6 +173,51 @@ function StaffPageContent() {
           </Table>
         </CardContent>
       </Card>
+      
+      <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+        <DialogContent className="sm:max-w-md">
+            {selectedStaff && (
+                <>
+                    <DialogHeader>
+                        <DialogTitle>Perfil de {selectedStaff.name}</DialogTitle>
+                        <DialogDescription>{selectedStaff.role}</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-3 text-sm">
+                        <div className="flex items-center gap-2">
+                           <Mail className="h-4 w-4 text-muted-foreground"/>
+                           <span>{selectedStaff.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <Phone className="h-4 w-4 text-muted-foreground"/>
+                           <span>{selectedStaff.phone}</span>
+                        </div>
+                         <div className="flex items-center gap-2">
+                           <Home className="h-4 w-4 text-muted-foreground"/>
+                           <span>{selectedStaff.address}</span>
+                        </div>
+                    </div>
+                    <DialogFooter className="sm:justify-between">
+                         <Button 
+                            type="button" 
+                            variant="secondary"
+                            onClick={() => {
+                                const contract = getStaffContract(selectedStaff.id);
+                                if (contract?.documentUrl) {
+                                    window.open(contract.documentUrl, '_blank');
+                                }
+                            }}
+                            disabled={!getStaffContract(selectedStaff.id)?.documentUrl}
+                        >
+                           Ver Contrato
+                        </Button>
+                        <DialogClose asChild>
+                            <Button type="button">Cerrar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </>
+            )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -164,3 +229,4 @@ export default function StaffPage() {
     </Suspense>
   )
 }
+
