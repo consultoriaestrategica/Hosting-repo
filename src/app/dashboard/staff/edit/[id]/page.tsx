@@ -93,7 +93,6 @@ function EditStaffForm({ staffId }: { staffId: string }) {
     useEffect(() => {
         if (staffMember && contract) {
             form.reset({
-                ...staffMember,
                 name: staffMember.name || "",
                 idNumber: staffMember.idNumber || "",
                 role: staffMember.role,
@@ -128,8 +127,7 @@ function EditStaffForm({ staffId }: { staffId: string }) {
         if(fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-        // Reset to original document if available, otherwise clear it
-        form.setValue("document", contract?.documentName || undefined);
+        form.setValue("document", undefined, { shouldValidate: true });
     };
 
     const handleSaveChanges = async (data: StaffFormValues) => {
@@ -220,8 +218,8 @@ function EditStaffForm({ staffId }: { staffId: string }) {
                                 <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input type="email" placeholder="ejemplo@email.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salario Mensual (COP)</FormLabel><FormControl><Input type="number" placeholder="2500000" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="hireDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio Contrato</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin Contrato</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="hireDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio Contrato</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin Contrato</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Estado</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione el estado" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Activo">Activo</SelectItem><SelectItem value="Inactivo">Inactivo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             </div>
 
@@ -285,3 +283,5 @@ export default function EditStaffPage({ params }: { params: { id: string } }) {
         </Suspense>
     )
 }
+
+    
