@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Users, ClipboardList, FileText, Settings, BookUser, HardHat, Car, ChevronDown } from "lucide-react"
+import { Home, Users, ClipboardList, FileText, Settings, BookUser, HardHat, Car } from "lucide-react"
 import {
   Accordion,
   AccordionContent,
@@ -78,7 +78,7 @@ export function DashboardNav() {
         <Accordion type="multiple" defaultValue={[getActiveGroup()]} className="w-full">
             {navGroups.map((group) => (
                 <AccordionItem value={group.title} key={group.title} className="border-b-0">
-                    <AccordionTrigger className="py-3 px-4 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:no-underline rounded-md [&[data-state=open]>svg]:rotate-180">
+                    <AccordionTrigger className="justify-start py-3 px-4 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:no-underline rounded-md [&[data-state=open]>svg]:rotate-180">
                         <div className="flex items-center gap-2">
                              {group.icon}
                             <span>{group.title}</span>

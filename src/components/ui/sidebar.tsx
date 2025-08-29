@@ -72,40 +72,19 @@ function SidebarHeader({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  const { isMobile, isOpen, setIsOpen } = useSidebarContext()
+  const { isOpen } = useSidebarContext()
   return (
     <div
       className={cn(
         "flex h-14 items-center border-b p-4 lg:h-[60px]",
-        !isOpen && "justify-center px-2",
+        !isOpen && "px-2",
         className
       )}
-      {...props}
     >
       <div className={cn("flex flex-1 items-center gap-2", !isOpen && "justify-center")}>
-        {props.children}
+        {isOpen && props.children}
       </div>
-      {isMobile ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0"
-          onClick={() => setIsOpen(false)}
-        >
-          <X className="h-6 w-6" />
-          <span className="sr-only">Cerrar menú</span>
-        </Button>
-      ) : (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          <Menu className="h-6 w-6" />
-           <span className="sr-only">Alternar menú</span>
-        </Button>
-      )}
+      <SidebarToggle />
     </div>
   )
 }
@@ -150,7 +129,7 @@ function SidebarMenu({
 }: React.HTMLAttributes<HTMLDivElement>) {
   const { isOpen } = useSidebarContext()
   return (
-    <div className="p-4">
+    <div className={cn("p-2", isOpen && "p-4")}>
       <div
         className={cn(
           sidebarMenuStyles({ className }),
@@ -261,6 +240,29 @@ function SidebarTrigger({ className, ...props }: ButtonProps) {
 }
 SidebarTrigger.displayName = "SidebarTrigger"
 
+function SidebarToggle({
+  className,
+  ...props
+}: ButtonProps) {
+  const { isMobile, isOpen, setIsOpen } = useSidebarContext();
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn("shrink-0", className)}
+      onClick={() => setIsOpen(!isOpen)}
+      {...props}
+    >
+      {isMobile && isOpen ? (
+        <X className="h-6 w-6" />
+      ) : (
+        <Menu className="h-6 w-6" />
+      )}
+      <span className="sr-only">Alternar menú</span>
+    </Button>
+  );
+}
+
 export {
   SidebarProvider,
   Sidebar,
@@ -271,5 +273,6 @@ export {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-  useSidebarContext
+  useSidebarContext,
+  SidebarToggle,
 }
