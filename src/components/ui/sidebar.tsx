@@ -56,7 +56,7 @@ const Sidebar = React.forwardRef<
     <aside
       ref={ref}
       className={cn(
-        "fixed left-0 top-0 z-50 flex h-dvh flex-shrink-0 flex-col border-r bg-card transition-[width,transform] duration-300 ease-in-out md:relative",
+        "fixed left-0 top-0 z-50 flex h-screen flex-shrink-0 flex-col border-r bg-card transition-[width,transform] duration-300 ease-in-out md:relative",
         isMobile ? "max-w-xs" : "",
         isMobile && !isOpen ? "-translate-x-full" : "",
         !isMobile && (isOpen ? "w-72" : "w-20"),
@@ -77,7 +77,7 @@ function SidebarHeader({
     <div
       className={cn(
         "flex h-14 items-center border-b p-4 lg:h-[60px]",
-        !isOpen && "px-2 justify-center",
+        !isOpen && "justify-center px-2",
         className
       )}
     >
@@ -129,7 +129,7 @@ function SidebarMenu({
 }: React.HTMLAttributes<HTMLDivElement>) {
   const { isOpen } = useSidebarContext()
   return (
-    <div className={cn("p-2", isOpen && "p-4")}>
+    <div className={cn("p-2", isOpen && "space-y-1 p-4")}>
       <div
         className={cn(
           sidebarMenuStyles({ className }),
