@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/sidebar"
 import { UserNav } from "@/components/user-nav"
 import { DashboardNav } from "@/components/dashboard-nav"
-import { Home, Bell } from "lucide-react"
+import { Home } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useResidents } from "@/hooks/use-residents"
@@ -78,14 +78,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <SidebarHeader>
           <Link href="/dashboard" className="flex items-center gap-2 font-headline text-lg font-semibold">
             <Home className="h-6 w-6" />
-            <span className={cn("font-semibold")}>Ángel Guardián</span>
+            <span className={cn("font-semibold", !isOpen && "hidden")}>Ángel Guardián</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
           <DashboardNav />
         </SidebarContent>
         <SidebarFooter>
-          {/* Footer content can go here */}
+          <UserNav />
         </SidebarFooter>
       </Sidebar>
       <div className="flex flex-1 flex-col">
@@ -94,7 +94,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="w-full flex-1">
             {/* Header content can go here */}
           </div>
-          <UserNav />
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
           {children}

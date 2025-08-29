@@ -106,7 +106,7 @@ function SidebarFooter({
   return (
     <div
       className={cn(
-        "mt-auto border-t p-4",
+        "mt-auto flex items-center justify-center border-t p-4",
         !isOpen && "p-2",
         className
       )}
