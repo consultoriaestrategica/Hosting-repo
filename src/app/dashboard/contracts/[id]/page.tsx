@@ -231,8 +231,8 @@ function ContractDetailPageContent({ id }: { id: string }) {
                              {contract.documentUrl && (
                                 <div className="flex gap-2">
                                     <Button onClick={handleDownloadFile}>
-                                        <Download className="mr-2 h-4 w-4" />
-                                        Descargar
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Visualizar documento
                                     </Button>
                                 </div>
                              )}
