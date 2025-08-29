@@ -1,6 +1,7 @@
+
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Search, Eye, Edit, User, Mail, Phone, Home, Briefcase, DollarSign, Calendar } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Search, Eye, Edit, User, Mail, Phone, Home, Briefcase, DollarSign, Calendar, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
