@@ -1,5 +1,6 @@
 
 "use client"
+import { useState } from "react"
 import {
   Card,
   CardContent,
@@ -15,13 +16,44 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { PlusCircle } from "lucide-react"
+import NewLogForm from "../residents/[id]/new-log-form"
 
 export default function LogsPage() {
+  const [isNewLogDialogOpen, setIsNewLogDialogOpen] = useState(false);
 
   return (
     <>
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Historial de Registros</h1>
+        <div className="ml-auto flex items-center gap-2">
+            <Dialog open={isNewLogDialogOpen} onOpenChange={setIsNewLogDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm" className="h-8 gap-1">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                            Añadir Nuevo Registro
+                        </span>
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Agregar Registro de Evolución</DialogTitle>
+                        <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
+                    </DialogHeader>
+                    <NewLogForm onFormSubmit={() => setIsNewLogDialogOpen(false)} />
+                </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
       <Card className="mt-6">
