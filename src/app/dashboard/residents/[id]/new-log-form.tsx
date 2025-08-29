@@ -1,4 +1,3 @@
-
 "use client"
 
 import {
@@ -167,9 +166,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         videoRef.current.srcObject = stream;
       }
       setIsCameraOpen(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accessing camera:", err);
-      setCameraError("No se pudo acceder a la cámara. Por favor, asegúrese de haber otorgado los permisos necesarios en su navegador.");
+      if (err.name === 'NotAllowedError') {
+         setCameraError("Permiso de cámara denegado. Por favor, habilítelo en la configuración de su navegador para usar esta función.");
+      } else {
+         setCameraError("No se pudo acceder a la cámara. Verifique que no esté siendo usada por otra aplicación.");
+      }
       setIsCameraOpen(false);
     }
   };
