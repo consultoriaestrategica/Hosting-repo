@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils"
 export function UserNav() {
   const { user: appUser, role } = useUser();
   const { user: authUser } = useAuth();
-  const { isOpen } = useSidebarContext();
   const router = useRouter();
 
   if (!authUser || !appUser) {
@@ -53,18 +52,12 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className={cn("flex w-full items-center", !isOpen && "justify-center")}>
-           <Button variant="ghost" className={cn("relative h-10 w-full justify-start gap-2 px-3", !isOpen && "h-10 w-10 justify-center p-0")}>
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(appUser.name)}`} alt={`@${appUser.email}`} />
-                <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
-              </Avatar>
-              <div className={cn("flex flex-col items-start", !isOpen && "hidden")}>
-                <span className="text-sm font-medium">{appUser.name}</span>
-                 <span className="text-xs text-muted-foreground">{role}</span>
-              </div>
-            </Button>
-        </div>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(appUser.name)}`} alt={`@${appUser.email}`} />
+              <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
+            </Avatar>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">

@@ -7,7 +7,6 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarFooter,
   SidebarTrigger,
   useSidebarContext,
 } from "@/components/ui/sidebar"
@@ -84,16 +83,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <SidebarContent>
           <DashboardNav />
         </SidebarContent>
-        <SidebarFooter>
-          <UserNav />
-        </SidebarFooter>
       </Sidebar>
       <div className="flex flex-1 flex-col">
         <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
           <SidebarTrigger className="md:hidden" />
-          <div className="w-full flex-1">
-            {/* Header content can go here */}
-          </div>
+          <div className="w-full flex-1" />
+           <SidebarProvider>
+            <UserNav />
+           </SidebarProvider>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
           {children}
