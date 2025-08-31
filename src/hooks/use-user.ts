@@ -40,7 +40,9 @@ export function useUser() {
 
   const role = useMemo(() => {
       if (!appUser) return null; // Return null if no user
-      return appUser.role;
+      // This logic ensures that only users with the specific 'Admin' role get admin privileges.
+      // All other roles are treated as 'staff'.
+      return appUser.role === 'Admin' ? 'Admin' : 'staff';
   }, [appUser]);
 
 
