@@ -40,10 +40,11 @@ export function DashboardNav() {
 
   const navItems = useMemo(() => {
     if (!role) return [];
-    // The role from useUser is either 'Admin' or 'staff'.
+    // The role from useUser is either 'Admin' or a specific staff role which we treat as 'staff'.
     // We filter the nav items based on whether the item's roles array includes the user's role.
-    return allNavItems.filter(item => item.roles.includes(role as 'Admin' | 'staff'));
-  }, [role, allNavItems]);
+    const userRole = role === 'Admin' ? 'Admin' : 'staff';
+    return allNavItems.filter(item => item.roles.includes(userRole));
+  }, [role]);
 
 
   return (
