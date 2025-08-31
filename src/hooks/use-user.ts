@@ -10,11 +10,19 @@ import type { Staff } from './use-staff';
 type AppUser = Staff;
 
 export function useUser() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      // If auth state is still loading, our state is also loading.
+      setIsLoading(true);
+      return;
+    }
+    
     if (authUser?.email) {
+      setIsLoading(true);
       const staffQuery = query(collection(db, "staff"), where("email", "==", authUser.email));
       
       const unsubscribe = onSnapshot(staffQuery, (querySnapshot) => {
@@ -27,25 +35,25 @@ export function useUser() {
         } else {
             setAppUser(null);
         }
+        setIsLoading(false);
       }, (error) => {
           console.error("Error fetching user data:", error);
           setAppUser(null);
+          setIsLoading(false);
       });
 
       return () => unsubscribe();
     } else {
+      // No authenticated user, so not loading and no app user.
       setAppUser(null);
+      setIsLoading(false);
     }
-  }, [authUser]);
+  }, [authUser, authLoading]);
 
+  // The role is now the specific role from the database, or null if not found.
   const role = useMemo(() => {
-      if (!appUser) return null;
-      // If the user's role stored in the database is 'Admin', their role is 'Admin'.
-      // Otherwise, no matter what their specific job title is (Enfermera, etc.),
-      // their role for permissions purposes is 'staff'.
-      return appUser.role === 'Admin' ? 'Admin' : 'staff';
+      return appUser?.role || null;
   }, [appUser]);
 
-
-  return { user: appUser, role };
+  return { user: appUser, role, isLoading: isLoading };
 }
