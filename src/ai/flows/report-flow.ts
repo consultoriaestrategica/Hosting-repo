@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Un agente de IA para la generación de reportes en PDF.
@@ -9,7 +10,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import puppeteer from 'puppeteer';
 import { Resident, Log } from '@/hooks/use-residents'; // Asumiendo que Log también se exporta desde aquí
 
 const ReportInputSchema = z.object({
@@ -165,6 +165,7 @@ const generatePdfReportFlow = ai.defineFlow(
         outputSchema: ReportOutputSchema,
     },
     async (input) => {
+        const puppeteer = (await import('puppeteer')).default;
         let htmlContent = '';
         let fileName = `reporte-${Date.now()}.pdf`;
 
