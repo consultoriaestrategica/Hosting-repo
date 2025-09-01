@@ -1,64 +1,121 @@
-
 "use client"
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
-
-export type Staff = {
-  id: string;
-  name: string;
-  role: 'Enfermera' | 'Médico' | 'Fisioterapeuta' | 'Administrativo' | 'Otro';
-  idNumber: string;
-  phone: string;
-  email: string;
-  address: string;
-  status: 'Activo' | 'Inactivo';
-  hireDate: string; // YYYY-MM-DD
-  terminationDate?: string; // YYYY-MM-DD
-  salary?: number;
-};
-
-const staffCollection = collection(db, 'staff');
-
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc,
+  Timestamp 
+} from 'firebase/firestore';
+import { Staff, UserRole } from '@/types/user';
 
 export function useStaff() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
-    const unsubscribe = onSnapshot(staffCollection, (snapshot) => {
-        const staffData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
+    const staffQuery = query(
+      collection(db, "staff"),
+      where("isActive", "==", true)
+    );
+
+    const unsubscribe = onSnapshot(
+      staffQuery,
+      (querySnapshot) => {
+        const staffData: Staff[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        })) as Staff[];
+
         setStaff(staffData);
         setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching staff from Firestore: ", error);
+        setError(null);
+      },
+      (error) => {
+        console.error("Error fetching staff:", error);
+        setError("Error al cargar el personal");
         setIsLoading(false);
-    });
+      }
+    );
 
     return () => unsubscribe();
   }, []);
 
-
-  const addStaffMember = useCallback(async (newStaffData: Omit<Staff, 'id'>): Promise<Staff> => {
+  // Función para agregar personal
+  const addStaff = async (staffData: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-        const docRef = await addDoc(staffCollection, newStaffData);
-        return { id: docRef.id, ...newStaffData };
+      const docRef = await addDoc(collection(db, "staff"), {
+        ...staffData,
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      return docRef.id;
     } catch (error) {
-        console.error("Error adding staff member to Firestore: ", error);
-        throw error;
+      console.error("Error adding staff:", error);
+      throw error;
     }
-  }, []);
+  };
 
-  const updateStaffMember = useCallback(async (staffId: string, updatedDetails: Partial<Staff>) => {
-     try {
-        const staffDoc = doc(db, 'staff', staffId);
-        await updateDoc(staffDoc, updatedDetails);
+  // Función para actualizar personal
+  const updateStaff = async (id: string, updates: Partial<Omit<Staff, 'id' | 'createdAt'>>) => {
+    try {
+      await updateDoc(doc(db, "staff", id), {
+        ...updates,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
     } catch (error) {
-        console.error("Error updating staff member in Firestore: ", error);
+      console.error("Error updating staff:", error);
+      throw error;
     }
-  }, []);
+  };
 
-  return { staff, addStaffMember, updateStaffMember, isLoading };
+  // Función para eliminar personal (soft delete)
+  const deleteStaff = async (id: string) => {
+    try {
+      await updateDoc(doc(db, "staff", id), {
+        isActive: false,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+    } catch (error) {
+      console.error("Error deleting staff:", error);
+      throw error;
+    }
+  };
+
+  // Filtros útiles
+  const getStaffByRole = (role: UserRole): Staff[] => {
+    return staff.filter(member => member.role === role);
+  };
+
+  const getAdministrators = (): Staff[] => {
+    return getStaffByRole("Administrativo");
+  };
+
+  const getMedicalStaff = (): Staff[] => {
+    return getStaffByRole("Personal Asistencial");
+  };
+
+  return {
+    staff,
+    isLoading,
+    error,
+    addStaff,
+    updateStaff,
+    deleteStaff,
+    getStaffByRole,
+    getAdministrators,
+    getMedicalStaff,
+  };
 }
+
+// Re-export el tipo Staff para compatibilidad hacia atrás
+export type { Staff } from '@/types/user';

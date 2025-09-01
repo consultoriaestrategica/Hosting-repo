@@ -12,9 +12,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { useResidents } from "@/hooks/use-residents"
-import { Loader2 } from "lucide-react"
+import { useResidents, Resident } from "@/hooks/use-residents"
+import { Loader2, User } from "lucide-react"
+import ResidentProfileDisplay from "./dashboard/residents/resident-profile-display"
 
 
 export default function LoginPage() {
@@ -27,6 +37,10 @@ export default function LoginPage() {
   const [residentId, setResidentId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFamilyLoading, setIsFamilyLoading] = useState(false);
+  
+  const [selectedResident, setSelectedResident] = useState<Resident | null>(null);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+
 
   const handleStaffLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -94,16 +108,12 @@ export default function LoginPage() {
     event.preventDefault();
     setIsFamilyLoading(true);
     
-    // This is a mock login. In a real app, you'd want more secure auth.
     const foundResident = residents.find(r => r.idNumber === residentId);
 
     setTimeout(() => {
         if (foundResident) {
-            toast({
-                title: "Acceso Correcto",
-                description: `Mostrando el perfil de ${foundResident.name}.`,
-            });
-            router.push(`/dashboard/residents/${foundResident.id}`);
+            setSelectedResident(foundResident);
+            setIsProfileDialogOpen(true);
         } else {
             toast({
                 variant: "destructive",
@@ -117,6 +127,7 @@ export default function LoginPage() {
 
 
   return (
+    <>
     <div
       className="relative flex flex-col items-center justify-center w-full h-screen bg-gray-500"
     >
@@ -255,5 +266,29 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+    {selectedResident && (
+        <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+            <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center">
+                    <User className="mr-2" />
+                    Perfil del Residente
+                    </DialogTitle>
+                    <DialogDescription>
+                    Información de cuidado para {selectedResident.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <ResidentProfileDisplay resident={selectedResident} />
+
+                <DialogFooter>
+                    <DialogClose asChild>
+                    <Button type="button">Cerrar</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )}
+    </>
   );
 }

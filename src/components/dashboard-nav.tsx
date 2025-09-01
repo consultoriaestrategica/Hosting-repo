@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -11,21 +10,19 @@ import {
 } from "@/components/ui/sidebar"
 import { useUser } from "@/hooks/use-user"
 import { useMemo } from "react"
-import type { Staff } from "@/hooks/use-staff"
-
-// Define los tipos de roles que se usarán para la navegación
-type NavRole = "Administrativo" | "Personal médico" | "Familiares";
+import { UserRole } from "@/types/user"
 
 type NavItem = {
   href: string;
   label: string;
   icon: React.ReactNode;
-  roles: NavRole[]; // Usa el tipo de rol de navegación
+  roles: UserRole[];
+  permission: string;
 };
 
 export function DashboardNav() {
   const pathname = usePathname()
-  const { user, role: userRole, isLoading } = useUser()
+  const { user, role, isLoading, can } = useUser()
 
   const isActive = (path: string) => {
     return pathname === path || (path !== "/dashboard" && pathname.startsWith(path))
@@ -36,67 +33,74 @@ export function DashboardNav() {
       href: "/dashboard", 
       label: "Inicio", 
       icon: <Home />, 
-      roles: ['Administrativo', 'Personal médico', 'Familiares'] 
+      roles: ['Administrativo', 'Personal Asistencial', 'Acceso Familiar'],
+      permission: "dashboard"
     },
     { 
       href: "/dashboard/residents", 
       label: "Residentes", 
       icon: <Users />, 
-      roles: ['Administrativo', 'Personal médico'] 
+      roles: ['Administrativo', 'Personal Asistencial'],
+      permission: "residents"
     },
     { 
       href: "/dashboard/staff", 
       label: "Personal", 
       icon: <HardHat />, 
-      roles: ['Administrativo'] 
+      roles: ['Administrativo'],
+      permission: "staff"
     },
     { 
       href: "/dashboard/contracts", 
       label: "Contratos", 
       icon: <BookUser />, 
-      roles: ['Administrativo'] 
+      roles: ['Administrativo'],
+      permission: "contracts"
     },
     { 
       href: "/dashboard/visitors", 
       label: "Visitantes", 
       icon: <Car />, 
-      roles: ['Administrativo', 'Personal médico'] 
+      roles: ['Administrativo', 'Personal Asistencial'],
+      permission: "visitors"
     },
     { 
       href: "/dashboard/logs", 
       label: "Registro Diario", 
       icon: <ClipboardList />, 
-      roles: ['Administrativo', 'Personal médico'] 
+      roles: ['Administrativo', 'Personal Asistencial'],
+      permission: "logs"
     },
     { 
       href: "/dashboard/reports", 
       label: "Reportes", 
       icon: <FileText />, 
-      roles: ['Administrativo'] 
+      roles: ['Administrativo'],
+      permission: "reports"
     },
     { 
       href: "/dashboard/settings", 
       label: "Configuración", 
       icon: <Settings />, 
-      roles: ['Administrativo'] 
+      roles: ['Administrativo'],
+      permission: "settings"
     },
   ];
 
   const navItems = useMemo(() => {
-    if (!userRole) return [];
-    
-    // Simplificar el rol del usuario para la navegación
-    let currentUserNavRole: NavRole;
-    if (userRole === 'Admin') {
-      currentUserNavRole = 'Administrativo';
-    } else {
-      // Agrupa todos los demás roles del personal bajo "Personal médico"
-      currentUserNavRole = 'Personal médico';
+    if (!role || !user) {
+      return [];
     }
     
-    return allNavItems.filter(item => item.roles.includes(currentUserNavRole));
-  }, [userRole]);
-
+    // Filtrar elementos basándose en permisos
+    return allNavItems.filter(item => {
+      // Verificar si el rol está permitido Y si tiene el permiso específico
+      const hasRoleAccess = item.roles.includes(role);
+      const hasPermission = can(item.permission);
+      
+      return hasRoleAccess && hasPermission;
+    });
+  }, [role, user, can]);
 
   if (isLoading) {
     return (
@@ -122,23 +126,22 @@ export function DashboardNav() {
     )
   }
 
-
   return (
     <SidebarMenu>
-        {navItems.map((item) => (
-            <SidebarMenuItem key={item.href} className="my-1">
-                <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.href)}
-                    tooltip={item.label}
-                >
-                    <Link href={item.href}>
-                    {item.icon}
-                    <span>{item.label}</span>
-                    </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-        ))}
+      {navItems.map((item) => (
+        <SidebarMenuItem key={item.href} className="my-1">
+          <SidebarMenuButton
+            asChild
+            isActive={isActive(item.href)}
+            tooltip={item.label}
+          >
+            <Link href={item.href}>
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
     </SidebarMenu>
   )
 }
