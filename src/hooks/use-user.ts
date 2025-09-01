@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from 'react';
@@ -37,7 +38,7 @@ export function useUser() {
             phone: userData.phone,
             position: userData.position,
             department: userData.department,
-            hireDate: userData.hireDate?.toDate(),
+            hireDate: userData.hireDate ? new Date(userData.hireDate) : undefined,
             permissions: userData.permissions || [],
           };
           setAppUser(staff);
