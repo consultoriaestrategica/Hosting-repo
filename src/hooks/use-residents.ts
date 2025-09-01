@@ -53,6 +53,41 @@ export type Visit = {
     notes?: string;
 };
 
+// Shared properties
+type BaseLog = {
+  id: string;
+  residentId: string;
+  startDate: string; // ISO string for when the report was started
+  endDate: string; // ISO string for when the report was submitted
+};
+
+// Medical Report
+type MedicalLog = BaseLog & {
+  reportType: 'medico';
+  heartRate?: number;
+  respiratoryRate?: number;
+  spo2?: number;
+  feedingType?: string;
+  evolutionNotes?: string[];
+  photoEvidenceUrl?: string[];
+  visitType?: string;
+  professionalName?: string;
+  entryTime?: string;
+  exitTime?: string;
+};
+
+// Supply Report
+type SupplyLog = BaseLog & {
+  reportType: 'suministro';
+  supplierName?: string;
+  supplyDate?: string; // YYYY-MM-DD
+  supplyDescription?: string;
+  supplyNotes?: string;
+  supplyPhotoEvidenceUrl?: string[];
+};
+
+export type Log = MedicalLog | SupplyLog;
+
 
 export type Resident = {
   id: string;

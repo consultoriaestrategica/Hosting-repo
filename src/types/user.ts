@@ -47,7 +47,7 @@ export function isFamilyMember(user: AppUser): user is FamilyMember {
   return user.role === "Acceso Familiar";
 }
 
-// Permisos por rol
+// Permisos por rol - Actualizado con todos los módulos
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   "Administrativo": [
     "dashboard",
@@ -57,17 +57,23 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "visitors",
     "logs",
     "reports",
-    "settings"
+    "settings",
+    "users",
+    "daily_records", // Agregado para registro diario
+    "admin_panel"
   ],
   "Personal Asistencial": [
     "dashboard",
     "residents",
     "visitors", 
-    "logs"
+    "logs",
+    "daily_records", // Agregado para registro diario
+    "reports"
   ],
   "Acceso Familiar": [
     "dashboard",
-    "my-resident" // Vista limitada del residente relacionado
+    "my-resident", // Vista limitada del residente relacionado
+    "visitors" // Vista limitada de visitantes
   ]
 };
 
