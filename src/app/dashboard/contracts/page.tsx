@@ -177,73 +177,123 @@ function ContractsPageContent() {
            </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="hidden sm:table-cell">Fecha</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Tipo de Contrato</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>
-                  <span className="sr-only">Acciones</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAndSortedContracts.length > 0 ? (
-                filteredAndSortedContracts.map((contract) => (
-                  <TableRow key={contract.id}>
-                    <TableCell className="hidden sm:table-cell font-medium">{new Date(contract.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Link href={getPersonLink(contract)} className="hover:underline">
-                          {getPersonName(contract)}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="gap-2">
+          {/* Mobile View: Card List */}
+          <div className="md:hidden space-y-4">
+            {filteredAndSortedContracts.length > 0 ? (
+              filteredAndSortedContracts.map((contract) => (
+                <div key={contract.id} className="border rounded-lg p-4 flex justify-between items-start">
+                  <div className="space-y-2 flex-1">
+                    <Link href={getPersonLink(contract)} className="font-semibold hover:underline">
+                      {getPersonName(contract)}
+                    </Link>
+                    <p className="text-sm text-muted-foreground">
+                      Fecha: {new Date(contract.createdAt).toLocaleDateString()}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="gap-1.5">
                         {contract.contractPartyType === 'resident' ? <User className="h-3 w-3"/> : <Briefcase className="h-3 w-3"/>}
                         {contract.contractPartyType === 'resident' ? `Servicios (${(contract as any).contractType.split(' ')[1]})` : 'Laboral'}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                       <Badge variant={getStatusVariant(contract.status)}>
-                          {contract.status}
-                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem asChild>
-                             <Link href={`/dashboard/contracts/${contract.id}?type=${contract.contractPartyType}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Ver Detalle
-                             </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                        No se encontraron contratos con los filtros actuales.
-                    </TableCell>
+                      <Badge variant={getStatusVariant(contract.status)}>
+                        {contract.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button aria-haspopup="true" size="icon" variant="ghost" className="h-8 w-8 -mt-2 -mr-2">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Menú de acciones</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                         <Link href={`/dashboard/contracts/${contract.id}?type=${contract.contractPartyType}`}>
+                           <Eye className="mr-2 h-4 w-4" /> Ver Detalle
+                         </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                No se encontraron contratos con los filtros actuales.
+              </p>
+            )}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="hidden sm:table-cell">Fecha</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Tipo de Contrato</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Acciones</span>
+                  </TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredAndSortedContracts.length > 0 ? (
+                  filteredAndSortedContracts.map((contract) => (
+                    <TableRow key={contract.id}>
+                      <TableCell className="hidden sm:table-cell font-medium">{new Date(contract.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Link href={getPersonLink(contract)} className="hover:underline">
+                            {getPersonName(contract)}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="gap-2">
+                          {contract.contractPartyType === 'resident' ? <User className="h-3 w-3"/> : <Briefcase className="h-3 w-3"/>}
+                          {contract.contractPartyType === 'resident' ? `Servicios (${(contract as any).contractType.split(' ')[1]})` : 'Laboral'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                         <Badge variant={getStatusVariant(contract.status)}>
+                            {contract.status}
+                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              aria-haspopup="true"
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                               <Link href={`/dashboard/contracts/${contract.id}?type=${contract.contractPartyType}`}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Ver Detalle
+                               </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                   <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                          No se encontraron contratos con los filtros actuales.
+                      </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </>
@@ -257,5 +307,3 @@ export default function ContractsPage() {
     </Suspense>
   )
 }
-
-    
