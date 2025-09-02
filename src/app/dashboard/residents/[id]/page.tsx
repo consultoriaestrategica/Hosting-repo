@@ -302,7 +302,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
             </div>
             
             <Tabs defaultValue="general">
-                <TabsList className="flex flex-wrap h-auto justify-start md:grid md:w-full md:grid-cols-2 lg:w-auto lg:flex">
+                <TabsList className="flex flex-wrap h-auto justify-start">
                     <TabsTrigger value="general">Perfil General</TabsTrigger>
                     {isAdminRole && (
                         <>
@@ -564,8 +564,8 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                                     <TableRow>
                                         <TableHead>Fecha y Hora</TableHead>
                                         <TableHead>Evento</TableHead>
-                                        <TableHead>Tipo</TableHead>
-                                        <TableHead>Estado</TableHead>
+                                        <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                                        <TableHead className="hidden md:table-cell">Estado</TableHead>
                                         <TableHead className="text-right">Acciones</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -578,8 +578,8 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                                                     <p className="font-semibold">{event.title}</p>
                                                     <p className="text-xs text-muted-foreground">{event.description}</p>
                                                 </TableCell>
-                                                <TableCell>{event.type}</TableCell>
-                                                <TableCell><Badge variant={getAgendaStatusVariant(event.status)}>{event.status}</Badge></TableCell>
+                                                <TableCell className="hidden md:table-cell">{event.type}</TableCell>
+                                                <TableCell className="hidden md:table-cell"><Badge variant={getAgendaStatusVariant(event.status)}>{event.status}</Badge></TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenAgendaDialog(event)}>
                                                         <Edit className="h-4 w-4" />
