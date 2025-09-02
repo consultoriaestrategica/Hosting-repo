@@ -214,6 +214,8 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
       </div>
     );
   }
+  
+  const isAdminRole = role === 'Administrativo';
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -250,7 +252,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                    {resident.status === 'Activo' && role === 'admin' && (
+                    {resident.status === 'Activo' && isAdminRole && (
                         <Button asChild variant="outline">
                             <Link href={`/dashboard/residents/edit/${resident.id}`}>
                                 <Edit className="mr-2 h-4 w-4"/>
@@ -277,7 +279,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                             </DialogContent>
                         </Dialog>
                     )}
-                    {resident.status === 'Activo' && (
+                    {resident.status === 'Activo' && isAdminRole && (
                         <Dialog open={isDischargeDialogOpen} onOpenChange={setIsDischargeDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button variant="destructive">
@@ -300,11 +302,15 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
             </div>
             
             <Tabs defaultValue="general">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-6">
+                <TabsList className={`grid w-full ${isAdminRole ? 'sm:grid-cols-6' : 'sm:grid-cols-3'}`}>
                     <TabsTrigger value="general">Perfil General</TabsTrigger>
-                    <TabsTrigger value="contacts">Contactos</TabsTrigger>
-                    <TabsTrigger value="documents">Documentos</TabsTrigger>
-                    <TabsTrigger value="contracts">Contratos</TabsTrigger>
+                    {isAdminRole && (
+                        <>
+                            <TabsTrigger value="contacts">Contactos</TabsTrigger>
+                            <TabsTrigger value="documents">Documentos</TabsTrigger>
+                            <TabsTrigger value="contracts">Contratos</TabsTrigger>
+                        </>
+                    )}
                     <TabsTrigger value="agenda">Agenda</TabsTrigger>
                     <TabsTrigger value="logs">Registros</TabsTrigger>
                 </TabsList>
@@ -410,130 +416,135 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                     </div>
                 </TabsContent>
                 
-                <TabsContent value="contacts" className="mt-4">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><Users/>Contactos Familiares</CardTitle>
-                             <CardDescription>Personas a contactar en caso de emergencia.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {resident.familyContacts?.length ? resident.familyContacts.map((contact, index) => (
-                                <div key={index} className="p-4 border rounded-lg">
-                                    <div className="font-bold text-lg">{contact.name} <Badge variant="secondary">{contact.kinship}</Badge></div>
-                                    <div className="text-sm mt-2 space-y-2 text-muted-foreground">
-                                        <p className="flex items-center gap-2"><Mail className="h-4 w-4"/> {contact.email}</p>
-                                        <p className="flex items-center gap-2"><Phone className="h-4 w-4"/> {contact.phones.map(p => p.number).join(', ')}</p>
-                                        <p className="flex items-center gap-2"><Home className="h-4 w-4"/> {contact.address}</p>
-                                    </div>
-                                </div>
-                            )) : (
-                                <p className="text-muted-foreground text-center p-4">No hay contactos familiares registrados.</p>
-                            )}
-                        </CardContent>
-                     </Card>
-                </TabsContent>
+                {isAdminRole && (
+                    <>
+                        <TabsContent value="contacts" className="mt-4">
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><Users/>Contactos Familiares</CardTitle>
+                                     <CardDescription>Personas a contactar en caso de emergencia.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {resident.familyContacts?.length ? resident.familyContacts.map((contact, index) => (
+                                        <div key={index} className="p-4 border rounded-lg">
+                                            <div className="font-bold text-lg">{contact.name} <Badge variant="secondary">{contact.kinship}</Badge></div>
+                                            <div className="text-sm mt-2 space-y-2 text-muted-foreground">
+                                                <p className="flex items-center gap-2"><Mail className="h-4 w-4"/> {contact.email}</p>
+                                                <p className="flex items-center gap-2"><Phone className="h-4 w-4"/> {contact.phones.map(p => p.number).join(', ')}</p>
+                                                <p className="flex items-center gap-2"><Home className="h-4 w-4"/> {contact.address}</p>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <p className="text-muted-foreground text-center p-4">No hay contactos familiares registrados.</p>
+                                    )}
+                                </CardContent>
+                             </Card>
+                        </TabsContent>
 
-                <TabsContent value="documents" className="mt-4">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><FileText />Documentos Adjuntos</CardTitle>
-                            <CardDescription>Archivos y documentos asociados a {resident.name}.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Tipo de Documento</TableHead>
-                                        <TableHead>Nombre del Archivo</TableHead>
-                                        <TableHead className="text-right">Acciones</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {resident.documents?.length > 0 ? (
-                                        resident.documents.map((doc, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell className="font-medium">{doc.type}</TableCell>
-                                                <TableCell>{doc.name}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                                <span className="sr-only">Abrir menú</span>
+                        <TabsContent value="documents" className="mt-4">
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><FileText />Documentos Adjuntos</CardTitle>
+                                    <CardDescription>Archivos y documentos asociados a {resident.name}.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Tipo de Documento</TableHead>
+                                                <TableHead>Nombre del Archivo</TableHead>
+                                                <TableHead className="text-right">Acciones</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {resident.documents?.length > 0 ? (
+                                                resident.documents.map((doc, index) => (
+                                                    <TableRow key={index}>
+                                                        <TableCell className="font-medium">{doc.type}</TableCell>
+                                                        <TableCell>{doc.name}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="icon">
+                                                                        <MoreHorizontal className="h-4 w-4" />
+                                                                        <span className="sr-only">Abrir menú</span>
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                                    <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
+                                                                        <Eye className="mr-2 h-4 w-4" />
+                                                                        Ver
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
+                                                                        <Download className="mr-2 h-4 w-4" />
+                                                                        Descargar
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-destructive" onClick={() => toast({title: "Función no implementada"})}>
+                                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                                        Eliminar
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={3} className="h-24 text-center">No se han adjuntado documentos.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        
+                        <TabsContent value="contracts" className="mt-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><BookUser />Historial de Contratos</CardTitle>
+                                    <CardDescription>Todos los contratos de servicios para {resident.name}.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Fecha Creación</TableHead>
+                                                <TableHead>Tipo de Contrato</TableHead>
+                                                <TableHead>Estado</TableHead>
+                                                <TableHead><span className="sr-only">Acciones</span></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredContracts.length > 0 ? (
+                                                filteredContracts.map(c => (
+                                                    <TableRow key={c.id}>
+                                                        <TableCell>{new Date(c.createdAt).toLocaleDateString('es-ES')}</TableCell>
+                                                        <TableCell>Servicios ({c.contractType})</TableCell>
+                                                        <TableCell><Badge variant={getStatusVariant(c.status)}>{c.status}</Badge></TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button asChild variant="outline" size="sm">
+                                                                <Link href={`/dashboard/contracts/${c.id}?type=resident`}>
+                                                                    <Eye className="mr-2 h-4 w-4"/> Ver Detalle
+                                                                </Link>
                                                             </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                            <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
-                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                Ver
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
-                                                                <Download className="mr-2 h-4 w-4" />
-                                                                Descargar
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-destructive" onClick={() => toast({title: "Función no implementada"})}>
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                Eliminar
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="h-24 text-center">No se han adjuntado documentos.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                
-                <TabsContent value="contracts" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><BookUser />Historial de Contratos</CardTitle>
-                            <CardDescription>Todos los contratos de servicios para {resident.name}.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Fecha Creación</TableHead>
-                                        <TableHead>Tipo de Contrato</TableHead>
-                                        <TableHead>Estado</TableHead>
-                                        <TableHead><span className="sr-only">Acciones</span></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredContracts.length > 0 ? (
-                                        filteredContracts.map(c => (
-                                            <TableRow key={c.id}>
-                                                <TableCell>{new Date(c.createdAt).toLocaleDateString('es-ES')}</TableCell>
-                                                <TableCell>Servicios ({c.contractType})</TableCell>
-                                                <TableCell><Badge variant={getStatusVariant(c.status)}>{c.status}</Badge></TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button asChild variant="outline" size="sm">
-                                                        <Link href={`/dashboard/contracts/${c.id}?type=resident`}>
-                                                            <Eye className="mr-2 h-4 w-4"/> Ver Detalle
-                                                        </Link>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">No se encontraron contratos.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="h-24 text-center">No se encontraron contratos.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </>
+                )}
+
 
                  <TabsContent value="agenda" className="mt-4">
                     <Card>
