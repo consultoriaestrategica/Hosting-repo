@@ -1,4 +1,3 @@
-
 "use client"
 
 import {
@@ -39,7 +38,6 @@ const staffFormSchema = z.object({
   email: z.string().email({ message: "Correo electrónico inválido." }),
   address: z.string().min(5, { message: "La dirección debe ser válida." }),
   salary: z.coerce.number().min(0, { message: "El salario debe ser un número positivo."}),
-  status: z.enum(["Activo", "Inactivo"]),
   hireDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de contratación inválida." }),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
   document: z.any().refine(file => file instanceof File, "Debe adjuntar el documento del contrato en formato PDF."),
@@ -69,7 +67,6 @@ export default function NewStaffPage() {
       phone: "",
       email: "",
       address: "",
-      status: "Activo",
       hireDate: new Date().toISOString().split('T')[0],
       endDate: "",
       role: undefined,
@@ -120,7 +117,7 @@ export default function NewStaffPage() {
             email: data.email,
             address: data.address,
             salary: data.salary,
-            status: data.status,
+            status: "Activo" as const, // Always set status to Active on creation
             hireDate: data.hireDate,
         }
         const newStaffMember = await addStaffMember(staffData)
@@ -187,7 +184,6 @@ export default function NewStaffPage() {
                         <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salario Mensual (COP)</FormLabel><FormControl><Input type="number" placeholder="2500000" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="hireDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio Contrato</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin Contrato</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                         <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Estado</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione el estado" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Activo">Activo</SelectItem><SelectItem value="Inactivo">Inactivo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                      </div>
 
                     <FormField

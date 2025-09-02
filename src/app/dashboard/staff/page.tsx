@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogClose,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -41,6 +42,7 @@ import { StaffContract, useStaffContracts } from "@/hooks/use-staff-contracts"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import NewStaffContractForm from "./[id]/new-staff-contract-form"
 
 function StaffPageContent() {
   const { staff, isLoading } = useStaff()
@@ -49,6 +51,7 @@ function StaffPageContent() {
   const [isClient, setIsClient] = useState(false)
   const [searchTerm, setSearchTerm] = useState("");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isContractFormOpen, setIsContractFormOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   
   useEffect(() => {
@@ -73,9 +76,10 @@ function StaffPageContent() {
 
   const isAdminRole = role === 'admin';
   
-  const handleViewProfile = (staffMember: Staff) => {
+  const handleActionClick = (staffMember: Staff, action: 'profile' | 'contract') => {
     setSelectedStaff(staffMember);
-    setIsProfileOpen(true);
+    if (action === 'profile') setIsProfileOpen(true);
+    if (action === 'contract') setIsContractFormOpen(true);
   }
   
   const getStaffContract = (staffId: string): StaffContract | undefined => {
@@ -157,8 +161,11 @@ function StaffPageContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleViewProfile(member)}>
+                        <DropdownMenuItem onClick={() => handleActionClick(member, 'profile')}>
                             <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => handleActionClick(member, 'contract')}>
+                            <FileText className="mr-2 h-4 w-4" /> Crear Contrato
                         </DropdownMenuItem>
                          <DropdownMenuItem asChild>
                             <Link href={`/dashboard/staff/edit/${member.id}`}>
@@ -257,6 +264,24 @@ function StaffPageContent() {
                     </DialogFooter>
                 </>
             )}
+        </DialogContent>
+      </Dialog>
+       <Dialog open={isContractFormOpen} onOpenChange={setIsContractFormOpen}>
+        <DialogContent>
+          {selectedStaff && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Crear Nuevo Contrato</DialogTitle>
+                <DialogDescription>
+                  Adjunte el documento para el nuevo contrato de {selectedStaff.name}.
+                </DialogDescription>
+              </DialogHeader>
+              <NewStaffContractForm 
+                staffMember={selectedStaff} 
+                onFormSubmit={() => setIsContractFormOpen(false)} 
+              />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>

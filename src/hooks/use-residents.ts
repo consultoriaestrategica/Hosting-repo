@@ -1,8 +1,7 @@
-
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc, DocumentData } from 'firebase/firestore';
 
 type PhoneContact = {
@@ -88,7 +87,6 @@ type SupplyLog = BaseLog & {
 
 export type Log = MedicalLog | SupplyLog;
 
-
 export type Resident = {
   id: string;
   name: string;
@@ -122,22 +120,35 @@ function useResidents() {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    // DEBUG: Verificar estado de autenticación antes de consultar
+    console.log('=== DEBUG RESIDENTS QUERY ===');
+    console.log('Auth current user:', auth.currentUser);
+    console.log('Auth user email:', auth.currentUser?.email);
+    console.log('Auth user uid:', auth.currentUser?.uid);
+    console.log('Is user authenticated:', !!auth.currentUser);
+    console.log('==============================');
+    
     setIsLoading(true);
+    
     const unsubscribe = onSnapshot(residentsCollection, (snapshot) => {
+        console.log('✅ Successfully fetched residents:', snapshot.docs.length);
         const residentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resident));
         setResidents(residentsData);
         setIsLoading(false);
     }, (error) => {
-        console.error("Error fetching residents from Firestore: ", error);
+        console.error("❌ Error fetching residents from Firestore:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+        console.error("Auth user during error:", auth.currentUser);
         setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-
   const addResident = useCallback(async (newResident: Omit<Resident, 'id'>) => {
     try {
+        console.log('Adding resident. Auth user:', auth.currentUser?.email);
         await addDoc(residentsCollection, newResident);
     } catch (error) {
         console.error("Error adding resident to Firestore: ", error);
@@ -146,6 +157,7 @@ function useResidents() {
 
   const updateResident = useCallback(async (residentId: string, updatedDetails: Partial<Omit<Resident, 'id'>>) => {
     try {
+        console.log('Updating resident. Auth user:', auth.currentUser?.email);
         const residentDoc = doc(db, 'residents', residentId);
         await updateDoc(residentDoc, updatedDetails);
     } catch (error) {
@@ -159,7 +171,6 @@ function useResidents() {
         dischargeDetails: dischargeDetails,
       });
   }, [updateResident]);
-
 
   const addAgendaEvent = useCallback(async (residentId: string, eventData: Omit<AgendaEvent, 'id'>) => {
     const resident = residents.find(r => r.id === residentId);
@@ -203,7 +214,6 @@ function useResidents() {
     
     await updateResident(residentId, { visits: updatedVisits });
   }, [residents, updateResident]);
-
 
   return { residents, addResident, updateResident, dischargeResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, addVisit, isLoading };
 }

@@ -12,12 +12,13 @@ import { Table, TableBody, TableRow, TableCell, TableHead, TableHeader } from "@
 import { Badge } from "@/components/ui/badge";
 
 // Iconos
-import { User, Mail, Phone, FileText, Home, Briefcase, DollarSign, Calendar } from "lucide-react";
+import { User, Mail, Phone, FileText, Home, Briefcase, DollarSign, Calendar, PlusCircle } from "lucide-react";
 import Link from "next/link";
 
 function StaffProfilePageContent({ staffId }: { staffId: string }) {
   const { staff, isLoading: staffLoading } = useStaff();
   const { contracts: staffContracts, isLoading: contractsLoading } = useStaffContracts();
+  const [isContractFormOpen, setIsContractFormOpen] = useState(false);
   
   const isLoading = staffLoading || contractsLoading;
 
@@ -115,9 +116,28 @@ function StaffProfilePageContent({ staffId }: { staffId: string }) {
        </div>
 
       <Card>
-        <CardHeader>
-            <CardTitle>Historial de Contratos</CardTitle>
-            <CardDescription>Contratos laborales asociados a {staffMember.name}</CardDescription>
+        <CardHeader className="flex flex-row items-center">
+            <div className="flex-1">
+                <CardTitle>Historial de Contratos</CardTitle>
+                <CardDescription>Contratos laborales asociados a {staffMember.name}</CardDescription>
+            </div>
+             <Dialog open={isContractFormOpen} onOpenChange={setIsContractFormOpen}>
+                <DialogTrigger asChild>
+                    <Button><PlusCircle className="mr-2 h-4 w-4"/>Crear Contrato</Button>
+                </DialogTrigger>
+                <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Crear Nuevo Contrato</DialogTitle>
+                        <DialogDescription>
+                          Adjunte el documento para el nuevo contrato de {staffMember.name}.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <NewStaffContractForm 
+                        staffMember={staffMember} 
+                        onFormSubmit={() => setIsContractFormOpen(false)} 
+                      />
+                </DialogContent>
+            </Dialog>
         </CardHeader>
         <CardContent>
             <Table>
@@ -147,7 +167,10 @@ function StaffProfilePageContent({ staffId }: { staffId: string }) {
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={4} className="text-center h-24">No hay contratos registrados.</TableCell>
+                            <TableCell colSpan={4} className="text-center h-24">
+                                No hay contratos registrados.
+                                <Button variant="link" onClick={() => setIsContractFormOpen(true)}>Crear uno ahora.</Button>
+                            </TableCell>
                         </TableRow>
                     )}
                 </TableBody>
