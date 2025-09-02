@@ -30,7 +30,7 @@ interface LogDetailDialogProps {
 }
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string | number | null }) {
-  if (!value) return null;
+  if (!value && value !== 0) return null;
   return (
     <div className="flex items-start">
       <div className="flex items-center w-48">
@@ -167,9 +167,9 @@ export default function LogDetailDialog({ isOpen, onOpenChange, log, residentNam
         </div>
 
         <DialogFooter>
-           <Button type="button" variant="outline" onClick={handleExportPdf}>
+           <Button type="button" variant="outline" onClick={handleExportPdf} disabled>
                 <FileDown className="mr-2 h-4 w-4" />
-                Exportar a PDF
+                Exportar a PDF (Próximamente)
             </Button>
           <DialogClose asChild>
             <Button type="button">Cerrar</Button>
