@@ -388,3 +388,5 @@ export default function EditResidentPage({ params }: { params: { id: string } })
         </Suspense>
     )
 }
+
+    
