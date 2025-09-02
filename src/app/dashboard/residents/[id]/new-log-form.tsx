@@ -96,7 +96,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -115,6 +114,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   })
   
   const reportType = form.watch("reportType");
+  const photoPreviews = reportType === 'medico' ? form.watch("photoEvidence") : form.watch("supplyPhotoEvidence");
+
   const { fields: evolutionNoteFields, append: appendEvolutionNote, remove: removeEvolutionNote } = useFieldArray({
     control: form.control,
     name: "evolutionNotes",
@@ -170,9 +171,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
   // --- Camera & Upload Logic ---
   const updatePhotoEvidence = (newPhotos: string[]) => {
-    setPhotoPreviews(newPhotos);
     const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
-    form.setValue(fieldToUpdate, newPhotos);
+    const currentPhotos = form.getValues(fieldToUpdate) || [];
+    form.setValue(fieldToUpdate, [...currentPhotos, ...newPhotos], { shouldValidate: true });
   };
   
   const openCamera = async () => {
@@ -213,7 +214,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const photoDataUrl = canvas.toDataURL('image/jpeg');
-        updatePhotoEvidence([...photoPreviews, photoDataUrl]);
+        updatePhotoEvidence([photoDataUrl]);
         toast({ title: "Evidencia Capturada", description: "La foto se ha añadido a la galería." });
     }
     closeCamera();
@@ -234,7 +235,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         }
         filesProcessed++;
         if (filesProcessed === files.length) {
-            updatePhotoEvidence([...photoPreviews, ...newPreviews]);
+            updatePhotoEvidence(newPreviews);
             toast({ title: `${files.length} imagen(es) cargada(s)`, description: "Las fotos se han añadido a la galería." });
         }
       };
@@ -246,9 +247,11 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
 
   const removePhoto = (index: number) => {
-    const newPhotos = [...photoPreviews];
+    const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
+    const currentPhotos = form.getValues(fieldToUpdate) || [];
+    const newPhotos = [...currentPhotos];
     newPhotos.splice(index, 1);
-    updatePhotoEvidence(newPhotos);
+    form.setValue(fieldToUpdate, newPhotos, { shouldValidate: true });
   }
 
   // --- Lifecycle and Submit ---
@@ -309,7 +312,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     })
     onFormSubmit();
     form.reset();
-    setPhotoPreviews([]);
   }
 
   const renderPhotoEvidence = () => (
@@ -317,7 +319,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       <FormLabel>Evidencia Fotográfica</FormLabel>
       <FormControl>
         <div className="space-y-4">
-             {photoPreviews.length > 0 && (
+             {photoPreviews && photoPreviews.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {photoPreviews.map((preview, index) => (
                         <div key={index} className="relative aspect-square w-full">
@@ -390,13 +392,16 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         <FormControl>
                           <RadioGroup
                             onValueChange={(value) => {
+                                const currentResidentId = form.getValues("residentId");
                                 field.onChange(value);
                                 form.reset({
-                                    ...form.getValues(),
+                                    residentId: currentResidentId,
                                     reportType: value as "medico" | "suministro",
                                     evolutionNotes: [{ note: "" }],
+                                    supplyNotes: "",
+                                    photoEvidence: [],
+                                    supplyPhotoEvidence: [],
                                 });
-                                setPhotoPreviews([]);
                             }}
                             defaultValue={field.value}
                             className="flex items-center space-x-4"
