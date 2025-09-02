@@ -238,7 +238,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
 
   return (
     <>
-        <div className="p-4 md:p-8 space-y-6">
+        <div className="p-4 md:p-6 space-y-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
                     <FileText className="h-8 w-8 text-primary mt-1" />
