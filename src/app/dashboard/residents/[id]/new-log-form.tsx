@@ -36,13 +36,13 @@ const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
 
-  // Medical fields (optional at base level)
+  // Medical fields
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
   feedingType: z.string().optional(),
   evolutionNotes: z.array(z.object({
-    note: z.string().min(1, "La nota no puede estar vacía."),
+    note: z.string().optional(),
   })).optional(),
   photoEvidence: z.array(z.string()).optional(),
   visitType: z.string().optional(),
@@ -50,31 +50,31 @@ const reportFormSchema = z.object({
   entryTime: z.string().optional(),
   exitTime: z.string().optional(),
 
-  // Supply fields (optional at base level)
+  // Supply fields
   supplierName: z.string().optional(),
   supplyDate: z.string().optional(),
   supplyDescription: z.string().optional(),
   supplyNotes: z.string().optional(),
   supplyPhotoEvidence: z.array(z.string()).optional(),
 }).superRefine((data, ctx) => {
-    // Conditional validation based on reportType
     if (data.reportType === 'suministro') {
-        if (!data.supplierName || data.supplierName.length < 3) {
+        if (!data.supplierName || data.supplierName.trim().length < 3) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['supplierName'],
-                message: "El nombre de quien entrega es requerido.",
+                message: "El nombre de quien entrega es requerido (mín. 3 caracteres).",
             });
         }
-        if (!data.supplyDescription || data.supplyDescription.length < 3) {
+        if (!data.supplyDescription || data.supplyDescription.trim().length < 3) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['supplyDescription'],
-                message: "La descripción del suministro es requerida.",
+                message: "La descripción del suministro es requerida (mín. 3 caracteres).",
             });
         }
     }
 });
+
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
 type DictationField = `evolutionNotes.${number}.note` | "supplyNotes";
@@ -552,5 +552,3 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       </Form>
   )
 }
-
-    
