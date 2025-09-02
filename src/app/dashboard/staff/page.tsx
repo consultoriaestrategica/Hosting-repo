@@ -123,7 +123,6 @@ function StaffPageContent() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -181,7 +180,6 @@ function StaffPageContent() {
                 ))}
               </TableBody>
             </Table>
-          </div>
         </CardContent>
       </Card>
       
