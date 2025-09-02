@@ -35,7 +35,7 @@ const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
 
-  // Medical fields
+  // Medical fields (optional at base level)
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
@@ -49,13 +49,32 @@ const reportFormSchema = z.object({
   entryTime: z.string().optional(),
   exitTime: z.string().optional(),
 
-  // Supply fields
+  // Supply fields (optional at base level)
   supplierName: z.string().optional(),
   supplyDate: z.string().optional(),
-  supplyDescription: z.string().min(3, "La descripción es requerida.").optional(),
+  supplyDescription: z.string().optional(),
   supplyNotes: z.string().optional(),
   supplyPhotoEvidence: z.array(z.string()).optional(),
-})
+}).superRefine((data, ctx) => {
+    // Conditional validation based on reportType
+    if (data.reportType === 'suministro') {
+        if (!data.supplierName || data.supplierName.length < 3) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['supplierName'],
+                message: "El nombre de quien entrega es requerido.",
+            });
+        }
+        if (!data.supplyDescription || data.supplyDescription.length < 3) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['supplyDescription'],
+                message: "La descripción del suministro es requerida.",
+            });
+        }
+    }
+    // No specific mandatory fields for 'medico' type, as all can be optional observations.
+});
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
 type DictationField = `evolutionNotes.${number}.note` | "supplyNotes";
