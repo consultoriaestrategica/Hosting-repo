@@ -121,8 +121,8 @@ function ContractsPageContent() {
             <Button size="sm" className="h-8 gap-1" asChild>
                 <Link href="/dashboard/contracts/new">
                     <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Generar Contrato Residente
+                    <span className="whitespace-nowrap">
+                        Crear Contrato
                     </span>
                 </Link>
             </Button>
@@ -202,7 +202,7 @@ function ContractsPageContent() {
                     <TableCell>
                       <Badge variant="outline" className="gap-2">
                         {contract.contractPartyType === 'resident' ? <User className="h-3 w-3"/> : <Briefcase className="h-3 w-3"/>}
-                        {contract.contractPartyType === 'resident' ? `Servicios (${(contract as any).contractType})` : 'Laboral'}
+                        {contract.contractPartyType === 'resident' ? `Servicios (${(contract as any).contractType.split(' ')[1]})` : 'Laboral'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -257,3 +257,5 @@ export default function ContractsPage() {
     </Suspense>
   )
 }
+
+    
