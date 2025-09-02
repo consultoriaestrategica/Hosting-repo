@@ -52,7 +52,7 @@ const reportFormSchema = z.object({
   // Supply fields
   supplierName: z.string().optional(),
   supplyDate: z.string().optional(),
-  supplyDescription: z.string().optional(),
+  supplyDescription: z.string().min(3, "La descripción es requerida.").optional(),
   supplyNotes: z.string().optional(),
   supplyPhotoEvidence: z.array(z.string()).optional(),
 })
