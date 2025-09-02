@@ -84,7 +84,7 @@ export default function NewContractPage() {
       if (file.type !== "application/pdf") {
           toast({ variant: "destructive", title: "Archivo inválido", description: "Por favor, suba un archivo en formato PDF." });
           if (fileInputRef.current) fileInputRef.current.value = "";
-          form.resetField("document");
+          form.setValue("document", undefined, { shouldValidate: true });
           return;
       }
       form.setValue("document", file, { shouldValidate: true }); 
@@ -95,7 +95,7 @@ export default function NewContractPage() {
     if(fileInputRef.current) {
         fileInputRef.current.value = "";
     }
-    form.resetField("document");
+    form.setValue("document", undefined, { shouldValidate: true });
   };
 
 
@@ -208,7 +208,7 @@ export default function NewContractPage() {
                     <FormField
                         control={form.control}
                         name="document"
-                        render={({ field }) => (
+                        render={() => (
                             <FormItem>
                                 <FormLabel>Documento del Contrato (PDF)</FormLabel>
                                 {documentFile instanceof File ? (
