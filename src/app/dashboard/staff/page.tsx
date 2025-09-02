@@ -105,24 +105,27 @@ function StaffPageContent() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Miembros del Personal</CardTitle>
-          <CardDescription>
-            Listado de todo el personal del hogar geriátrico.
-          </CardDescription>
-          <div className="pt-4">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                    type="search"
-                    placeholder="Buscar por nombre o cargo..."
-                    className="pl-8 w-full"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-          </div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex-1">
+                    <CardTitle>Miembros del Personal</CardTitle>
+                    <CardDescription>
+                        Listado de todo el personal del hogar geriátrico.
+                    </CardDescription>
+                </div>
+                <div className="relative flex-1 md:max-w-xs">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Buscar por nombre o cargo..."
+                        className="pl-8 w-full"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -180,6 +183,7 @@ function StaffPageContent() {
                 ))}
               </TableBody>
             </Table>
+          </div>
         </CardContent>
       </Card>
       
