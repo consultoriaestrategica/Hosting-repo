@@ -44,18 +44,18 @@ export function useStaffContracts() {
   }, []);
 
 
-  const addContract = useCallback(async (newContractData: Omit<StaffContract, 'id'>): Promise<StaffContract> => {
+  const addStaffContract = useCallback(async (newContractData: Omit<StaffContract, 'id'>): Promise<StaffContract> => {
     try {
         const docRef = await addDoc(staffContractsCollection, newContractData);
         return { ...newContractData, id: docRef.id };
     } catch (error) {
         console.error("Error adding staff contract to Firestore: ", error);
         // In case of error, return a non-persistent object to avoid breaking the UI flow
-        return { ...newContractData, id: `error-${Date.now()}` };
+        throw error;
     }
   }, []);
 
-  const updateContract = useCallback(async (contractId: string, updatedDetails: Partial<StaffContract>) => {
+  const updateStaffContract = useCallback(async (contractId: string, updatedDetails: Partial<StaffContract>) => {
     try {
         const contractDoc = doc(db, 'staff_contracts', contractId);
         await updateDoc(contractDoc, updatedDetails);
@@ -65,5 +65,5 @@ export function useStaffContracts() {
     }
   }, []);
 
-  return { contracts, addContract, updateContract, isLoading };
+  return { contracts, addStaffContract, updateStaffContract, isLoading };
 }

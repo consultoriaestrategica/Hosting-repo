@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -53,7 +54,7 @@ export default function NewStaffPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { addStaffMember, isLoading: isStaffLoading } = useStaff()
-  const { addContract, isLoading: isContractLoading } = useStaffContracts()
+  const { addStaffContract, isLoading: isContractLoading } = useStaffContracts()
   const [isSaving, setIsSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -116,9 +117,8 @@ export default function NewStaffPage() {
             phone: data.phone,
             email: data.email,
             address: data.address,
-            salary: data.salary,
             status: "Activo" as const, // Always set status to Active on creation
-            hireDate: data.hireDate,
+            hireDate: new Date(data.hireDate),
         }
         const newStaffMember = await addStaffMember(staffData)
 
@@ -142,7 +142,7 @@ export default function NewStaffPage() {
             createdAt: new Date().toISOString()
         }
 
-        await addContract(newContract)
+        await addStaffContract(newContract)
 
         toast({
             title: "Personal y Contrato Creados",

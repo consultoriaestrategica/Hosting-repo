@@ -56,7 +56,7 @@ type StaffFormValues = z.infer<typeof staffFormSchema>
 
 function EditStaffForm({ staffId }: { staffId: string }) {
     const { staff, updateStaffMember, isLoading: staffLoading } = useStaff();
-    const { contracts: staffContracts, updateContract, isLoading: contractsLoading } = useStaffContracts();
+    const { contracts: staffContracts, updateStaffContract, isLoading: contractsLoading } = useStaffContracts();
     const { toast } = useToast();
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
@@ -100,8 +100,8 @@ function EditStaffForm({ staffId }: { staffId: string }) {
                 email: staffMember.email || "",
                 address: staffMember.address || "",
                 status: staffMember.status,
-                hireDate: staffMember.hireDate || "",
-                endDate: contract.endDate || "",
+                hireDate: staffMember.hireDate ? new Date(staffMember.hireDate).toISOString().split('T')[0] : "",
+                endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : "",
                 salary: contract.salary || 0,
                 document: contract.documentName, // Initially set to the name of the existing document
             });
@@ -147,7 +147,7 @@ function EditStaffForm({ staffId }: { staffId: string }) {
                 email: data.email,
                 address: data.address,
                 status: data.status,
-                hireDate: data.hireDate,
+                hireDate: new Date(data.hireDate),
             };
             await updateStaffMember(staffMember.id, staffData);
 
@@ -168,7 +168,7 @@ function EditStaffForm({ staffId }: { staffId: string }) {
                 contractUpdates.documentName = fileToUpload.name;
             }
 
-            await updateContract(contract.id, contractUpdates);
+            await updateStaffContract(contract.id, contractUpdates);
 
             toast({
                 title: "Datos Actualizados",

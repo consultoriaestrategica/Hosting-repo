@@ -1,19 +1,18 @@
+
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { 
   collection, 
   query, 
-  where, 
   onSnapshot, 
   addDoc, 
   updateDoc, 
-  deleteDoc, 
   doc,
   Timestamp 
 } from 'firebase/firestore';
-import { Staff, UserRole } from '@/types/user';
+import { Staff } from '@/types/user';
 
 export function useStaff() {
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -21,20 +20,21 @@ export function useStaff() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const staffQuery = query(
-      collection(db, "staff"),
-      where("isActive", "==", true)
-    );
+    const staffQuery = query(collection(db, "staff"));
 
     const unsubscribe = onSnapshot(
       staffQuery,
       (querySnapshot) => {
-        const staffData: Staff[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-        })) as Staff[];
+        const staffData: Staff[] = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            hireDate: data.hireDate?.toDate ? data.hireDate.toDate() : (data.hireDate ? new Date(data.hireDate) : undefined),
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
+          } as Staff;
+        });
 
         setStaff(staffData);
         setIsLoading(false);
@@ -50,23 +50,21 @@ export function useStaff() {
     return () => unsubscribe();
   }, []);
 
-  // Función para agregar personal
-  const addStaff = async (staffData: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addStaffMember = useCallback(async (staffData: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) : Promise<Staff> => {
     try {
       const docRef = await addDoc(collection(db, "staff"), {
         ...staffData,
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date()),
       });
-      return docRef.id;
+      return { id: docRef.id, ...staffData, createdAt: new Date(), updatedAt: new Date() };
     } catch (error) {
       console.error("Error adding staff:", error);
       throw error;
     }
-  };
+  }, []);
 
-  // Función para actualizar personal
-  const updateStaff = async (id: string, updates: Partial<Omit<Staff, 'id' | 'createdAt'>>) => {
+  const updateStaffMember = useCallback(async (id: string, updates: Partial<Omit<Staff, 'id' | 'createdAt'>>) => {
     try {
       await updateDoc(doc(db, "staff", id), {
         ...updates,
@@ -76,46 +74,15 @@ export function useStaff() {
       console.error("Error updating staff:", error);
       throw error;
     }
-  };
-
-  // Función para eliminar personal (soft delete)
-  const deleteStaff = async (id: string) => {
-    try {
-      await updateDoc(doc(db, "staff", id), {
-        isActive: false,
-        updatedAt: Timestamp.fromDate(new Date()),
-      });
-    } catch (error) {
-      console.error("Error deleting staff:", error);
-      throw error;
-    }
-  };
-
-  // Filtros útiles
-  const getStaffByRole = (role: UserRole): Staff[] => {
-    return staff.filter(member => member.role === role);
-  };
-
-  const getAdministrators = (): Staff[] => {
-    return getStaffByRole("Administrativo");
-  };
-
-  const getMedicalStaff = (): Staff[] => {
-    return getStaffByRole("Personal Asistencial");
-  };
+  }, []);
 
   return {
     staff,
     isLoading,
     error,
-    addStaff,
-    updateStaff,
-    deleteStaff,
-    getStaffByRole,
-    getAdministrators,
-    getMedicalStaff,
+    addStaffMember,
+    updateStaffMember,
   };
 }
 
-// Re-export el tipo Staff para compatibilidad hacia atrás
 export type { Staff } from '@/types/user';
