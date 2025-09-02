@@ -302,7 +302,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
             </div>
             
             <Tabs defaultValue="general">
-                <TabsList className="grid w-full grid-cols-2 md:flex md:w-auto md:grid-cols-none">
+                <TabsList className="flex flex-wrap h-auto justify-start md:grid md:w-full md:grid-cols-2 lg:w-auto lg:flex">
                     <TabsTrigger value="general">Perfil General</TabsTrigger>
                     {isAdminRole && (
                         <>
@@ -461,7 +461,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                                                 resident.documents.map((doc, index) => (
                                                     <TableRow key={index}>
                                                         <TableCell className="font-medium">{doc.type}</TableCell>
-                                                        <TableCell>{doc.name}</TableCell>
+                                                        <TableCell className="max-w-xs truncate">{doc.name}</TableCell>
                                                         <TableCell className="text-right">
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
