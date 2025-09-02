@@ -302,7 +302,7 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
             </div>
             
             <Tabs defaultValue="general">
-                <TabsList className={`grid w-full ${isAdminRole ? 'sm:grid-cols-6' : 'sm:grid-cols-3'}`}>
+                <TabsList className="grid w-full grid-cols-2 md:flex md:w-auto md:grid-cols-none">
                     <TabsTrigger value="general">Perfil General</TabsTrigger>
                     {isAdminRole && (
                         <>
@@ -730,3 +730,4 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
       </Suspense>
     );
 }
+
