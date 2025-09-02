@@ -1,4 +1,3 @@
-
 "use client"
 import Link from "next/link"
 import { PlusCircle, MoreHorizontal, Search, Eye, Edit, User, Mail, Phone, Home, Briefcase, DollarSign, Calendar, FileText } from "lucide-react"
@@ -124,63 +123,65 @@ function StaffPageContent() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-                <TableHead className="hidden md:table-cell">Fecha de Contratación</TableHead>
-                <TableHead>
-                  <span className="sr-only">Acciones</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredStaff.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.name}</TableCell>
-                  <TableCell>{member.role}</TableCell>
-                  <TableCell>
-                     <Badge variant={getStatusVariant(member.status)} className={member.status === 'Activo' ? 'bg-green-500' : ''}>
-                        {member.status}
-                     </Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">{member.phone}</TableCell>
-                  <TableCell className="hidden md:table-cell">{new Date(member.hireDate).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleActionClick(member, 'profile')}>
-                            <Eye className="mr-2 h-4 w-4" /> Ver Perfil
-                        </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => handleActionClick(member, 'contract')}>
-                            <FileText className="mr-2 h-4 w-4" /> Crear Contrato
-                        </DropdownMenuItem>
-                         <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/staff/edit/${member.id}`}>
-                                <Edit className="mr-2 h-4 w-4" /> Editar
-                            </Link>
-                         </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="hidden md:table-cell">Teléfono</TableHead>
+                  <TableHead className="hidden md:table-cell">Fecha de Contratación</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Acciones</span>
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredStaff.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">{member.name}</TableCell>
+                    <TableCell>{member.role}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(member.status)} className={member.status === 'Activo' ? 'bg-green-500' : ''}>
+                          {member.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{member.phone}</TableCell>
+                    <TableCell className="hidden md:table-cell">{new Date(member.hireDate).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleActionClick(member, 'profile')}>
+                              <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleActionClick(member, 'contract')}>
+                              <FileText className="mr-2 h-4 w-4" /> Crear Contrato
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/staff/edit/${member.id}`}>
+                                  <Edit className="mr-2 h-4 w-4" /> Editar
+                              </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
       
