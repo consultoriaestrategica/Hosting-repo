@@ -197,8 +197,8 @@ function ResidentsPageContent() {
           <CardDescription>
             Administre y vea los detalles de todos los residentes.
           </CardDescription>
-          <div className="flex items-center gap-4 pt-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap items-center gap-4 pt-4">
+            <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                     type="search"
@@ -211,7 +211,7 @@ function ResidentsPageContent() {
             <Input
                 type="date"
                 placeholder="Filtrar por fecha de ingreso"
-                className="w-auto"
+                className="w-full sm:w-auto"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
             />
