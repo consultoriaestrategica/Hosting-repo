@@ -28,9 +28,14 @@ import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useState, useEffect, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
-import { Mic, MicOff, Camera, X, PlusCircle, Trash2, Upload } from "lucide-react"
+import { Mic, MicOff, Camera, X, PlusCircle, Trash2, Upload, FileIcon } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+
+const photoEvidenceSchema = z.object({
+  name: z.string(),
+  url: z.string(), // Base64 Data URI
+});
 
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
@@ -44,7 +49,7 @@ const reportFormSchema = z.object({
   evolutionNotes: z.array(z.object({
     note: z.string().optional(),
   })).optional(),
-  photoEvidence: z.array(z.string()).optional(),
+  photoEvidence: z.array(photoEvidenceSchema).optional(),
   visitType: z.string().optional(),
   professionalName: z.string().optional(),
   entryTime: z.string().optional(),
@@ -55,7 +60,7 @@ const reportFormSchema = z.object({
   supplyDate: z.string().optional(),
   supplyDescription: z.string().optional(),
   supplyNotes: z.string().optional(),
-  supplyPhotoEvidence: z.array(z.string()).optional(),
+  supplyPhotoEvidence: z.array(photoEvidenceSchema).optional(),
 }).superRefine((data, ctx) => {
     if (data.reportType === 'suministro') {
         if (!data.supplierName || data.supplierName.trim().length < 3) {
@@ -72,6 +77,10 @@ const reportFormSchema = z.object({
                 message: "La descripción del suministro es requerida (mín. 3 caracteres).",
             });
         }
+    }
+     if (data.reportType === 'medico' && (!data.evolutionNotes || data.evolutionNotes.every(n => !n.note?.trim()))) {
+         // This check can be made if medical notes are mandatory
+        // For now, we keep it optional as per previous implementation
     }
 });
 
@@ -170,7 +179,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   };
 
   // --- Camera & Upload Logic ---
-  const updatePhotoEvidence = (newPhotos: string[]) => {
+  const updatePhotoEvidence = (newPhotos: {name: string, url: string}[]) => {
     const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
     const currentPhotos = form.getValues(fieldToUpdate) || [];
     form.setValue(fieldToUpdate, [...currentPhotos, ...newPhotos], { shouldValidate: true });
@@ -214,7 +223,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const photoDataUrl = canvas.toDataURL('image/jpeg');
-        updatePhotoEvidence([photoDataUrl]);
+        updatePhotoEvidence([{ name: `captura-${Date.now()}.jpg`, url: photoDataUrl }]);
         toast({ title: "Evidencia Capturada", description: "La foto se ha añadido a la galería." });
     }
     closeCamera();
@@ -222,26 +231,25 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    const newPreviews: string[] = [];
+    const newPhotos: {name: string, url: string}[] = [];
     let filesProcessed = 0;
 
     for (const file of Array.from(files)) {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (typeof e.target?.result === 'string') {
-          newPreviews.push(e.target.result);
+          newPhotos.push({ name: file.name, url: e.target.result });
         }
         filesProcessed++;
         if (filesProcessed === files.length) {
-            updatePhotoEvidence(newPreviews);
+            updatePhotoEvidence(newPhotos);
             toast({ title: `${files.length} imagen(es) cargada(s)`, description: "Las fotos se han añadido a la galería." });
         }
       };
       reader.readAsDataURL(file);
     }
-    // Reset file input
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -288,7 +296,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         spo2: data.spo2,
         feedingType: data.feedingType,
         evolutionNotes: data.evolutionNotes?.map(n => n.note).filter(Boolean),
-        photoEvidenceUrl: data.photoEvidence,
+        photoEvidenceUrl: data.photoEvidence?.map(p => p.url),
         visitType: data.visitType,
         professionalName: data.professionalName,
         entryTime: data.entryTime,
@@ -301,7 +309,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         supplyDate: data.supplyDate,
         supplyDescription: data.supplyDescription,
         supplyNotes: data.supplyNotes,
-        supplyPhotoEvidenceUrl: data.supplyPhotoEvidence,
+        supplyPhotoEvidenceUrl: data.supplyPhotoEvidence?.map(p => p.url),
       };
     }
 
@@ -320,11 +328,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       <FormControl>
         <div className="space-y-4">
              {photoPreviews && photoPreviews.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {photoPreviews.map((preview, index) => (
-                        <div key={index} className="relative aspect-square w-full">
-                            <img src={preview} alt={`Vista previa ${index + 1}`} className="w-full h-full object-cover rounded-md border"/>
-                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePhoto(index)}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {photoPreviews.map((photo, index) => (
+                        <div key={index} className="relative group border rounded-lg overflow-hidden">
+                            <img src={photo.url} alt={`Vista previa ${index + 1}`} className="w-full h-24 object-cover"/>
+                             <div className="absolute bottom-0 w-full p-1 bg-black/50 text-white text-xs truncate">
+                                <FileIcon className="h-3 w-3 inline-block mr-1"/>
+                                {photo.name}
+                            </div>
+                            <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removePhoto(index)}>
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
@@ -552,5 +564,3 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       </Form>
   )
 }
-
-    
