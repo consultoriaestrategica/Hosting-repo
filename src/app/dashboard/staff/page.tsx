@@ -105,35 +105,77 @@ function StaffPageContent() {
 
       <Card className="mt-6">
         <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex-1">
-                    <CardTitle>Miembros del Personal</CardTitle>
-                    <CardDescription>
-                        Listado de todo el personal del hogar geriátrico.
-                    </CardDescription>
-                </div>
-                <div className="relative flex-1 md:max-w-xs">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Buscar por nombre o cargo..."
-                        className="pl-8 w-full"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1">
+              <CardTitle>Miembros del Personal</CardTitle>
+              <CardDescription>
+                Listado de todo el personal del hogar geriátrico.
+              </CardDescription>
             </div>
+            <div className="relative flex-1 md:flex-initial">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar por nombre o cargo..."
+                className="pl-8 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Mobile View: Card List */}
+          <div className="md:hidden space-y-4">
+              {filteredStaff.length > 0 ? (
+                filteredStaff.map((member) => (
+                  <div key={member.id} className="border rounded-lg p-4 flex justify-between items-start">
+                      <div className="space-y-1 flex-1">
+                          <p className="font-medium">{member.name}</p>
+                          <p className="text-sm text-muted-foreground">{member.role}</p>
+                          <Badge variant={getStatusVariant(member.status)} className={member.status === 'Activo' ? 'bg-green-500 text-white' : ''}>
+                              {member.status}
+                          </Badge>
+                      </div>
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button aria-haspopup="true" size="icon" variant="ghost" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Toggle menu</span>
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleActionClick(member, 'profile')}>
+                                  <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleActionClick(member, 'contract')}>
+                                  <FileText className="mr-2 h-4 w-4" /> Crear Contrato
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                  <Link href={`/dashboard/staff/edit/${member.id}`}>
+                                      <Edit className="mr-2 h-4 w-4" /> Editar
+                                  </Link>
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                  </div>
+                ))
+              ) : (
+                 <p className="text-center text-muted-foreground py-8">No se encontraron miembros del personal.</p>
+              )}
+          </div>
+          
+          {/* Desktop View: Table */}
+          <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Cargo</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-                  <TableHead className="hidden md:table-cell">Fecha de Contratación</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Fecha de Contratación</TableHead>
                   <TableHead>
                     <span className="sr-only">Acciones</span>
                   </TableHead>
@@ -149,8 +191,8 @@ function StaffPageContent() {
                           {member.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{member.phone}</TableCell>
-                    <TableCell className="hidden md:table-cell">{new Date(member.hireDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{member.phone}</TableCell>
+                    <TableCell>{new Date(member.hireDate).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
