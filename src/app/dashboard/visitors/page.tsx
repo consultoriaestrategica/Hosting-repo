@@ -129,14 +129,14 @@ function VisitorsPageContent() {
           <CardDescription>
             Listado de todas las visitas registradas. Use el filtro para buscar por fecha.
           </CardDescription>
-          <div className="flex items-center gap-2 pt-4">
+          <div className="flex flex-wrap items-center gap-2 pt-4">
                 <Popover>
                     <PopoverTrigger asChild>
                     <Button
                         id="date"
                         variant={"outline"}
                         className={cn(
-                        "w-[260px] justify-start text-left font-normal",
+                        "w-full sm:w-auto justify-start text-left font-normal",
                         !dateRange && "text-muted-foreground"
                         )}
                     >
@@ -175,44 +175,75 @@ function VisitorsPageContent() {
            </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha y Hora</TableHead>
-                <TableHead>Visitante</TableHead>
-                <TableHead>Parentesco</TableHead>
-                <TableHead>Residente Visitado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredVisits.length > 0 ? (
+          {/* Mobile View: Card List */}
+          <div className="md:hidden space-y-4">
+             {filteredVisits.length > 0 ? (
                 filteredVisits.map((visit) => (
-                  <TableRow key={visit.id}>
-                    <TableCell className="font-medium">{new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
-                    <TableCell>
-                        <div>{visit.visitorName}</div>
-                        <div className="text-xs text-muted-foreground">{visit.visitorIdNumber}</div>
-                    </TableCell>
-                    <TableCell>{visit.kinship}</TableCell>
-                    <TableCell>
-                      <Button variant="link" asChild className="p-0 h-auto font-normal">
-                          <Link href={`/dashboard/residents/${visit.residentId}`}>
-                            <User className="mr-2 h-3 w-3" />
-                            {visit.residentName}
-                          </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                    <div key={visit.id} className="border rounded-lg p-4 space-y-2">
+                        <div>
+                            <p className="font-semibold">{visit.visitorName} ({visit.kinship})</p>
+                            <p className="text-sm text-muted-foreground">ID: {visit.visitorIdNumber}</p>
+                        </div>
+                        <div className="text-sm">
+                            <p className="font-medium text-muted-foreground">Visitó a:</p>
+                             <Button variant="link" asChild className="p-0 h-auto font-normal text-base">
+                                <Link href={`/dashboard/residents/${visit.residentId}`}>
+                                    {visit.residentName}
+                                </Link>
+                            </Button>
+                        </div>
+                        <div className="text-xs text-muted-foreground pt-1 border-t">
+                            {new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
+                        </div>
+                    </div>
                 ))
-              ) : (
+             ) : (
+                <p className="text-center text-muted-foreground py-8">
+                    No se encontraron visitas con los filtros actuales.
+                </p>
+             )}
+          </div>
+          {/* Desktop View: Table */}
+          <div className="hidden md:block">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                        No se encontraron visitas con los filtros actuales.
-                    </TableCell>
+                    <TableHead>Fecha y Hora</TableHead>
+                    <TableHead>Visitante</TableHead>
+                    <TableHead>Parentesco</TableHead>
+                    <TableHead>Residente Visitado</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                {filteredVisits.length > 0 ? (
+                    filteredVisits.map((visit) => (
+                    <TableRow key={visit.id}>
+                        <TableCell className="font-medium">{new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
+                        <TableCell>
+                            <div>{visit.visitorName}</div>
+                            <div className="text-xs text-muted-foreground">{visit.visitorIdNumber}</div>
+                        </TableCell>
+                        <TableCell>{visit.kinship}</TableCell>
+                        <TableCell>
+                        <Button variant="link" asChild className="p-0 h-auto font-normal">
+                            <Link href={`/dashboard/residents/${visit.residentId}`}>
+                                <User className="mr-2 h-3 w-3" />
+                                {visit.residentName}
+                            </Link>
+                        </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            No se encontraron visitas con los filtros actuales.
+                        </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </>
