@@ -180,7 +180,7 @@ function ContractsPageContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fecha</TableHead>
+                <TableHead className="hidden sm:table-cell">Fecha</TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Tipo de Contrato</TableHead>
                 <TableHead>Estado</TableHead>
@@ -193,7 +193,7 @@ function ContractsPageContent() {
               {filteredAndSortedContracts.length > 0 ? (
                 filteredAndSortedContracts.map((contract) => (
                   <TableRow key={contract.id}>
-                    <TableCell className="font-medium">{new Date(contract.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden sm:table-cell font-medium">{new Date(contract.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Link href={getPersonLink(contract)} className="hover:underline">
                           {getPersonName(contract)}
