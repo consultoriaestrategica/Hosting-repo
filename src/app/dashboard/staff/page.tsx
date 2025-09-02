@@ -128,8 +128,8 @@ function StaffPageContent() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Cargo</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Fecha de Contratación</TableHead>
+                <TableHead className="hidden md:table-cell">Teléfono</TableHead>
+                <TableHead className="hidden md:table-cell">Fecha de Contratación</TableHead>
                 <TableHead>
                   <span className="sr-only">Acciones</span>
                 </TableHead>
@@ -145,8 +145,8 @@ function StaffPageContent() {
                         {member.status}
                      </Badge>
                   </TableCell>
-                  <TableCell>{member.phone}</TableCell>
-                  <TableCell>{new Date(member.hireDate).toLocaleDateString()}</TableCell>
+                  <TableCell className="hidden md:table-cell">{member.phone}</TableCell>
+                  <TableCell className="hidden md:table-cell">{new Date(member.hireDate).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
