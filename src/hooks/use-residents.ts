@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
@@ -120,18 +121,9 @@ function useResidents() {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // DEBUG: Verificar estado de autenticación antes de consultar
-    console.log('=== DEBUG RESIDENTS QUERY ===');
-    console.log('Auth current user:', auth.currentUser);
-    console.log('Auth user email:', auth.currentUser?.email);
-    console.log('Auth user uid:', auth.currentUser?.uid);
-    console.log('Is user authenticated:', !!auth.currentUser);
-    console.log('==============================');
-    
     setIsLoading(true);
-    
+    // Usar onAuthStateChanged para esperar a que la autenticación se inicialice
     const unsubscribe = onSnapshot(residentsCollection, (snapshot) => {
-        console.log('✅ Successfully fetched residents:', snapshot.docs.length);
         const residentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resident));
         setResidents(residentsData);
         setIsLoading(false);
@@ -139,16 +131,16 @@ function useResidents() {
         console.error("❌ Error fetching residents from Firestore:", error);
         console.error("Error code:", error.code);
         console.error("Error message:", error.message);
-        console.error("Auth user during error:", auth.currentUser);
+        console.error("Auth user during error:", auth.currentUser?.email);
         setIsLoading(false);
     });
 
+    // Retornar función de limpieza para la suscripción de residentes
     return () => unsubscribe();
   }, []);
 
   const addResident = useCallback(async (newResident: Omit<Resident, 'id'>) => {
     try {
-        console.log('Adding resident. Auth user:', auth.currentUser?.email);
         await addDoc(residentsCollection, newResident);
     } catch (error) {
         console.error("Error adding resident to Firestore: ", error);
@@ -157,7 +149,6 @@ function useResidents() {
 
   const updateResident = useCallback(async (residentId: string, updatedDetails: Partial<Omit<Resident, 'id'>>) => {
     try {
-        console.log('Updating resident. Auth user:', auth.currentUser?.email);
         const residentDoc = doc(db, 'residents', residentId);
         await updateDoc(residentDoc, updatedDetails);
     } catch (error) {

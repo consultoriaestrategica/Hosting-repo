@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -50,9 +49,12 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, PlusCircle, CalendarSync, CheckCircle, ExternalLink } from "lucide-react"
+import { MoreHorizontal, PlusCircle, CalendarSync, CheckCircle, ExternalLink, Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { auth, db } from '@/lib/firebase'
+import { collection, addDoc } from 'firebase/firestore'
 
 export default function SettingsPage() {
   const { toast } = useToast()
@@ -63,6 +65,8 @@ export default function SettingsPage() {
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Staff | null>(null);
   const [syncingUser, setSyncingUser] = useState<Staff | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   const handlePriceChange = (plan: 'Habitación compartida' | 'Habitación individual', value: string) => {
     setSettings(prev => ({
@@ -94,24 +98,113 @@ export default function SettingsPage() {
     setIsUserDialogOpen(true);
   };
 
-  const handleSaveUser = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const userData = Object.fromEntries(formData.entries()) as Omit<Staff, 'id'>;
+    setIsCreatingUser(true);
+    
+    try {
+      const formData = new FormData(event.currentTarget);
+      const userData = Object.fromEntries(formData.entries()) as any;
+      
+      if (editingUser) {
+        // Actualizar usuario existente
+        updateStaffMember(editingUser.id, userData);
+        toast({ title: "Usuario Actualizado", description: `Los datos de ${userData.name} han sido actualizados.` });
+      } else {
+        // Crear nuevo usuario con cuenta de Firebase Auth
+        console.log('Creando nuevo usuario:', userData.email);
+        
+        // 1. Crear cuenta en Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          userData.email,
+          userData.password
+        );
+        
+        console.log('Usuario creado en Auth:', userCredential.user.uid);
+        
+        // 2. Mapear roles del formulario a roles del sistema
+        const roleMapping: { [key: string]: string } = {
+          'Admin': 'Administrativo',
+          'Enfermera': 'Personal Asistencial',
+          'Médico': 'Personal Asistencial',
+          'Fisioterapeuta': 'Personal Asistencial',
+          'Otro': 'Personal Asistencial'
+        };
+        
+        const systemRole = roleMapping[userData.role] || 'Personal Asistencial';
+        
+        // 3. Determinar permisos según el rol
+        const getPermissionsByRole = (role: string): string[] => {
+          switch (role) {
+            case 'Admin':
+              return ['dashboard', 'residents', 'staff', 'visitors', 'reports', 'settings', 'admin'];
+            case 'Enfermera':
+            case 'Médico':
+            case 'Fisioterapeuta':
+              return ['dashboard', 'residents', 'visitors', 'daily_records'];
+            default:
+              return ['dashboard', 'residents'];
+          }
+        };
+        
+        // 4. Preparar datos para la base de datos
+        const staffData = {
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone,
+          address: userData.address,
+          role: systemRole,
+          position: userData.role,
+          idNumber: userData.idNumber,
+          isActive: userData.status === 'Activo',
+          hireDate: new Date().toISOString().split('T')[0],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          permissions: getPermissionsByRole(userData.role),
+          department: userData.role === 'Admin' ? 'Administración' : 'Cuidado',
+          uid: userCredential.user.uid // Vincular con el UID de Auth
+        };
+        
+        // 5. Decidir en qué colección guardar según el rol
+        const collectionName = userData.role === 'Admin' ? 'users' : 'staff';
+        
+        console.log(`Guardando en colección: ${collectionName}`, staffData);
+        
+        // 6. Guardar en Firestore
+        await addDoc(collection(db, collectionName), staffData);
+        
+        toast({ 
+          title: "Usuario Creado", 
+          description: `El usuario ${userData.name} ha sido creado con cuenta de acceso.` 
+        });
+        
+        console.log('Usuario guardado exitosamente en la base de datos');
+      }
 
-    if (editingUser) {
-      updateStaffMember(editingUser.id, userData);
-      toast({ title: "Usuario Actualizado", description: `Los datos de ${userData.name} han sido actualizados.` });
-    } else {
-      addStaffMember({
-          ...userData,
-          hireDate: userData.hireDate || new Date().toISOString().split('T')[0]
+      setIsUserDialogOpen(false);
+      setEditingUser(null);
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      
+      // Manejar errores específicos de Firebase Auth
+      let errorMessage = 'Error al crear el usuario.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Ya existe una cuenta con este correo electrónico.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'El correo electrónico no es válido.';
+      }
+      
+      toast({ 
+        variant: "destructive",
+        title: "Error", 
+        description: errorMessage 
       });
-      toast({ title: "Usuario Creado", description: `El usuario ${userData.name} ha sido añadido.` });
+    } finally {
+      setIsCreatingUser(false);
     }
-
-    setIsUserDialogOpen(false);
-    setEditingUser(null);
   };
 
   const handleDeleteUser = (userId: string) => {
@@ -139,7 +232,6 @@ export default function SettingsPage() {
     setIsSyncDialogOpen(false);
     setSyncingUser(null);
   };
-
 
   if (settingsLoading || staffLoading) {
     return <div>Cargando configuración...</div>
@@ -252,8 +344,8 @@ export default function SettingsPage() {
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.role}</TableCell>
                         <TableCell>
-                          <Badge variant={user.status === "Activo" ? "default" : "secondary"} className={user.status === "Activo" ? "bg-green-500 text-white" : ""}>
-                            {user.status}
+                          <Badge variant={user.isActive ? "default" : "secondary"} className={user.isActive ? "bg-green-500 text-white" : ""}>
+                            {user.isActive ? "Activo" : "Inactivo"}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -286,7 +378,7 @@ export default function SettingsPage() {
               <DialogHeader>
                 <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
                 <DialogDescription>
-                  {editingUser ? "Actualice los detalles del usuario." : "Complete la información para crear una nueva cuenta."}
+                  {editingUser ? "Actualice los detalles del usuario." : "Complete la información para crear una nueva cuenta de acceso."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSaveUser}>
@@ -311,6 +403,33 @@ export default function SettingsPage() {
                           <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
                         </div>
                     </div>
+                     
+                    {/* Campo de contraseña - solo para usuarios nuevos */}
+                    {!editingUser && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="user-password">Contraseña de Acceso</Label>
+                        <div className="relative">
+                          <Input 
+                            id="user-password" 
+                            name="password" 
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Mínimo 6 caracteres"
+                            required 
+                            minLength={6}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                     
                      <div className="grid gap-2">
                       <Label htmlFor="user-address">Dirección</Label>
                       <Input id="user-address" name="address" defaultValue={editingUser?.address || ""} required />
@@ -333,7 +452,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="user-status">Estado</Label>
-                      <Select name="status" defaultValue={editingUser?.status || "Activo"}>
+                      <Select name="status" defaultValue={editingUser?.isActive ? "Activo" : "Inactivo"}>
                         <SelectTrigger id="user-status">
                           <SelectValue placeholder="Seleccione un estado" />
                         </SelectTrigger>
@@ -349,7 +468,9 @@ export default function SettingsPage() {
                   <DialogClose asChild>
                     <Button type="button" variant="outline">Cancelar</Button>
                   </DialogClose>
-                  <Button type="submit">Guardar Cambios</Button>
+                  <Button type="submit" disabled={isCreatingUser}>
+                    {isCreatingUser ? "Creando..." : (editingUser ? "Actualizar" : "Crear Usuario")}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
