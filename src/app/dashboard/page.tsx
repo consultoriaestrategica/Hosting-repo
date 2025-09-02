@@ -131,8 +131,8 @@ export default function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 gap-6 mt-6">
             <Card>
-             <CardHeader className="flex flex-row items-center justify-between">
-                <div>
+             <CardHeader className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex-1 min-w-[200px] mb-2 sm:mb-0">
                     <CardTitle className="flex items-center gap-2">
                         <CalendarCheck />
                         Agenda de Próximos Eventos
@@ -141,7 +141,7 @@ export default function DashboardPage() {
                         Eventos programados para los próximos 7 días.
                     </CardDescription>
                 </div>
-                 <div className="flex items-center gap-2">
+                 <div className="flex flex-wrap items-center gap-2">
                      <Dialog open={isNewLogDialogOpen} onOpenChange={setIsNewLogDialogOpen}>
                         <DialogTrigger asChild>
                             <Button size="sm" variant="outline">

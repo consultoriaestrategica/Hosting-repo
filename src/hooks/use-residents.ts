@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
@@ -121,26 +120,103 @@ function useResidents() {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    setIsLoading(true);
-    // Usar onAuthStateChanged para esperar a que la autenticación se inicialice
-    const unsubscribe = onSnapshot(residentsCollection, (snapshot) => {
-        const residentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resident));
-        setResidents(residentsData);
-        setIsLoading(false);
-    }, (error) => {
-        console.error("❌ Error fetching residents from Firestore:", error);
-        console.error("Error code:", error.code);
-        console.error("Error message:", error.message);
-        console.error("Auth user during error:", auth.currentUser?.email);
-        setIsLoading(false);
-    });
-
-    // Retornar función de limpieza para la suscripción de residentes
-    return () => unsubscribe();
+    let unsubscribeFirestore: (() => void) | null = null;
+    let mounted = true;
+    
+    console.log('🚀 Inicializando useResidents...');
+    
+    // Esperar a que Firebase Auth se inicialice completamente
+    const initializeWithAuth = () => {
+      console.log('🔍 Verificando estado de autenticación...');
+      
+      const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+        console.log('=== AUTH STATE CHANGED ===');
+        console.log('Auth user:', user?.email || 'null');
+        console.log('User authenticated:', !!user);
+        console.log('Component mounted:', mounted);
+        console.log('=========================');
+        
+        // Solo proceder si el componente sigue montado
+        if (!mounted) {
+          console.log('🚫 Componente desmontado, cancelando operación');
+          return;
+        }
+        
+        // Limpiar suscripción anterior si existe
+        if (unsubscribeFirestore) {
+          console.log('🧹 Limpiando suscripción anterior de Firestore');
+          unsubscribeFirestore();
+          unsubscribeFirestore = null;
+        }
+        
+        if (user) {
+          console.log('✅ Usuario autenticado confirmado, iniciando consulta de residentes...');
+          setIsLoading(true);
+          
+          unsubscribeFirestore = onSnapshot(residentsCollection, (snapshot) => {
+              if (!mounted) return;
+              
+              console.log('📊 Successfully fetched residents:', snapshot.docs.length);
+              const residentsData = snapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data() 
+              } as Resident));
+              setResidents(residentsData);
+              setIsLoading(false);
+          }, (error) => {
+              if (!mounted) return;
+              
+              console.error("❌ Error fetching residents:", error.code, error.message);
+              
+              // Solo mostrar el error si realmente hay un problema persistente
+              if (auth.currentUser) {
+                console.error("🔴 Error persistente con usuario autenticado:", auth.currentUser.email);
+              }
+              
+              setResidents([]);
+              setIsLoading(false);
+          });
+        } else {
+          console.log('🚫 No hay usuario autenticado');
+          setResidents([]);
+          setIsLoading(false);
+        }
+      });
+      
+      return unsubscribeAuth;
+    };
+    
+    // Inicializar con un pequeño delay para asegurar que Auth esté listo
+    const initTimer = setTimeout(() => {
+      if (mounted) {
+        const unsubscribeAuth = initializeWithAuth();
+        
+        // Guardar la función de cleanup
+        if (mounted) {
+          return () => {
+            console.log('🧹 Limpiando suscripción de Auth');
+            unsubscribeAuth();
+          };
+        }
+      }
+    }, 50); // Delay mínimo para que Auth se inicialice
+    
+    // Cleanup function
+    return () => {
+      console.log('🛑 Desmontando useResidents...');
+      mounted = false;
+      clearTimeout(initTimer);
+      
+      if (unsubscribeFirestore) {
+        console.log('🧹 Limpiando suscripción de Firestore en cleanup');
+        unsubscribeFirestore();
+      }
+    };
   }, []);
 
   const addResident = useCallback(async (newResident: Omit<Resident, 'id'>) => {
     try {
+        console.log('Adding resident. Auth user:', auth.currentUser?.email);
         await addDoc(residentsCollection, newResident);
     } catch (error) {
         console.error("Error adding resident to Firestore: ", error);
@@ -149,6 +225,7 @@ function useResidents() {
 
   const updateResident = useCallback(async (residentId: string, updatedDetails: Partial<Omit<Resident, 'id'>>) => {
     try {
+        console.log('Updating resident. Auth user:', auth.currentUser?.email);
         const residentDoc = doc(db, 'residents', residentId);
         await updateDoc(residentDoc, updatedDetails);
     } catch (error) {
