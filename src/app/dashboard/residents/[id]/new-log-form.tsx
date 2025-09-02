@@ -78,10 +78,6 @@ const reportFormSchema = z.object({
             });
         }
     }
-     if (data.reportType === 'medico' && (!data.evolutionNotes || data.evolutionNotes.every(n => !n.note?.trim()))) {
-         // This check can be made if medical notes are mandatory
-        // For now, we keep it optional as per previous implementation
-    }
 });
 
 
@@ -564,3 +560,5 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       </Form>
   )
 }
+
+    
