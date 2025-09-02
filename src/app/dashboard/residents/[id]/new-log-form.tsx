@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -73,7 +74,6 @@ const reportFormSchema = z.object({
             });
         }
     }
-    // No specific mandatory fields for 'medico' type, as all can be optional observations.
 });
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
@@ -393,7 +393,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                           <RadioGroup
                             onValueChange={(value) => {
                                 const currentResidentId = form.getValues("residentId");
-                                field.onChange(value);
                                 form.reset({
                                     residentId: currentResidentId,
                                     reportType: value as "medico" | "suministro",
@@ -402,6 +401,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                                     photoEvidence: [],
                                     supplyPhotoEvidence: [],
                                 });
+                                field.onChange(value);
                             }}
                             defaultValue={field.value}
                             className="flex items-center space-x-4"
@@ -552,3 +552,5 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       </Form>
   )
 }
+
+    
