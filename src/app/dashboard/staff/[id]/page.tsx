@@ -12,7 +12,7 @@ import { Table, TableBody, TableRow, TableCell, TableHead, TableHeader } from "@
 import { Badge } from "@/components/ui/badge";
 
 // Iconos
-import { User, Mail, Phone, FileText, Home, Briefcase, DollarSign, Calendar, PlusCircle } from "lucide-react";
+import { User, Mail, Phone, FileText, Home, Briefcase, DollarSign, Calendar, PlusCircle, Eye } from "lucide-react";
 import Link from "next/link";
 
 function StaffProfilePageContent({ staffId }: { staffId: string }) {
@@ -105,8 +105,8 @@ function StaffProfilePageContent({ staffId }: { staffId: string }) {
                     </TableRow>
                     {contracts.length > 0 && (
                         <TableRow>
-                             <TableCell className="font-medium flex items-center gap-2"><DollarSign className="h-4 w-4"/> Salario</TableCell>
-                            <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(contracts[0].salary)}</TableCell>
+                             <TableCell className="font-medium flex items-center gap-2"><DollarSign className="h-4 w-4"/> Salario Actual</TableCell>
+                            <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(contracts[0].salary)}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -129,7 +129,7 @@ function StaffProfilePageContent({ staffId }: { staffId: string }) {
                       <DialogHeader>
                         <DialogTitle>Crear Nuevo Contrato</DialogTitle>
                         <DialogDescription>
-                          Adjunte el documento para el nuevo contrato de {staffMember.name}.
+                          Complete los detalles del nuevo contrato para {staffMember.name}.
                         </DialogDescription>
                       </DialogHeader>
                       <NewStaffContractForm 
@@ -145,6 +145,7 @@ function StaffProfilePageContent({ staffId }: { staffId: string }) {
                     <TableRow>
                         <TableHead>Fecha de Inicio</TableHead>
                         <TableHead>Fecha de Fin</TableHead>
+                        <TableHead>Salario</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -153,13 +154,14 @@ function StaffProfilePageContent({ staffId }: { staffId: string }) {
                     {contracts.length > 0 ? (
                         contracts.map(contract => (
                             <TableRow key={contract.id}>
-                                <TableCell>{new Date(contract.startDate).toLocaleDateString()}</TableCell>
-                                <TableCell>{new Date(contract.endDate).toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(contract.startDate).toLocaleDateString('es-ES')}</TableCell>
+                                <TableCell>{new Date(contract.endDate).toLocaleDateString('es-ES')}</TableCell>
+                                <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(contract.salary)}</TableCell>
                                 <TableCell><Badge variant={getStatusVariant(contract.status)}>{contract.status}</Badge></TableCell>
                                 <TableCell className="text-right">
                                     <Button asChild variant="outline" size="sm">
                                         <Link href={`/dashboard/contracts/${contract.id}?type=staff`}>
-                                            Ver Contrato
+                                            <Eye className="mr-2 h-4 w-4" /> Ver Detalle
                                         </Link>
                                     </Button>
                                 </TableCell>
@@ -167,7 +169,7 @@ function StaffProfilePageContent({ staffId }: { staffId: string }) {
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={4} className="text-center h-24">
+                            <TableCell colSpan={5} className="text-center h-24">
                                 No hay contratos registrados.
                                 <Button variant="link" onClick={() => setIsContractFormOpen(true)}>Crear uno ahora.</Button>
                             </TableCell>
