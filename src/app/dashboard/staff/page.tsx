@@ -110,15 +110,17 @@ function StaffPageContent() {
           <CardDescription>
             Listado de todo el personal del hogar geriátrico.
           </CardDescription>
-          <div className="relative flex-1 pt-4">
-              <Search className="absolute left-2.5 top-6 h-4 w-4 text-muted-foreground" />
-              <Input
-                  type="search"
-                  placeholder="Buscar por nombre o cargo..."
-                  className="pl-8 w-full max-w-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="flex-1 pt-4">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Buscar por nombre o cargo..."
+                    className="pl-8 w-full max-w-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
           </div>
         </CardHeader>
         <CardContent>
