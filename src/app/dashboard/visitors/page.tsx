@@ -1,4 +1,3 @@
-
 "use client"
 
 import {
@@ -54,7 +53,6 @@ function VisitorsPageContent() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>();
 
-
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -74,9 +72,15 @@ function VisitorsPageContent() {
     if (appliedDateRange?.from) {
       filtered = filtered.filter(visit => {
         const visitDate = new Date(visit.visitDate);
-        const fromDate = appliedDateRange.from;
-        const toDate = appliedDateRange.to ? new Date(appliedDateRange.to) : new Date(fromDate);
-        if (appliedDateRange.to) toDate.setHours(23, 59, 59, 999);
+        const fromDate = new Date(appliedDateRange.from!);
+        const toDate = appliedDateRange.to 
+          ? new Date(appliedDateRange.to) 
+          : new Date(appliedDateRange.from!);
+        
+        // Ajustar la hora final si hay fecha de fin
+        if (appliedDateRange.to) {
+          toDate.setHours(23, 59, 59, 999);
+        }
         
         return visitDate >= fromDate && visitDate <= toDate;
       });
@@ -96,7 +100,6 @@ function VisitorsPageContent() {
     setDateRange(undefined);
     setAppliedDateRange(undefined);
   };
-
 
   return (
     <>
@@ -249,7 +252,6 @@ function VisitorsPageContent() {
     </>
   )
 }
-
 
 export default function VisitorsPage() {
     return (

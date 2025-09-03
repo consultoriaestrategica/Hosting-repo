@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { useResidents } from "@/hooks/use-residents"
 import { useToast } from "@/hooks/use-toast"
 import { isTomorrow, parseISO } from "date-fns"
+import AuthGuard from "@/components/auth-guard"
 
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
@@ -107,8 +108,10 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <SidebarProvider>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </SidebarProvider>
+     <AuthGuard>
+        <SidebarProvider>
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </SidebarProvider>
+    </AuthGuard>
   )
 }

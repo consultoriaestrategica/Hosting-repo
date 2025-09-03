@@ -1,5 +1,4 @@
 "use client"
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -156,7 +155,7 @@ export default function SettingsPage() {
           address: userData.address,
           role: systemRole,
           position: userData.role,
-          idNumber: userData.idNumber,
+          documentNumber: userData.idNumber, // CAMBIADO: usar documentNumber en lugar de idNumber
           isActive: userData.status === 'Activo',
           hireDate: new Date().toISOString().split('T')[0],
           createdAt: new Date(),
@@ -181,7 +180,6 @@ export default function SettingsPage() {
         
         console.log('Usuario guardado exitosamente en la base de datos');
       }
-
       setIsUserDialogOpen(false);
       setEditingUser(null);
     } catch (error: any) {
@@ -228,7 +226,6 @@ export default function SettingsPage() {
       title: "¡Sincronización Exitosa!",
       description: `El calendario de ${syncingUser.name} ha sido vinculado.`,
     });
-
     setIsSyncDialogOpen(false);
     setSyncingUser(null);
   };
@@ -361,7 +358,6 @@ export default function SettingsPage() {
                     </p>
                     )}
                 </div>
-
                 {/* Desktop View: Table */}
                 <div className="hidden md:block">
                     <Table>
@@ -409,7 +405,6 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-
         </TabsContent>
       </Tabs>
 
@@ -430,13 +425,13 @@ export default function SettingsPage() {
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="user-idNumber">Número de Identificación</Label>
-                        <Input id="user-idNumber" name="idNumber" defaultValue={editingUser?.idNumber || ""} required />
+                        <Input id="user-idNumber" name="idNumber" defaultValue="" required />
                     </div>
                   </div>
                    <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                           <Label htmlFor="user-phone">Teléfono</Label>
-                          <Input id="user-phone" name="phone" type="tel" defaultValue={editingUser?.phone || ""} required />
+                          <Input id="user-phone" name="phone" type="tel" defaultValue="" required />
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor="user-email">Correo Electrónico</Label>
@@ -472,7 +467,7 @@ export default function SettingsPage() {
                      
                      <div className="grid gap-2">
                       <Label htmlFor="user-address">Dirección</Label>
-                      <Input id="user-address" name="address" defaultValue={editingUser?.address || ""} required />
+                      <Input id="user-address" name="address" defaultValue="" required />
                     </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
@@ -548,7 +543,6 @@ export default function SettingsPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-
     </>
   );
 }
