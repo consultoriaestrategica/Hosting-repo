@@ -1,3 +1,4 @@
+
 "use client"
 import { useAuth } from "@/hooks/use-auth"; // Asumo que tienes un hook de autenticación
 import { useRouter } from "next/navigation";
@@ -15,11 +16,17 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [user, isLoading, router]);
 
-  // Si está cargando o el usuario existe, muestra el contenido de la página
-  if (isLoading || user) {
-    return <>{children}</>;
+  // Si está cargando, muestra un loader para evitar mostrar contenido protegido
+  if (isLoading) {
+    return <div>Cargando...</div>; 
+  }
+  
+  // Si no está cargando y hay un usuario, muestra el contenido
+  if (user) {
+     return <>{children}</>;
   }
 
-  // Mientras redirige, no muestra nada o un spinner de carga
-  return <div>Cargando...</div>; 
+  // Si no está cargando y no hay usuario, se activará el useEffect y redirigirá.
+  // Mientras tanto, no se muestra nada.
+  return null; 
 }
