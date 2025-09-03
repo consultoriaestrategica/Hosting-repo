@@ -655,39 +655,69 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                             </Dialog>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Fecha</TableHead>
-                                        <TableHead>Tipo de Reporte</TableHead>
-                                        <TableHead>Detalle Principal</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
+                             {/* Mobile View */}
+                            <div className="md:hidden space-y-4">
                                 {paginatedLogs.length > 0 ? (
                                     paginatedLogs.map((log) => (
-                                    <TableRow key={log.id} onClick={() => handleLogClick(log)} className="cursor-pointer">
-                                        <TableCell className="font-medium">{new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
-                                                {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
-                                                {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="max-w-xs truncate">
-                                            {log.reportType === 'medico' ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución') : log.supplyDescription}
-                                        </TableCell>
-                                    </TableRow>
+                                        <div key={log.id} onClick={() => handleLogClick(log)} className="cursor-pointer border p-4 rounded-lg space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
+                                                    {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1.5" /> : <Truck className="h-3 w-3 mr-1.5" />}
+                                                    {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm font-medium text-muted-foreground truncate">
+                                                {log.reportType === 'medico' ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución') : log.supplyDescription}
+                                            </p>
+                                        </div>
                                     ))
                                 ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">
-                                            No se han encontrado registros para este residente.
-                                        </TableCell>
-                                    </TableRow>
+                                     <p className="text-center text-muted-foreground py-8">
+                                        No se han encontrado registros para este residente.
+                                    </p>
                                 )}
-                                </TableBody>
-                            </Table>
+                            </div>
+
+                            {/* Desktop View */}
+                            <div className="hidden md:block">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>Tipo de Reporte</TableHead>
+                                            <TableHead>Detalle Principal</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                    {paginatedLogs.length > 0 ? (
+                                        paginatedLogs.map((log) => (
+                                        <TableRow key={log.id} onClick={() => handleLogClick(log)} className="cursor-pointer">
+                                            <TableCell className="font-medium">{new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
+                                                    {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
+                                                    {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="max-w-xs truncate">
+                                                {log.reportType === 'medico' ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución') : log.supplyDescription}
+                                            </TableCell>
+                                        </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="h-24 text-center">
+                                                No se han encontrado registros para este residente.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
                             {totalPages > 1 && (
                                 <div className="flex justify-between items-center w-full pt-4">
                                     <div className="text-xs text-muted-foreground">

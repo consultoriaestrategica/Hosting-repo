@@ -111,20 +111,20 @@ const photoEvidenceSchema = z.object({
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
-  // Medical fields
+  // Medical fields - CORREGIDO: valores por defecto definidos
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
   feedingType: z.string().optional(),
   evolutionNotes: z.array(z.object({
-    note: z.string().optional(),
+    note: z.string(),
   })).optional(),
   photoEvidence: z.array(photoEvidenceSchema).optional(),
   visitType: z.string().optional(),
   professionalName: z.string().optional(),
   entryTime: z.string().optional(),
   exitTime: z.string().optional(),
-  // Supply fields
+  // Supply fields - CORREGIDO: valores por defecto definidos
   supplierName: z.string().optional(),
   supplyDate: z.string().optional(),
   supplyDescription: z.string().optional(),
@@ -195,12 +195,26 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
+    // ✅ CORREGIDO: defaultValues con valores definidos (no undefined)
     defaultValues: {
       residentId: residentId || "",
-      reportType: undefined,
+      reportType: undefined, // Este permanece undefined hasta selección
+      // Medical fields - valores por defecto definidos
+      heartRate: undefined,
+      respiratoryRate: undefined,
+      spo2: undefined,
+      feedingType: "",
       evolutionNotes: [{ note: "" }],
-      supplyNotes: "",
       photoEvidence: [],
+      visitType: "",
+      professionalName: "",
+      entryTime: "",
+      exitTime: "",
+      // Supply fields - valores por defecto definidos
+      supplierName: "",
+      supplyDate: "",
+      supplyDescription: "",
+      supplyNotes: "",
       supplyPhotoEvidence: [],
     },
   })
@@ -715,10 +729,24 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                           form.reset({
                               residentId: currentResidentId,
                               reportType: value as "medico" | "suministro",
+                              // ✅ CORREGIDO: Valores iniciales definidos
                               evolutionNotes: [{ note: "" }],
                               supplyNotes: "",
                               photoEvidence: [],
                               supplyPhotoEvidence: [],
+                              // Medical fields
+                              heartRate: undefined,
+                              respiratoryRate: undefined,
+                              spo2: undefined,
+                              feedingType: "",
+                              visitType: "",
+                              professionalName: "",
+                              entryTime: "",
+                              exitTime: "",
+                              // Supply fields
+                              supplierName: "",
+                              supplyDate: "",
+                              supplyDescription: "",
                           });
                           field.onChange(value);
                       }}
@@ -753,7 +781,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Residente</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger><SelectValue placeholder="Seleccione un residente" /></SelectTrigger>
                           </FormControl>
@@ -785,7 +813,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>Frecuencia Cardíaca (bpm)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="80" {...field} />
+                          <Input type="number" placeholder="80" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -798,7 +826,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>Frecuencia Respiratoria (rpm)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="20" {...field} />
+                          <Input type="number" placeholder="20" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -811,7 +839,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>SpO2 (%)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="98" {...field} />
+                          <Input type="number" placeholder="98" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -826,7 +854,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Alimentación</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Seleccione tipo de alimentación" />
@@ -872,6 +900,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                                   placeholder="Escriba las observaciones médicas..."
                                   className="min-h-20 pr-10"
                                   {...field}
+                                  value={field.value || ""}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -915,7 +944,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tipo de Visita</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccione tipo de visita" />
@@ -941,7 +970,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>Nombre del Profesional</FormLabel>
                         <FormControl>
-                          <Input placeholder="Dr. Juan Pérez" {...field} />
+                          <Input placeholder="Dr. Juan Pérez" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -954,7 +983,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>Hora de Entrada</FormLabel>
                         <FormControl>
-                          <Input type="time" {...field} />
+                          <Input type="time" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -967,7 +996,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>Hora de Salida</FormLabel>
                         <FormControl>
-                          <Input type="time" {...field} />
+                          <Input type="time" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -991,7 +1020,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>Nombre de quien entrega</FormLabel>
                         <FormControl>
-                          <Input placeholder="María González" {...field} />
+                          <Input placeholder="María González" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1004,7 +1033,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       <FormItem>
                         <FormLabel>Fecha de Suministro</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input type="date" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1023,6 +1052,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                           placeholder="Describa los elementos entregados..."
                           className="min-h-20"
                           {...field}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1042,6 +1072,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                             placeholder="Observaciones o comentarios adicionales..."
                             className="min-h-20 pr-10"
                             {...field}
+                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
