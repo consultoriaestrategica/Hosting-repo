@@ -1,6 +1,7 @@
+
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signInWithEmailAndPassword } from "firebase/auth"
 import { auth } from "@/lib/firebase"
@@ -17,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth" // Importar el hook de autenticación
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -24,6 +26,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { user, isLoading: authLoading } = useAuth(); // Usar el hook de auth
+
+  // Redirigir si el usuario ya está logueado
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,6 +62,20 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // No mostrar el formulario si estamos comprobando el estado de auth
+  if (authLoading) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+            Cargando...
+        </div>
+    );
+  }
+
+  // No mostrar el formulario si el usuario ya está logueado y se va a redirigir
+  if (user) {
+      return null;
   }
 
   return (
