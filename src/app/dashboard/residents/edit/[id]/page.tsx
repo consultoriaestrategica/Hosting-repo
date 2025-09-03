@@ -196,7 +196,7 @@ function EditResidentForm({ residentId }: { residentId: string }) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
            <Tabs defaultValue="general">
-              <TabsList className="h-auto flex-wrap justify-start">
+              <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="general">Información General</TabsTrigger>
                   <TabsTrigger value="medical">Perfil Médico</TabsTrigger>
                   <TabsTrigger value="contacts">Contactos Familiares</TabsTrigger>
