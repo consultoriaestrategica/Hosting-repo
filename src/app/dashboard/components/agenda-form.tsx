@@ -106,7 +106,7 @@ export default function AgendaForm({ residentId, event, onSubmit, onCancel }: Ag
             )}
             <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Título del Evento</FormLabel><FormControl><Input placeholder="Ej. Cita con el Dentista" {...field} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Fecha y Hora</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField
                     control={form.control}
                     name="type"
