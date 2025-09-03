@@ -65,37 +65,65 @@ export default function AgendaDashboard() {
 
     return (
         <div className="w-full">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[180px]">Fecha y Hora</TableHead>
-                        <TableHead>Residente</TableHead>
-                        <TableHead>Evento</TableHead>
-                        <TableHead>Tipo</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {upcomingEvents.map((event) => (
-                        <TableRow key={event.id}>
-                            <TableCell className="font-medium">
-                                {new Date(event.date).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
-                            </TableCell>
-                            <TableCell>
-                                <Link href={`/dashboard/residents/${event.residentId}`} className="font-semibold hover:underline">
-                                    {event.residentName}
-                                </Link>
-                            </TableCell>
-                            <TableCell>
-                                <p className="font-medium">{event.title}</p>
-                                {event.description && <p className="text-xs text-muted-foreground">{event.description}</p>}
-                            </TableCell>
-                            <TableCell>
-                                <Badge variant={getEventTypeVariant(event.type)}>{event.type}</Badge>
-                            </TableCell>
+            {/* Desktop View: Table */}
+            <div className="hidden md:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[180px]">Fecha y Hora</TableHead>
+                            <TableHead>Residente</TableHead>
+                            <TableHead>Evento</TableHead>
+                            <TableHead>Tipo</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {upcomingEvents.map((event) => (
+                            <TableRow key={event.id}>
+                                <TableCell className="font-medium">
+                                    {new Date(event.date).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
+                                </TableCell>
+                                <TableCell>
+                                    <Link href={`/dashboard/residents/${event.residentId}`} className="font-semibold hover:underline">
+                                        {event.residentName}
+                                    </Link>
+                                </TableCell>
+                                <TableCell>
+                                    <p className="font-medium">{event.title}</p>
+                                    {event.description && <p className="text-xs text-muted-foreground">{event.description}</p>}
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={getEventTypeVariant(event.type)}>{event.type}</Badge>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+
+            {/* Mobile View: Card List */}
+            <div className="md:hidden space-y-4">
+                {upcomingEvents.map((event) => (
+                    <div key={event.id} className="border rounded-lg p-4 space-y-3">
+                        <div>
+                            <p className="font-semibold text-sm">{new Date(event.date).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Residente</p>
+                            <Link href={`/dashboard/residents/${event.residentId}`} className="font-semibold hover:underline text-base">
+                                {event.residentName}
+                            </Link>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Evento</p>
+                            <p className="font-medium">{event.title}</p>
+                            {event.description && <p className="text-sm text-muted-foreground">{event.description}</p>}
+                        </div>
+                        <div>
+                           <Badge variant={getEventTypeVariant(event.type)}>{event.type}</Badge>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
