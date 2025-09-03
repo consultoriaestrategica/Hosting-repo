@@ -11,7 +11,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Si la carga ha terminado y no hay ningún usuario, redirige al login
     if (!isLoading && !user) {
-      router.push("/login"); 
+      router.push("/"); 
     }
   }, [user, isLoading, router]);
 
