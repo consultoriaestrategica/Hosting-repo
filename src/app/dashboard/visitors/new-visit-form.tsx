@@ -98,7 +98,7 @@ export default function NewVisitForm({ onFormSubmit }: NewVisitFormProps) {
                  <FormField control={form.control} name="visitorIdNumber" render={({ field }) => (<FormItem><FormLabel>Cédula del Visitante</FormLabel><FormControl><Input placeholder="Ej. 11223344" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
             <FormField control={form.control} name="kinship" render={({ field }) => (<FormItem><FormLabel>Parentesco</FormLabel><FormControl><Input placeholder="Ej. Hijo, Nieta, Amigo" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notas (Opcional)</FormLabel><FormControl><Textarea placeholder="Observaciones sobre la visita..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Observaciones (Opcional)</FormLabel><FormControl><Textarea placeholder="Observaciones sobre la visita..." {...field} /></FormControl><FormMessage /></FormItem>)} />
         </div>
         <DialogFooter>
           <DialogClose asChild>
