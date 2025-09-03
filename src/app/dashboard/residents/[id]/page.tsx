@@ -448,54 +448,84 @@ function ResidentProfilePageContent({ id: residentId }: { id: string }) {
                                     <CardDescription>Archivos y documentos asociados a {resident.name}.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Tipo de Documento</TableHead>
-                                                <TableHead>Nombre del Archivo</TableHead>
-                                                <TableHead className="text-right">Acciones</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {resident.documents?.length > 0 ? (
-                                                resident.documents.map((doc, index) => (
-                                                    <TableRow key={index}>
-                                                        <TableCell className="font-medium">{doc.type}</TableCell>
-                                                        <TableCell className="max-w-xs truncate">{doc.name}</TableCell>
-                                                        <TableCell className="text-right">
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon">
-                                                                        <MoreHorizontal className="h-4 w-4" />
-                                                                        <span className="sr-only">Abrir menú</span>
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                                    <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
-                                                                        <Eye className="mr-2 h-4 w-4" />
-                                                                        Ver
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
-                                                                        <Download className="mr-2 h-4 w-4" />
-                                                                        Descargar
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-destructive" onClick={() => toast({title: "Función no implementada"})}>
-                                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                                        Eliminar
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))
-                                            ) : (
+                                    {/* Mobile View */}
+                                    <div className="space-y-4 md:hidden">
+                                        {resident.documents?.length > 0 ? (
+                                            resident.documents.map((doc, index) => (
+                                                <div key={index} className="rounded-lg border p-4 flex items-start justify-between gap-4">
+                                                    <div className="flex-1 space-y-1">
+                                                        <p className="text-sm font-medium">{doc.type}</p>
+                                                        <p className="text-sm text-muted-foreground break-all">{doc.name}</p>
+                                                    </div>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>Ver</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>Descargar</DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive">Eliminar</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-center text-muted-foreground py-8">No se han adjuntado documentos.</p>
+                                        )}
+                                    </div>
+                                    {/* Desktop View */}
+                                    <div className="hidden md:block">
+                                        <Table>
+                                            <TableHeader>
                                                 <TableRow>
-                                                    <TableCell colSpan={3} className="h-24 text-center">No se han adjuntado documentos.</TableCell>
+                                                    <TableHead>Tipo de Documento</TableHead>
+                                                    <TableHead>Nombre del Archivo</TableHead>
+                                                    <TableHead className="text-right">Acciones</TableHead>
                                                 </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {resident.documents?.length > 0 ? (
+                                                    resident.documents.map((doc, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell className="font-medium">{doc.type}</TableCell>
+                                                            <TableCell className="max-w-xs truncate">{doc.name}</TableCell>
+                                                            <TableCell className="text-right">
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" size="icon">
+                                                                            <MoreHorizontal className="h-4 w-4" />
+                                                                            <span className="sr-only">Abrir menú</span>
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end">
+                                                                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                                        <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
+                                                                            <Eye className="mr-2 h-4 w-4" />
+                                                                            Ver
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => toast({title: "Función no implementada"})}>
+                                                                            <Download className="mr-2 h-4 w-4" />
+                                                                            Descargar
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem className="text-destructive" onClick={() => toast({title: "Función no implementada"})}>
+                                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                                            Eliminar
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={3} className="h-24 text-center">No se han adjuntado documentos.</TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -730,4 +760,3 @@ export default function ResidentProfilePage({ params }: { params: { id: string }
       </Suspense>
     );
 }
-
