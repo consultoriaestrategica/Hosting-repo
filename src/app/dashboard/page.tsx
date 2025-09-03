@@ -95,7 +95,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-3xl font-bold font-headline">Bienvenido a Ángel Guardián</h1>
+        <h1 className="text-3xl font-bold font-headline">Bienvenido a HOGAR SAN JUAN</h1>
       </div>
        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card>
