@@ -9,25 +9,16 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar"
 import { useUser } from "@/hooks/use-user"
-import { useMemo } from "react"
-import { UserRole } from "@/types/user"
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-  permission: string;
-};
 
 export function DashboardNav() {
   const pathname = usePathname()
-  const { user, isLoading, can } = useUser()
+  const { user, isLoading, hasPermission } = useUser()
 
   const isActive = (path: string) => {
     return pathname === path || (path !== "/dashboard" && pathname.startsWith(path))
   }
   
-  const allNavItems: NavItem[] = [
+  const navItems = [
     { 
       href: "/dashboard", 
       label: "Inicio", 
@@ -78,33 +69,11 @@ export function DashboardNav() {
     },
   ];
 
-  const navItems = useMemo(() => {
-    if (!user || isLoading) {
-      return [];
-    }
-    // Filter items based on user's permissions
-    return allNavItems.filter(item => can(item.permission));
-  }, [user, isLoading, can]);
-
   if (isLoading) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <div className="p-4 text-sm text-gray-500">
-            Cargando menú...
-          </div>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    )
-  }
-  
-  if (navItems.length === 0 && !isLoading) {
-    return (
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <div className="p-4 text-sm text-red-500">
-            No tiene permisos para ver módulos.
-          </div>
+          Cargando...
         </SidebarMenuItem>
       </SidebarMenu>
     )
@@ -113,18 +82,20 @@ export function DashboardNav() {
   return (
     <SidebarMenu>
       {navItems.map((item) => (
-        <SidebarMenuItem key={item.href} className="my-1">
-          <SidebarMenuButton
-            asChild
-            isActive={isActive(item.href)}
-            tooltip={item.label}
-          >
-            <Link href={item.href}>
-              {item.icon}
-              <span>{item.label}</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        hasPermission(item.permission) && (
+          <SidebarMenuItem key={item.href} className="my-1">
+            <SidebarMenuButton
+              asChild
+              isActive={isActive(item.href)}
+              tooltip={item.label}
+            >
+              <Link href={item.href}>
+                {item.icon}
+                <span>{item.label}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
       ))}
     </SidebarMenu>
   )

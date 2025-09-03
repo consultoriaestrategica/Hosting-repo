@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from './use-auth';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { AppUser, Staff, FamilyMember, UserRole, isStaff, isFamilyMember, hasPermission, ROLE_PERMISSIONS } from '@/types/user';
+import { AppUser, Staff, FamilyMember, UserRole, isStaff, isFamilyMember, hasPermission } from '@/types/user';
 
 export function useUser() {
   const { user: authUser, isLoading: authLoading } = useAuth();
@@ -107,24 +107,14 @@ export function useUser() {
   }, [authUser, authLoading]);
 
   const role = useMemo(() => appUser?.role || null, [appUser]);
-  
-  const permissions = useMemo(() => {
-    if (!appUser || !role) return [];
-    if (isStaff(appUser) && appUser.permissions && appUser.permissions.length > 0) {
-      return appUser.permissions;
-    }
-    return ROLE_PERMISSIONS[role] || [];
-  }, [appUser, role]);
-
-  const can = useCallback((permission: string): boolean => {
-    return permissions.includes(permission);
-  }, [permissions]);
 
   return { 
     user: appUser, 
     role, 
-    permissions,
     isLoading,
-    can,
+    hasPermission: (permission: string) => {
+      if (!role) return false;
+      return hasPermission(role, permission);
+    }
   };
 }
