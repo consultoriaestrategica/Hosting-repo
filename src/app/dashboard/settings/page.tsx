@@ -96,6 +96,7 @@ export default function SettingsPage() {
   const handleOpenUserDialog = (user: Staff | null = null) => {
     setEditingUser(user);
     setIsUserDialogOpen(true);
+    setShowPassword(false); // Reset password visibility on dialog open
   };
 
   const handleSaveUser = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -110,12 +111,31 @@ export default function SettingsPage() {
       const permissions = ROLE_PERMISSIONS[role] || [];
       
       if (editingUser) {
-        const updatedData = { ...userData, permissions };
-        // Actualizar usuario existente
+        // --- EDITING LOGIC ---
+        const updatedData = { 
+            name: userData.name,
+            phone: userData.phone,
+            address: userData.address,
+            role: role,
+            status: userData.status === 'Activo',
+            permissions: permissions
+        };
+
+        // For now, updating password is not implemented due to security policies.
+        // We will show a toast message if the user tries to change it.
+        if (userData.password && userData.password.length > 0) {
+           toast({
+               variant: "destructive",
+               title: "Función no implementada",
+               description: "La actualización de contraseñas no está permitida en este momento."
+           });
+        }
+
         updateStaffMember(editingUser.id, updatedData);
         toast({ title: "Usuario Actualizado", description: `Los datos de ${userData.name} han sido actualizados.` });
+
       } else {
-        // Crear nuevo usuario con cuenta de Firebase Auth
+        // --- CREATION LOGIC ---
         console.log('Creando nuevo usuario:', userData.email);
         
         // 1. Crear cuenta en Firebase Auth
@@ -163,10 +183,9 @@ export default function SettingsPage() {
       setIsUserDialogOpen(false);
       setEditingUser(null);
     } catch (error: any) {
-      console.error('Error creating user:', error);
+      console.error('Error creating/updating user:', error);
       
-      // Manejar errores específicos de Firebase Auth
-      let errorMessage = 'Error al crear el usuario.';
+      let errorMessage = 'Error al procesar la solicitud.';
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'Ya existe una cuenta con este correo electrónico.';
       } else if (error.code === 'auth/weak-password') {
@@ -184,6 +203,7 @@ export default function SettingsPage() {
       setIsCreatingUser(false);
     }
   };
+
 
   const handleDeleteUser = (userId: string) => {
      // NOTE: Deleting users should be handled with care. 
@@ -388,7 +408,7 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
 
-        <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <Dialog open={isUserDialogOpen} onOpenChange={(isOpen) => { if(!isOpen) setEditingUser(null); setIsUserDialogOpen(isOpen); }}>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>{editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}</DialogTitle>
@@ -405,7 +425,7 @@ export default function SettingsPage() {
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="user-idNumber">Número de Identificación</Label>
-                        <Input id="user-idNumber" name="idNumber" defaultValue={(editingUser as any)?.documentNumber || ""} required />
+                        <Input id="user-idNumber" name="idNumber" defaultValue={(editingUser as any)?.documentNumber || ""} required disabled={!!editingUser} />
                     </div>
                   </div>
                    <div className="grid grid-cols-2 gap-4">
@@ -474,6 +494,29 @@ export default function SettingsPage() {
                       </Select>
                     </div>
                   </div>
+                   {editingUser && (
+                      <div className="grid gap-2 mt-2">
+                        <Label htmlFor="user-new-password">Nueva Contraseña (Opcional)</Label>
+                        <div className="relative">
+                          <Input 
+                            id="user-new-password" 
+                            name="password" 
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Dejar en blanco para no cambiar"
+                            minLength={6}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
