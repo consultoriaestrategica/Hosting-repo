@@ -54,6 +54,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { auth, db } from '@/lib/firebase'
 import { collection, addDoc } from 'firebase/firestore'
+import { ROLE_PERMISSIONS, UserRole } from "@/types/user"
 
 export default function SettingsPage() {
   const { toast } = useToast()
@@ -105,9 +106,13 @@ export default function SettingsPage() {
       const formData = new FormData(event.currentTarget);
       const userData = Object.fromEntries(formData.entries()) as any;
       
+      const role = userData.role as UserRole;
+      const permissions = ROLE_PERMISSIONS[role] || [];
+      
       if (editingUser) {
+        const updatedData = { ...userData, permissions };
         // Actualizar usuario existente
-        updateStaffMember(editingUser.id, userData);
+        updateStaffMember(editingUser.id, updatedData);
         toast({ title: "Usuario Actualizado", description: `Los datos de ${userData.name} han sido actualizados.` });
       } else {
         // Crear nuevo usuario con cuenta de Firebase Auth
@@ -122,55 +127,30 @@ export default function SettingsPage() {
         
         console.log('Usuario creado en Auth:', userCredential.user.uid);
         
-        // 2. Mapear roles del formulario a roles del sistema
-        const roleMapping: { [key: string]: string } = {
-          'Admin': 'Administrativo',
-          'Enfermera': 'Personal Asistencial',
-          'Médico': 'Personal Asistencial',
-          'Fisioterapeuta': 'Personal Asistencial',
-          'Otro': 'Personal Asistencial'
-        };
+        // 2. Determinar la colección y los datos a guardar
+        const isAdministrative = role === 'Administrativo';
+        const collectionName = isAdministrative ? 'users' : 'staff';
         
-        const systemRole = roleMapping[userData.role] || 'Personal Asistencial';
-        
-        // 3. Determinar permisos según el rol
-        const getPermissionsByRole = (role: string): string[] => {
-          switch (role) {
-            case 'Admin':
-              return ['dashboard', 'residents', 'staff', 'visitors', 'reports', 'settings', 'admin'];
-            case 'Enfermera':
-            case 'Médico':
-            case 'Fisioterapeuta':
-              return ['dashboard', 'residents', 'visitors', 'daily_records'];
-            default:
-              return ['dashboard', 'residents'];
-          }
-        };
-        
-        // 4. Preparar datos para la base de datos
         const staffData = {
           name: userData.name,
           email: userData.email,
           phone: userData.phone,
           address: userData.address,
-          role: systemRole,
-          position: userData.role,
-          documentNumber: userData.idNumber, // CAMBIADO: usar documentNumber en lugar de idNumber
+          role: role,
+          position: userData.role, // 'position' could be more specific, but using 'role' is fine
+          documentNumber: userData.idNumber,
           isActive: userData.status === 'Activo',
           hireDate: new Date().toISOString().split('T')[0],
           createdAt: new Date(),
           updatedAt: new Date(),
-          permissions: getPermissionsByRole(userData.role),
-          department: userData.role === 'Admin' ? 'Administración' : 'Cuidado',
-          uid: userCredential.user.uid // Vincular con el UID de Auth
+          permissions: permissions,
+          department: isAdministrative ? 'Administración' : 'Cuidado',
+          uid: userCredential.user.uid
         };
-        
-        // 5. Decidir en qué colección guardar según el rol
-        const collectionName = userData.role === 'Admin' ? 'users' : 'staff';
         
         console.log(`Guardando en colección: ${collectionName}`, staffData);
         
-        // 6. Guardar en Firestore
+        // 3. Guardar en Firestore
         await addDoc(collection(db, collectionName), staffData);
         
         toast({ 
@@ -425,21 +405,20 @@ export default function SettingsPage() {
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="user-idNumber">Número de Identificación</Label>
-                        <Input id="user-idNumber" name="idNumber" defaultValue="" required />
+                        <Input id="user-idNumber" name="idNumber" defaultValue={(editingUser as any)?.documentNumber || ""} required />
                     </div>
                   </div>
                    <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                           <Label htmlFor="user-phone">Teléfono</Label>
-                          <Input id="user-phone" name="phone" type="tel" defaultValue="" required />
+                          <Input id="user-phone" name="phone" type="tel" defaultValue={editingUser?.phone || ""} required />
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor="user-email">Correo Electrónico</Label>
-                          <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required />
+                          <Input id="user-email" name="email" type="email" defaultValue={editingUser?.email || ""} required disabled={!!editingUser} />
                         </div>
                     </div>
                      
-                    {/* Campo de contraseña - solo para usuarios nuevos */}
                     {!editingUser && (
                       <div className="grid gap-2">
                         <Label htmlFor="user-password">Contraseña de Acceso</Label>
@@ -467,21 +446,18 @@ export default function SettingsPage() {
                      
                      <div className="grid gap-2">
                       <Label htmlFor="user-address">Dirección</Label>
-                      <Input id="user-address" name="address" defaultValue="" required />
+                      <Input id="user-address" name="address" defaultValue={(editingUser as any)?.address || ""} required />
                     </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="user-role">Rol</Label>
-                      <Select name="role" defaultValue={editingUser?.role || "Enfermera"}>
+                      <Select name="role" defaultValue={editingUser?.role || undefined}>
                         <SelectTrigger id="user-role">
                           <SelectValue placeholder="Seleccione un rol" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="Enfermera">Enfermera</SelectItem>
-                          <SelectItem value="Médico">Médico</SelectItem>
-                           <SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem>
-                           <SelectItem value="Otro">Otro</SelectItem>
+                          <SelectItem value="Administrativo">Administrativo</SelectItem>
+                          <SelectItem value="Personal Asistencial">Personal Asistencial</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -504,7 +480,7 @@ export default function SettingsPage() {
                     <Button type="button" variant="outline">Cancelar</Button>
                   </DialogClose>
                   <Button type="submit" disabled={isCreatingUser}>
-                    {isCreatingUser ? "Creando..." : (editingUser ? "Actualizar" : "Crear Usuario")}
+                    {isCreatingUser ? "Guardando..." : (editingUser ? "Actualizar" : "Crear Usuario")}
                   </Button>
                 </DialogFooter>
               </form>
