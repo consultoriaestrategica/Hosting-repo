@@ -48,6 +48,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Error signing in:", error)
       let description = "Ocurrió un error inesperado. Por favor, intente de nuevo."
+      // Updated error handling
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
           description = "Las credenciales son incorrectas. Verifique su correo y contraseña."
       } else if (error.code === 'auth/invalid-email') {
