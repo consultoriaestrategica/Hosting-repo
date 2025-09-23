@@ -138,9 +138,9 @@ function ResidentsPageContent() {
     return <div>Cargando residentes...</div>
   }
 
-  const isAdminRole = role === 'admin';
-  const isFamilyRole = role === 'family';
-  const isStaffRole = role === 'staff';
+  const isAdminRole = role === 'Administrativo';
+  const isFamilyRole = role === 'Acceso Familiar';
+  const isStaffRole = role === 'Personal Asistencial';
 
   return (
     <>
