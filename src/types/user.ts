@@ -1,6 +1,9 @@
 // Tipos de roles del sistema
 export type UserRole = "Administrativo" | "Personal Asistencial" | "Acceso Familiar";
 
+// Tipos de estado para usuarios
+export type UserStatus = 'Activo' | 'Inactivo';
+
 // Interface base para usuarios
 export interface BaseUser {
   id: string;
@@ -8,6 +11,7 @@ export interface BaseUser {
   name: string;
   role: UserRole;
   isActive: boolean;
+  status: UserStatus; // Agregado para compatibilidad con contratos
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -20,6 +24,7 @@ export interface Staff extends BaseUser {
   department?: string;
   hireDate?: Date;
   permissions?: string[];
+  idNumber?: string; // Agregado para contratos
 }
 
 // Interface para Familiares (hereda de BaseUser)
@@ -33,6 +38,20 @@ export interface FamilyMember extends BaseUser {
     end: string;
     days: string[];
   };
+}
+
+// Tipos específicos para residentes (para compatibilidad con contratos)
+export type RoomType = "Habitación compartida" | "Habitación individual";
+
+export interface Resident {
+  id: string;
+  name: string;
+  status: UserStatus;
+  roomType: RoomType;
+  roomNumber: string;
+  age: number;
+  idNumber: string;
+  // ... otras propiedades de residentes
 }
 
 // Union type para cualquier tipo de usuario

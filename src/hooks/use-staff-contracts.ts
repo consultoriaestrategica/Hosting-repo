@@ -1,18 +1,16 @@
-
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, doc, query } from 'firebase/firestore';
-
+import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 export type StaffContract = {
   id: string;
   staffId: string;
+  salary: number;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   status: 'Activo' | 'Finalizado' | 'Cancelado';
-  salary: number;
   documentName: string;
   documentUrl: string; // URL to the uploaded PDF
   createdAt: string; // ISO string
@@ -20,19 +18,14 @@ export type StaffContract = {
 
 const staffContractsCollection = collection(db, 'staff_contracts');
 
-
 export function useStaffContracts() {
   const [contracts, setContracts] = useState<StaffContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    // Simpler query to start, sorting is done client-side to avoid indexing issues.
-    const q = query(staffContractsCollection);
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(staffContractsCollection, (snapshot) => {
         const contractsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StaffContract));
-        // Sort client-side
-        contractsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setContracts(contractsData);
         setIsLoading(false);
     }, (error) => {
@@ -43,15 +36,13 @@ export function useStaffContracts() {
     return () => unsubscribe();
   }, []);
 
-
   const addStaffContract = useCallback(async (newContractData: Omit<StaffContract, 'id'>): Promise<StaffContract> => {
-    try {
+     try {
         const docRef = await addDoc(staffContractsCollection, newContractData);
-        return { ...newContractData, id: docRef.id };
+        return { id: docRef.id, ...newContractData };
     } catch (error) {
         console.error("Error adding staff contract to Firestore: ", error);
-        // In case of error, return a non-persistent object to avoid breaking the UI flow
-        throw error;
+        throw error; // Re-throw the error to be caught by the calling function
     }
   }, []);
 
@@ -61,7 +52,6 @@ export function useStaffContracts() {
         await updateDoc(contractDoc, updatedDetails);
     } catch (error) {
         console.error("Error updating staff contract in Firestore: ", error);
-        throw error;
     }
   }, []);
 

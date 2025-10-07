@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
@@ -12,7 +11,7 @@ import {
   doc,
   Timestamp 
 } from 'firebase/firestore';
-import { Staff } from '@/types/user';
+import { Staff, UserStatus } from '@/types/user';
 
 export function useStaff() {
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -30,6 +29,8 @@ export function useStaff() {
           return {
             id: doc.id,
             ...data,
+            // Mapear isActive a status para compatibilidad
+            status: (data.isActive ? 'Activo' : 'Inactivo') as UserStatus,
             hireDate: data.hireDate?.toDate ? data.hireDate.toDate() : (data.hireDate ? new Date(data.hireDate) : undefined),
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
             updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
@@ -54,6 +55,8 @@ export function useStaff() {
     try {
       const docRef = await addDoc(collection(db, "staff"), {
         ...staffData,
+        // Convertir status a isActive para la base de datos
+        isActive: staffData.status === 'Activo',
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date()),
       });
@@ -66,10 +69,17 @@ export function useStaff() {
 
   const updateStaffMember = useCallback(async (id: string, updates: Partial<Omit<Staff, 'id' | 'createdAt'>>) => {
     try {
-      await updateDoc(doc(db, "staff", id), {
+      const updateData: any = {
         ...updates,
         updatedAt: Timestamp.fromDate(new Date()),
-      });
+      };
+      
+      // Convertir status a isActive si está presente
+      if (updates.status) {
+        updateData.isActive = updates.status === 'Activo';
+      }
+      
+      await updateDoc(doc(db, "staff", id), updateData);
     } catch (error) {
       console.error("Error updating staff:", error);
       throw error;
