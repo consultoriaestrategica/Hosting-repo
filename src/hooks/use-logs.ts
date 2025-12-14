@@ -1,74 +1,177 @@
-
 "use client"
 
-import { useState, useEffect, useCallback } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc } from 'firebase/firestore';
+import { useEffect, useState, useCallback } from "react"
+import { db } from "@/lib/firebase"
+import {
+  collection,
+  query,
+  onSnapshot,
+  addDoc,
+  doc,
+  updateDoc,
+  Timestamp,
+  serverTimestamp,
+  arrayUnion,
+} from "firebase/firestore"
 
-// Shared properties
-type BaseLog = {
-  id: string;
-  residentId: string;
-  startDate: string; // ISO string for when the report was started
-  endDate: string; // ISO string for when the report was submitted
-};
+// =====================================================
+// TIPOS
+// =====================================================
 
-// Medical Report
-type MedicalLog = BaseLog & {
-  reportType: 'medico';
-  heartRate?: number;
-  respiratoryRate?: number;
-  spo2?: number;
-  feedingType?: string;
-  evolutionNotes?: string[];
-  photoEvidenceUrl?: string[];
-  visitType?: string;
-  professionalName?: string;
-  entryTime?: string;
-  exitTime?: string;
-};
+export type EvolutionEntry = {
+  id: string
+  createdAt: string          // ISO (fecha y hora exacta)
+  createdTimeLabel: string   // ej: "10:15"
+  professionalName?: string
+  visitType?: string
+  note: string
+  heartRate?: number
+  respiratoryRate?: number
+  spo2?: number
+  bloodPressureSys?: number
+  bloodPressureDia?: number
+  temperature?: number
+}
 
-// Supply Report
-type SupplyLog = BaseLog & {
-  reportType: 'suministro';
-  supplierName?: string;
-  supplyDate?: string; // YYYY-MM-DD
-  supplyDescription?: string;
-  supplyNotes?: string;
-  supplyPhotoEvidenceUrl?: string[];
-};
+export type BaseLog = {
+  id: string
+  residentId: string
+  startDate: string          // ISO
+  endDate: string            // ISO
+  reportType: "medico" | "suministro"
+  notes?: string
+  createdAt?: Date | null
+  updatedAt?: Date | null
+}
 
-export type Log = MedicalLog | SupplyLog;
+// Campos específicos para registros médicos
+export type MedicalLogFields = {
+  reportType: "medico"
+  heartRate?: number
+  respiratoryRate?: number
+  spo2?: number
+  feedingType?: string
+  visitType?: string
+  professionalName?: string
+  evolutionNotes?: string[]       // compatibilidad hacia atrás
+  photoEvidence?: any[]
+  finalComment?: string
+  pendingTasks?: string
+  // NUEVO: lista de evoluciones parciales
+  evolutionEntries?: EvolutionEntry[]
+}
 
-const logsCollection = collection(db, 'logs');
+// Campos específicos para registros de suministro
+export type SupplyLogFields = {
+  reportType: "suministro"
+  supplierName?: string
+  supplyDate?: string
+  supplyDescription?: string
+  supplyNotes?: string
+  supplyPhotoEvidence?: any[]
+}
+
+export type Log = BaseLog & (MedicalLogFields | SupplyLogFields)
+
+// Tipo para crear un nuevo log
+export type NewLogInput = Omit<Log, "id" | "createdAt" | "updatedAt">
+
+// =====================================================
+// HOOK PRINCIPAL
+// =====================================================
 
 export function useLogs() {
-  const [logs, setLogs] = useState<Log[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [logs, setLogs] = useState<Log[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsLoading(true);
-    const unsubscribe = onSnapshot(logsCollection, (snapshot) => {
-        const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Log));
-        setLogs(logsData);
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching logs from Firestore: ", error);
-        setIsLoading(false);
-    });
+    // Evitar correr en el servidor / durante el render inicial de Next
+    if (typeof window === "undefined") return
 
-    return () => unsubscribe();
-  }, []);
+    setIsLoading(true)
+    let isMounted = true
 
-  const addLog = useCallback(async (newLogData: Omit<Log, 'id'>) => {
-    try {
-        // We add the 'endDate' right before saving, which is more accurate.
-        const logWithEndDate = { ...newLogData, endDate: new Date().toISOString() };
-        await addDoc(logsCollection, logWithEndDate);
-    } catch (error) {
-        console.error("Error adding log to Firestore: ", error);
+    const logsColRef = collection(db, "logs")
+    const q = query(logsColRef)
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!isMounted) return
+
+        const data: Log[] = snapshot.docs.map((docSnap) => {
+          const raw = docSnap.data() as any
+
+          return {
+            id: docSnap.id,
+            ...raw,
+            createdAt: raw.createdAt?.toDate?.() ?? null,
+            updatedAt: raw.updatedAt?.toDate?.() ?? null,
+          } as Log
+        })
+
+        // Ordenamos por fecha de fin descendente (más reciente primero)
+        data.sort(
+          (a, b) =>
+            new Date(b.endDate).getTime() - new Date(a.endDate).getTime()
+        )
+
+        setLogs(data)
+        setIsLoading(false)
+        setError(null)
+      },
+      (err) => {
+        console.error("❌ useLogs: error al obtener logs:", err)
+        if (!isMounted) return
+        setError("Error al cargar los registros")
+        setIsLoading(false)
+      }
+    )
+
+    return () => {
+      isMounted = false
+      unsubscribe()
     }
-  }, []);
+  }, [])
 
-  return { logs, addLog, isLoading };
+  // -------------------------------------------------
+  // Crear un nuevo LOG (registro diario / suministro)
+  // -------------------------------------------------
+  const addLog = useCallback(async (data: NewLogInput) => {
+    const now = new Date()
+    const logsColRef = collection(db, "logs")
+
+    const payload = {
+      ...data,
+      createdAt: Timestamp.fromDate(now),
+      updatedAt: Timestamp.fromDate(now),
+    }
+
+    await addDoc(logsColRef, payload)
+  }, [])
+
+  // -------------------------------------------------
+  // NUEVO: agregar una EVOLUCIÓN PARCIAL a un log médico
+  // -------------------------------------------------
+  const addEvolutionEntry = useCallback(
+    async (logId: string, entry: EvolutionEntry) => {
+      const ref = doc(db, "logs", logId)
+
+      await updateDoc(ref, {
+        evolutionEntries: arrayUnion(entry),
+        endDate: entry.createdAt, // actualizamos última hora de evolución
+        updatedAt: serverTimestamp(),
+      })
+    },
+    []
+  )
+
+  return {
+    logs,
+    isLoading,
+    error,
+    addLog,
+    addEvolutionEntry,
+  }
 }

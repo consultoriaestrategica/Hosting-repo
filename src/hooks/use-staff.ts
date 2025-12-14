@@ -1,90 +1,126 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react';
-import { db } from '@/lib/firebase';
-import { 
-  collection, 
-  query, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
+import { useState, useEffect, useCallback } from "react"
+import { db } from "@/lib/firebase"
+import {
+  collection,
+  query,
+  onSnapshot,
+  addDoc,
+  updateDoc,
   doc,
-  Timestamp 
-} from 'firebase/firestore';
-import { Staff, UserStatus } from '@/types/user';
+  Timestamp,
+} from "firebase/firestore"
+import { Staff } from "@/types/user"
 
 export function useStaff() {
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [staff, setStaff] = useState<Staff[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const staffQuery = query(collection(db, "staff"));
+    if (typeof window === "undefined") return
+
+    let isMounted = true
+    setIsLoading(true)
+
+    const staffColRef = collection(db, "staff")
+    const staffQuery = query(staffColRef)
 
     const unsubscribe = onSnapshot(
       staffQuery,
       (querySnapshot) => {
-        const staffData: Staff[] = querySnapshot.docs.map(doc => {
-          const data = doc.data();
+        if (!isMounted) return
+
+        const staffData: Staff[] = querySnapshot.docs.map((snap) => {
+          const data = snap.data() as any
+
           return {
-            id: doc.id,
+            id: snap.id,
             ...data,
-            // Mapear isActive a status para compatibilidad
-            status: (data.isActive ? 'Activo' : 'Inactivo') as UserStatus,
-            hireDate: data.hireDate?.toDate ? data.hireDate.toDate() : (data.hireDate ? new Date(data.hireDate) : undefined),
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
-          } as Staff;
-        });
+            // Compatibilidad y normalización de tipos
+            isActive: data.isActive ?? true,
+            hireDate: data.hireDate?.toDate
+              ? data.hireDate.toDate()
+              : data.hireDate
+              ? new Date(data.hireDate)
+              : undefined,
+            createdAt: data.createdAt?.toDate
+              ? data.createdAt.toDate()
+              : new Date(),
+            updatedAt: data.updatedAt?.toDate
+              ? data.updatedAt.toDate()
+              : undefined,
+          } as Staff
+        })
 
-        setStaff(staffData);
-        setIsLoading(false);
-        setError(null);
+        setStaff(staffData)
+        setIsLoading(false)
+        setError(null)
       },
-      (error) => {
-        console.error("Error fetching staff:", error);
-        setError("Error al cargar el personal");
-        setIsLoading(false);
+      (err) => {
+        console.error("❌ useStaff: error al cargar personal:", err)
+        if (!isMounted) return
+        setError("Error al cargar el personal")
+        setIsLoading(false)
       }
-    );
+    )
 
-    return () => unsubscribe();
-  }, []);
-
-  const addStaffMember = useCallback(async (staffData: Omit<Staff, 'id' | 'createdAt' | 'updatedAt'>) : Promise<Staff> => {
-    try {
-      const docRef = await addDoc(collection(db, "staff"), {
-        ...staffData,
-        // Convertir status a isActive para la base de datos
-        isActive: staffData.status === 'Activo',
-        createdAt: Timestamp.fromDate(new Date()),
-        updatedAt: Timestamp.fromDate(new Date()),
-      });
-      return { id: docRef.id, ...staffData, createdAt: new Date(), updatedAt: new Date() };
-    } catch (error) {
-      console.error("Error adding staff:", error);
-      throw error;
+    return () => {
+      isMounted = false
+      unsubscribe()
     }
-  }, []);
+  }, [])
 
-  const updateStaffMember = useCallback(async (id: string, updates: Partial<Omit<Staff, 'id' | 'createdAt'>>) => {
-    try {
-      const updateData: any = {
-        ...updates,
-        updatedAt: Timestamp.fromDate(new Date()),
-      };
-      
-      // Convertir status a isActive si está presente
-      if (updates.status) {
-        updateData.isActive = updates.status === 'Activo';
+  const addStaffMember = useCallback(
+    async (
+      staffData: Omit<Staff, "id" | "createdAt" | "updatedAt">
+    ): Promise<Staff> => {
+      try {
+        const now = new Date()
+        const staffColRef = collection(db, "staff")
+
+        const docRef = await addDoc(staffColRef, {
+          ...staffData,
+          isActive: staffData.isActive ?? true,
+          createdAt: Timestamp.fromDate(now),
+          updatedAt: Timestamp.fromDate(now),
+        })
+
+        return {
+          id: docRef.id,
+          ...staffData,
+          isActive: staffData.isActive ?? true,
+          createdAt: now,
+          updatedAt: now,
+        } as Staff
+      } catch (error) {
+        console.error("❌ useStaff: error al agregar personal:", error)
+        throw error
       }
-      
-      await updateDoc(doc(db, "staff", id), updateData);
-    } catch (error) {
-      console.error("Error updating staff:", error);
-      throw error;
-    }
-  }, []);
+    },
+    []
+  )
+
+  const updateStaffMember = useCallback(
+    async (id: string, updates: Partial<Omit<Staff, "id" | "createdAt">>) => {
+      try {
+        const staffDocRef = doc(db, "staff", id)
+        const now = new Date()
+
+        const updateData: any = {
+          ...updates,
+          updatedAt: Timestamp.fromDate(now),
+        }
+
+        await updateDoc(staffDocRef, updateData)
+      } catch (error) {
+        console.error("❌ useStaff: error al actualizar personal:", error)
+        throw error
+      }
+    },
+    []
+  )
 
   return {
     staff,
@@ -92,7 +128,7 @@ export function useStaff() {
     error,
     addStaffMember,
     updateStaffMember,
-  };
+  }
 }
 
-export type { Staff } from '@/types/user';
+export type { Staff } from "@/types/user"

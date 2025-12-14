@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useUser } from "@/hooks/use-user"
 
-export function DashboardNav() {
+function DashboardNav() {
   const pathname = usePathname()
   const { user, isLoading, hasPermission } = useUser()
 
@@ -22,68 +22,85 @@ export function DashboardNav() {
     { 
       href: "/dashboard", 
       label: "Inicio", 
-      icon: <Home />, 
+      icon: <Home className="h-5 w-5" />, 
       permission: "dashboard"
     },
     { 
       href: "/dashboard/residents", 
       label: "Residentes", 
-      icon: <Users />, 
+      icon: <Users className="h-5 w-5" />, 
       permission: "residents"
     },
     { 
       href: "/dashboard/staff", 
       label: "Personal", 
-      icon: <HardHat />, 
+      icon: <HardHat className="h-5 w-5" />, 
       permission: "staff"
     },
     { 
       href: "/dashboard/contracts", 
       label: "Contratos", 
-      icon: <BookUser />, 
+      icon: <BookUser className="h-5 w-5" />, 
       permission: "contracts"
     },
     { 
       href: "/dashboard/visitors", 
       label: "Visitantes", 
-      icon: <Car />, 
+      icon: <Car className="h-5 w-5" />, 
       permission: "visitors"
     },
     { 
       href: "/dashboard/logs", 
       label: "Registro Diario", 
-      icon: <ClipboardList />, 
+      icon: <ClipboardList className="h-5 w-5" />, 
       permission: "logs"
     },
     { 
       href: "/dashboard/reports", 
       label: "Reportes", 
-      icon: <FileText />, 
+      icon: <FileText className="h-5 w-5" />, 
       permission: "reports"
     },
     { 
       href: "/dashboard/settings", 
       label: "Configuración", 
-      icon: <Settings />, 
+      icon: <Settings className="h-5 w-5" />, 
       permission: "settings"
     },
-  ];
+  ]
 
   if (isLoading) {
+    console.log("⏳ DashboardNav: Cargando usuario...")
     return (
       <SidebarMenu>
-        <SidebarMenuItem>
-          Cargando...
+        <SidebarMenuItem className="px-4 py-2">
+          <span className="text-sm text-muted-foreground">Cargando menú...</span>
         </SidebarMenuItem>
       </SidebarMenu>
     )
   }
 
+  if (!user) {
+    console.log("⚠️ DashboardNav: No hay usuario")
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem className="px-4 py-2">
+          <span className="text-sm text-muted-foreground">No autenticado</span>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
+
+  console.log("✅ DashboardNav: Renderizando menú para:", user.email, "| Rol:", user.role)
+
   return (
     <SidebarMenu>
-      {navItems.map((item) => (
-        hasPermission(item.permission) && (
-          <SidebarMenuItem key={item.href} className="my-1">
+      {navItems.map((item) => {
+        const canAccess = hasPermission(item.permission)
+        console.log(`🔑 Item: ${item.label} | Permiso: ${item.permission} | Acceso: ${canAccess}`)
+        
+        return canAccess ? (
+          <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
               asChild
               isActive={isActive(item.href)}
@@ -95,8 +112,11 @@ export function DashboardNav() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-        )
-      ))}
+        ) : null
+      })}
     </SidebarMenu>
   )
 }
+
+// Export explícito al final
+export { DashboardNav }

@@ -24,7 +24,7 @@ import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { 
   Mic, 
@@ -38,12 +38,12 @@ import {
   Eye,
   Edit2,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 
-// Declaraciones de tipos para Speech Recognition
 declare global {
   interface Window {
     SpeechRecognition: typeof SpeechRecognition;
@@ -97,7 +97,6 @@ declare var SpeechRecognition: {
   new(): SpeechRecognition;
 };
 
-// Esquema mejorado para evidencia fotográfica
 const photoEvidenceSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -108,13 +107,36 @@ const photoEvidenceSchema = z.object({
   uploadDate: z.string(),
 });
 
+// ✅ Esquema del formulario, extendido con campos médicos adicionales
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
-  // Medical fields - CORREGIDO: valores por defecto definidos
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
+
+  // Nuevos campos de signos vitales
+  bloodPressureSys: z.coerce.number().optional(),
+  bloodPressureDia: z.coerce.number().optional(),
+  temperature: z.coerce.number().optional(),
+
+  // Glucometría (valores numéricos)
+  glucoAyuno: z.coerce.number().optional(),
+  glucoAntesAlmuerzo: z.coerce.number().optional(),
+  glucoAntesCena: z.coerce.number().optional(),
+  gluco2hAlmuerzo: z.coerce.number().optional(),
+  gluco2hCena: z.coerce.number().optional(),
+
+  // Estado de piel
+  skinStatus: z.array(z.string()).optional(),
+
+  // Texto libre adicional
+  finalComment: z.string().optional(),
+  pendingTasks: z.string().optional(),
+  diuresisColor: z.string().optional(),
+  deposicionConsistencia: z.string().optional(),
+
+  // Ya existentes
   feedingType: z.string().optional(),
   evolutionNotes: z.array(z.object({
     note: z.string(),
@@ -122,9 +144,7 @@ const reportFormSchema = z.object({
   photoEvidence: z.array(photoEvidenceSchema).optional(),
   visitType: z.string().optional(),
   professionalName: z.string().optional(),
-  entryTime: z.string().optional(),
-  exitTime: z.string().optional(),
-  // Supply fields - CORREGIDO: valores por defecto definidos
+
   supplierName: z.string().optional(),
   supplyDate: z.string().optional(),
   supplyDescription: z.string().optional(),
@@ -163,7 +183,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { addLog, isLoading } = useLogs()
   const { residents } = useResidents()
 
-  // Formatos de imagen permitidos
   const allowedImageTypes = {
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/png': ['.png'],
@@ -175,42 +194,75 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
   const allowedExtensions = Object.values(allowedImageTypes).flat();
   const allowedMimeTypes = Object.keys(allowedImageTypes);
-  const maxFileSize = 10 * 1024 * 1024; // 10MB
+  const maxFileSize = 10 * 1024 * 1024;
 
-  // --- State and Refs ---
-  const startDateRef = useRef<string>(new Date().toISOString());
+  const startDateRef = React.useRef<string>(new Date().toISOString());
   const [isListening, setIsListening] = useState(false);
   const [activeDictationField, setActiveDictationField] = useState<DictationField | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = React.useRef<SpeechRecognition | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Estados para gestión de archivos mejorada
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingPhoto, setEditingPhoto] = useState<string | null>(null);
   const [newPhotoName, setNewPhotoName] = useState('');
   const [previewPhoto, setPreviewPhoto] = useState<PhotoEvidence | null>(null);
 
+  // ✅ Estados locales para campos Sí/No y checkboxes que no necesitamos en schema
+  type YesNo = "si" | "no" | ""
+  const [curacion, setCuracion] = useState<YesNo>("")
+  const [medsAdmin, setMedsAdmin] = useState<YesNo>("")
+  const [feedingComplete, setFeedingComplete] = useState<YesNo>("")
+  const [feedingPartial, setFeedingPartial] = useState<YesNo>("")
+  const [diaperUse, setDiaperUse] = useState<YesNo>("")
+  const [diuresis, setDiuresis] = useState<YesNo>("")
+  const [deposicion, setDeposicion] = useState<YesNo>("")
+  const [sindromeVespertino, setSindromeVespertino] = useState<YesNo>("")
+  const [agitation, setAgitation] = useState<YesNo>("")
+  const [physicalTherapy, setPhysicalTherapy] = useState<YesNo>("")
+  const [occupationalTherapy, setOccupationalTherapy] = useState<YesNo>("")
+  const [spiritualSupport, setSpiritualSupport] = useState<YesNo>("")
+
+  // Glucometría – checkboxes para saber qué se midió
+  const [glucoAyunoChecked, setGlucoAyunoChecked] = useState(false)
+  const [glucoAntesAlmuerzoChecked, setGlucoAntesAlmuerzoChecked] = useState(false)
+  const [glucoAntesCenaChecked, setGlucoAntesCenaChecked] = useState(false)
+  const [gluco2hAlmuerzoChecked, setGluco2hAlmuerzoChecked] = useState(false)
+  const [gluco2hCenaChecked, setGluco2hCenaChecked] = useState(false)
+
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
-    // ✅ CORREGIDO: defaultValues con valores definidos (no undefined)
     defaultValues: {
       residentId: residentId || "",
-      reportType: undefined, // Este permanece undefined hasta selección
-      // Medical fields - valores por defecto definidos
+      reportType: undefined,
       heartRate: undefined,
       respiratoryRate: undefined,
       spo2: undefined,
+
+      bloodPressureSys: undefined,
+      bloodPressureDia: undefined,
+      temperature: undefined,
+
+      glucoAyuno: undefined,
+      glucoAntesAlmuerzo: undefined,
+      glucoAntesCena: undefined,
+      gluco2hAlmuerzo: undefined,
+      gluco2hCena: undefined,
+
+      skinStatus: [],
+      finalComment: "",
+      pendingTasks: "",
+      diuresisColor: "",
+      deposicionConsistencia: "",
+
       feedingType: "",
       evolutionNotes: [{ note: "" }],
       photoEvidence: [],
       visitType: "",
       professionalName: "",
-      entryTime: "",
-      exitTime: "",
-      // Supply fields - valores por defecto definidos
+
       supplierName: "",
       supplyDate: "",
       supplyDescription: "",
@@ -218,16 +270,17 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       supplyPhotoEvidence: [],
     },
   })
-  
   const reportType = form.watch("reportType");
   const photoPreviews = reportType === 'medico' ? form.watch("photoEvidence") : form.watch("supplyPhotoEvidence");
-  
+  const skinStatus = form.watch("skinStatus") || []
+  const diuresisColor = form.watch("diuresisColor")
+  const deposicionConsistencia = form.watch("deposicionConsistencia")
+
   const { fields: evolutionNoteFields, append: appendEvolutionNote, remove: removeEvolutionNote } = useFieldArray({
     control: form.control,
     name: "evolutionNotes",
   });
 
-  // --- Utility Functions ---
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -237,20 +290,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   };
 
   const validateImageFile = (file: File): string | null => {
-    // Validar tipo MIME
     if (!allowedMimeTypes.includes(file.type)) {
       return `Formato no permitido: ${file.name}.\nFormatos permitidos: ${allowedExtensions.join(', ')}`;
     }
-
-    // Validar tamaño
     if (file.size > maxFileSize) {
       return `El archivo ${file.name} es muy grande.\nTamaño máximo permitido: ${formatFileSize(maxFileSize)}`;
     }
-
     return null;
   };
 
-  // --- Dictation Logic ---
   const handleToggleDictation = (field: DictationField) => {
     if (isListening) {
       recognitionRef.current?.stop();
@@ -302,19 +350,36 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     recognition.start();
   };
 
-  // --- Camera Logic ---
   const openCamera = async () => {
     if (isCameraOpen) return;
     setCameraError(null);
+    setIsCameraOpen(true);
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: facingMode },
+        audio: false 
+      });
       streamRef.current = stream;
+      
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        (videoRef.current as HTMLVideoElement).srcObject = stream;
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        if (videoRef.current) {
+          (videoRef.current as HTMLVideoElement).srcObject = stream;
+        } else {
+          throw new Error("No se pudo acceder al elemento video");
+        }
       }
-      setIsCameraOpen(true);
     } catch (err: any) {
-      console.error("Error accessing camera:", err);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
       if (err.name === 'NotAllowedError') {
          setCameraError("Permiso de cámara denegado. Por favor, habilítelo en la configuración de su navegador para usar esta función.");
       } else {
@@ -322,6 +387,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       }
       setIsCameraOpen(false);
     }
+  };
+
+  const switchCamera = async () => {
+    closeCamera();
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    await new Promise(resolve => setTimeout(resolve, 300));
+    openCamera();
   };
 
   const closeCamera = () => {
@@ -332,13 +404,12 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     setIsCameraOpen(false);
   };
 
-  // --- Enhanced Photo Management ---
   const updatePhotoEvidence = (newPhotos: PhotoEvidence[]) => {
     const fieldToUpdate = reportType === 'medico' ? 'photoEvidence' : 'supplyPhotoEvidence';
     const currentPhotos = form.getValues(fieldToUpdate) || [];
     form.setValue(fieldToUpdate, [...currentPhotos, ...newPhotos], { shouldValidate: true });
   };
-  
+
   const takePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -353,7 +424,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           name: `captura-${Date.now()}.jpg`,
           originalName: `captura-${Date.now()}.jpg`,
           url: photoDataUrl,
-          size: Math.round(photoDataUrl.length * 0.75), // Aproximación del tamaño
+          size: Math.round(photoDataUrl.length * 0.75),
           type: 'image/jpeg',
           uploadDate: new Date().toISOString(),
         };
@@ -369,8 +440,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
     const validFiles: File[] = [];
     const errors: string[] = [];
-
-    // Validar cada archivo
     for (const file of Array.from(files)) {
       const error = validateImageFile(file);
       if (error) {
@@ -380,7 +449,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       }
     }
 
-    // Mostrar errores si los hay
     if (errors.length > 0) {
       toast({
         variant: "destructive",
@@ -389,7 +457,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       });
     }
 
-    // Procesar archivos válidos
     if (validFiles.length > 0) {
       const newPhotos: PhotoEvidence[] = [];
       let filesProcessed = 0;
@@ -437,7 +504,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
 
   const startRename = (photoId: string, currentName: string) => {
     setEditingPhoto(photoId);
-    // Quitar la extensión para edición
     const nameWithoutExt = currentName.replace(/\.[^/.]+$/, "");
     setNewPhotoName(nameWithoutExt);
   };
@@ -450,7 +516,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     
     const updatedPhotos = currentPhotos.map((photo: PhotoEvidence) => {
       if (photo.id === photoId) {
-        // Conservar la extensión original
         const extension = photo.originalName.match(/\.[^/.]+$/)?.[0] || '';
         return {
           ...photo,
@@ -475,7 +540,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     setPreviewPhoto(photo);
   };
 
-  // --- Lifecycle ---
   useEffect(() => {
     if (residentId) {
         form.setValue("residentId", residentId);
@@ -486,36 +550,149 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     };
   }, [residentId, form]);
 
+  // 👉 Construye un resumen estructurado con todos los campos médicos
+  function buildMedicalSummary(data: ReportFormValues) {
+    const lines: string[] = []
+
+    if (data.heartRate || data.respiratoryRate || data.spo2 || data.bloodPressureSys || data.bloodPressureDia || data.temperature) {
+      lines.push("Signos vitales:")
+      if (data.heartRate) lines.push(`- F.C: ${data.heartRate} lpm`)
+      if (data.respiratoryRate) lines.push(`- F.R: ${data.respiratoryRate} rpm`)
+      if (data.spo2) lines.push(`- SpO₂: ${data.spo2} %`)
+      if (data.bloodPressureSys || data.bloodPressureDia) {
+        lines.push(`- T/A: ${data.bloodPressureSys ?? "?"}/${data.bloodPressureDia ?? "?"} mmHg`)
+      }
+      if (data.temperature) lines.push(`- Temperatura: ${data.temperature} °C`)
+      lines.push("")
+    }
+
+    // Glucometría
+    const glucoLines: string[] = []
+    if (glucoAyunoChecked && data.glucoAyuno) glucoLines.push(`Ayuno: ${data.glucoAyuno} mg/dl`)
+    if (glucoAntesAlmuerzoChecked && data.glucoAntesAlmuerzo) glucoLines.push(`Antes del almuerzo: ${data.glucoAntesAlmuerzo} mg/dl`)
+    if (glucoAntesCenaChecked && data.glucoAntesCena) glucoLines.push(`Antes de la cena: ${data.glucoAntesCena} mg/dl`)
+    if (gluco2hAlmuerzoChecked && data.gluco2hAlmuerzo) glucoLines.push(`2h después del almuerzo: ${data.gluco2hAlmuerzo} mg/dl`)
+    if (gluco2hCenaChecked && data.gluco2hCena) glucoLines.push(`2h después de la cena: ${data.gluco2hCena} mg/dl`)
+    if (glucoLines.length > 0) {
+      lines.push("Glucometría:")
+      glucoLines.forEach(l => lines.push(`- ${l}`))
+      lines.push("")
+    }
+
+    // Piel
+    if (skinStatus && skinStatus.length > 0) {
+      lines.push("Estado de la piel:")
+      lines.push(`- ${skinStatus.join(", ")}`)
+      lines.push("")
+    }
+
+    // Cuidados y observaciones (sí/no)
+    const yn = (v: YesNo) => v === "si" ? "Sí" : v === "no" ? "No" : "No registrado"
+    const boolLines: string[] = []
+    boolLines.push(`Curación: ${yn(curacion)}`)
+    boolLines.push(`Administración de medicamentos: ${yn(medsAdmin)}`)
+    boolLines.push(`Alimentación completa: ${yn(feedingComplete)}`)
+    boolLines.push(`Alimentación parcial: ${yn(feedingPartial)}`)
+    boolLines.push(`Uso de pañal: ${yn(diaperUse)}`)
+    boolLines.push(`Diuresis: ${yn(diuresis)}${diuresis === "si" && data.diuresisColor ? ` (Color: ${data.diuresisColor})` : ""}`)
+    boolLines.push(`Deposición: ${yn(deposicion)}${deposicion === "si" && data.deposicionConsistencia ? ` (Consistencia: ${data.deposicionConsistencia})` : ""}`)
+    boolLines.push(`Síndrome vespertino: ${yn(sindromeVespertino)}`)
+    boolLines.push(`Agitación: ${yn(agitation)}`)
+    boolLines.push(`Terapia física: ${yn(physicalTherapy)}`)
+    boolLines.push(`Terapia ocupacional: ${yn(occupationalTherapy)}`)
+    boolLines.push(`Acompañamiento espiritual: ${yn(spiritualSupport)}`)
+
+    lines.push("Cuidados y terapias:")
+    boolLines.forEach(l => lines.push(`- ${l}`))
+    lines.push("")
+
+    if (data.finalComment) {
+      lines.push("Comentario final del día/turno:")
+      lines.push(data.finalComment)
+      lines.push("")
+    }
+
+    if (data.pendingTasks) {
+      lines.push("Pendientes:")
+      lines.push(data.pendingTasks)
+      lines.push("")
+    }
+
+    return lines.join("\n")
+  }
+
+  function resetMedicalStates() {
+    setCuracion("")
+    setMedsAdmin("")
+    setFeedingComplete("")
+    setFeedingPartial("")
+    setDiaperUse("")
+    setDiuresis("")
+    setDeposicion("")
+    setSindromeVespertino("")
+    setAgitation("")
+    setPhysicalTherapy("")
+    setOccupationalTherapy("")
+    setSpiritualSupport("")
+    setGlucoAyunoChecked(false)
+    setGlucoAntesAlmuerzoChecked(false)
+    setGlucoAntesCenaChecked(false)
+    setGluco2hAlmuerzoChecked(false)
+    setGluco2hCenaChecked(false)
+  }
+
   function onSubmit(data: ReportFormValues) {
     if (isListening) {
       recognitionRef.current?.stop()
     }
     
-    // Crear el log base con propiedades comunes
+    const currentTime = new Date().toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    
     const baseLogData = {
       residentId: data.residentId,
       startDate: startDateRef.current,
       endDate: new Date().toISOString(),
-      reportType: data.reportType, // Usar reportType en lugar de type
+      reportType: data.reportType,
     }
 
-    // Crear datos específicos según el tipo de reporte
     if (data.reportType === 'medico') {
+      // Notas escritas manualmente
+      const manualNotesArray =
+        data.evolutionNotes?.map(n => n.note).filter(Boolean) ?? []
+
+      // Resumen estructurado con todos los campos nuevos
+      const structuredSummary = buildMedicalSummary(data)
+
+      const combinedEvolutionNotes: string[] = []
+      if (manualNotesArray.length > 0) {
+        combinedEvolutionNotes.push("Notas de evolución:")
+        combinedEvolutionNotes.push(...manualNotesArray)
+      }
+      if (structuredSummary.trim().length > 0) {
+        combinedEvolutionNotes.push("Resumen clínico del día:")
+        combinedEvolutionNotes.push(structuredSummary)
+      }
+
       const medicalLogData = {
         ...baseLogData,
-        notes: data.evolutionNotes?.map(n => n.note).filter(Boolean)?.join('\n') || "",
+        notes: combinedEvolutionNotes.join("\n\n"),
         heartRate: data.heartRate,
         respiratoryRate: data.respiratoryRate,
         spo2: data.spo2,
         feedingType: data.feedingType,
-        evolutionNotes: data.evolutionNotes?.map(n => n.note).filter(Boolean),
+        evolutionNotes: combinedEvolutionNotes,
         photoEvidence: data.photoEvidence,
         visitType: data.visitType,
         professionalName: data.professionalName,
-        entryTime: data.entryTime,
-        exitTime: data.exitTime,
+        exitTime: currentTime,
       };
+
       addLog(medicalLogData);
+      resetMedicalStates();
     } else {
       const supplyLogData = {
         ...baseLogData,
@@ -537,13 +714,11 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     form.reset();
   }
 
-  // --- Enhanced Photo Evidence Render ---
   const renderPhotoEvidence = () => (
     <FormItem>
       <FormLabel>Evidencia Fotográfica</FormLabel>
       <FormControl>
         <div className="space-y-4">
-          {/* Información de formatos permitidos */}
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -554,12 +729,10 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
             </div>
           </div>
 
-          {/* Galería de imágenes */}
           {photoPreviews && photoPreviews.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {photoPreviews.map((photo: PhotoEvidence) => (
                 <div key={photo.id} className="relative group border rounded-lg overflow-hidden bg-gray-50">
-                  {/* Imagen */}
                   <div className="aspect-square cursor-pointer" onClick={() => previewImage(photo)}>
                     <img 
                       src={photo.url} 
@@ -568,7 +741,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     />
                   </div>
                   
-                  {/* Información del archivo */}
                   <div className="p-2 bg-white border-t">
                     {editingPhoto === photo.id ? (
                       <div className="space-y-2">
@@ -621,7 +793,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     )}
                   </div>
 
-                  {/* Botones de acción */}
                   {editingPhoto !== photo.id && (
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
@@ -661,18 +832,20 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
             </div>
           )}
 
-          {/* Cámara o botones de acción */}
           {isCameraOpen ? (
             <div className="space-y-2 rounded-md border p-2">
               <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video rounded-md bg-muted"></video>
               <div className="flex justify-center gap-2">
-                <Button type="button" onClick={takePhoto} className="w-full">
+                <Button type="button" onClick={takePhoto} className="flex-1">
                   <Camera className="mr-2 h-4 w-4" />
-                  Capturar Foto
+                  Capturar
                 </Button>
-                <Button type="button" variant="outline" onClick={closeCamera} className="w-full">
+                <Button type="button" variant="outline" onClick={switchCamera} className="px-3">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="outline" onClick={closeCamera} className="flex-1">
                   <X className="mr-2 h-4 w-4" />
-                  Cerrar Cámara
+                  Cerrar
                 </Button>
               </div>
             </div>
@@ -715,7 +888,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4 p-4 max-h-[70vh] overflow-y-auto">
-            {/* Tipo de registro */}
             <FormField
               control={form.control}
               name="reportType"
@@ -729,25 +901,36 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                           form.reset({
                               residentId: currentResidentId,
                               reportType: value as "medico" | "suministro",
-                              // ✅ CORREGIDO: Valores iniciales definidos
                               evolutionNotes: [{ note: "" }],
                               supplyNotes: "",
                               photoEvidence: [],
                               supplyPhotoEvidence: [],
-                              // Medical fields
+
                               heartRate: undefined,
                               respiratoryRate: undefined,
                               spo2: undefined,
+                              bloodPressureSys: undefined,
+                              bloodPressureDia: undefined,
+                              temperature: undefined,
+                              glucoAyuno: undefined,
+                              glucoAntesAlmuerzo: undefined,
+                              glucoAntesCena: undefined,
+                              gluco2hAlmuerzo: undefined,
+                              gluco2hCena: undefined,
+                              skinStatus: [],
+                              finalComment: "",
+                              pendingTasks: "",
+                              diuresisColor: "",
+                              deposicionConsistencia: "",
+
                               feedingType: "",
                               visitType: "",
                               professionalName: "",
-                              entryTime: "",
-                              exitTime: "",
-                              // Supply fields
                               supplierName: "",
                               supplyDate: "",
                               supplyDescription: "",
                           });
+                          resetMedicalStates();
                           field.onChange(value);
                       }}
                       defaultValue={field.value}
@@ -796,64 +979,320 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                 )}
                 <div className="p-2 bg-muted rounded-md col-span-full lg:col-span-2">
                   <p className="text-sm font-medium text-muted-foreground">Fecha y Hora de Registro</p>
-                  <p className="text-sm">{new Date(startDateRef.current).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</p>
+                  <p className="text-sm">
+                    {new Date(startDateRef.current).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Sección médica */}
             {reportType === 'medico' && (
               <div className="space-y-4 pt-4 border-t">
-                {/* Signos vitales */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="heartRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Frecuencia Cardíaca (bpm)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="80" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="respiratoryRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Frecuencia Respiratoria (rpm)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="20" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="spo2"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SpO2 (%)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="98" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                {/* SIGNOS VITALES */}
+                <div className="space-y-3">
+                  <FormLabel className="font-semibold">Signos vitales</FormLabel>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="heartRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>F.C (Lpm)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={300}
+                              placeholder="80"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="respiratoryRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>F.R (Rpm)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={80}
+                              placeholder="20"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="spo2"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SpO₂ (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={100}
+                              placeholder="98"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex gap-2">
+                      <FormField
+                        control={form.control}
+                        name="bloodPressureSys"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>T/A Sistólica (mmHg)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={500}
+                                placeholder="120"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="bloodPressureDia"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>T/A Diastólica (mmHg)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={500}
+                                placeholder="80"
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="temperature"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Temperatura (°C)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={70}
+                              step="0.1"
+                              placeholder="36.5"
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
-                {/* Tipo de alimentación */}
+                {/* GLUCOMETRÍA */}
+                <Separator />
+                <div className="space-y-3">
+                  <FormLabel className="font-semibold">Glucometría (mg/dl)</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={glucoAyunoChecked}
+                        onChange={(e) => setGlucoAyunoChecked(e.target.checked)}
+                      />
+                      <span className="flex-1">Ayuno</span>
+                      <FormField
+                        control={form.control}
+                        name="glucoAyuno"
+                        render={({ field }) => (
+                          <FormItem className="w-24">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={600}
+                                disabled={!glucoAyunoChecked}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={glucoAntesAlmuerzoChecked}
+                        onChange={(e) => setGlucoAntesAlmuerzoChecked(e.target.checked)}
+                      />
+                      <span className="flex-1">Antes del almuerzo</span>
+                      <FormField
+                        control={form.control}
+                        name="glucoAntesAlmuerzo"
+                        render={({ field }) => (
+                          <FormItem className="w-24">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={600}
+                                disabled={!glucoAntesAlmuerzoChecked}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={glucoAntesCenaChecked}
+                        onChange={(e) => setGlucoAntesCenaChecked(e.target.checked)}
+                      />
+                      <span className="flex-1">Antes de la cena</span>
+                      <FormField
+                        control={form.control}
+                        name="glucoAntesCena"
+                        render={({ field }) => (
+                          <FormItem className="w-24">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={600}
+                                disabled={!glucoAntesCenaChecked}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={gluco2hAlmuerzoChecked}
+                        onChange={(e) => setGluco2hAlmuerzoChecked(e.target.checked)}
+                      />
+                      <span className="flex-1">2h después del almuerzo</span>
+                      <FormField
+                        control={form.control}
+                        name="gluco2hAlmuerzo"
+                        render={({ field }) => (
+                          <FormItem className="w-24">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={600}
+                                disabled={!gluco2hAlmuerzoChecked}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={gluco2hCenaChecked}
+                        onChange={(e) => setGluco2hCenaChecked(e.target.checked)}
+                      />
+                      <span className="flex-1">2h después de la cena</span>
+                      <FormField
+                        control={form.control}
+                        name="gluco2hCena"
+                        render={({ field }) => (
+                          <FormItem className="w-24">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={600}
+                                disabled={!gluco2hCenaChecked}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ESTADO DE PIEL */}
+                <Separator />
+                <div className="space-y-3">
+                  <FormLabel className="font-semibold">Estado de la piel</FormLabel>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    {["Integra", "Zonas de presión", "Úlcera por presión", "Heridas"].map((opt) => (
+                      <label key={opt} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={skinStatus.includes(opt)}
+                          onChange={() => {
+                            const current = form.getValues("skinStatus") || []
+                            const exists = current.includes(opt)
+                            const updated = exists
+                              ? current.filter((v: string) => v !== opt)
+                              : [...current, opt]
+                            form.setValue("skinStatus", updated, { shouldValidate: true })
+                          }}
+                        />
+                        <span>{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* TIPO DE ALIMENTACIÓN (vía) */}
+                <Separator />
                 <FormField
                   control={form.control}
                   name="feedingType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo de Alimentación</FormLabel>
+                      <FormLabel>Tipo de alimentación (vía)</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -873,10 +1312,170 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   )}
                 />
 
-                {/* Notas de evolución */}
+                {/* SI/NO DE CUIDADOS BÁSICOS */}
+                <Separator />
+                <div className="space-y-3">
+                  <FormLabel className="font-semibold">Cuidados de enfermería</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    {[
+                      { label: "Curación", value: curacion, setter: setCuracion },
+                      { label: "Administración de medicamentos", value: medsAdmin, setter: setMedsAdmin },
+                      { label: "Alimentación completa", value: feedingComplete, setter: setFeedingComplete },
+                      { label: "Alimentación parcial", value: feedingPartial, setter: setFeedingPartial },
+                      { label: "Uso de pañal", value: diaperUse, setter: setDiaperUse },
+                    ].map(({ label, value, setter }) => (
+                      <div key={label}>
+                        <FormLabel>{label}</FormLabel>
+                        <div className="flex items-center gap-4 mt-1">
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              checked={value === "si"}
+                              onChange={() => setter("si")}
+                            />
+                            <span>Sí</span>
+                          </label>
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              checked={value === "no"}
+                              onChange={() => setter("no")}
+                            />
+                            <span>No</span>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* DIURESIS Y DEPOSICIÓN */}
+                <Separator />
+                <div className="space-y-3">
+                  <FormLabel className="font-semibold">Eliminación</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <FormLabel>Diuresis</FormLabel>
+                      <div className="flex items-center gap-4 mt-1">
+                        <label className="flex items-center gap-1">
+                          <input
+                            type="radio"
+                            checked={diuresis === "si"}
+                            onChange={() => setDiuresis("si")}
+                          />
+                          <span>Sí</span>
+                        </label>
+                        <label className="flex items-center gap-1">
+                          <input
+                            type="radio"
+                            checked={diuresis === "no"}
+                            onChange={() => setDiuresis("no")}
+                          />
+                          <span>No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <FormLabel>Color de la orina</FormLabel>
+                      <select
+                        className="mt-1 w-full border rounded-md px-2 py-1 text-sm"
+                        value={diuresisColor ?? ""}
+                        onChange={(e) => form.setValue("diuresisColor", e.target.value)}
+                        disabled={diuresis !== "si"}
+                      >
+                        <option value="">Seleccione...</option>
+                        <option value="Amarillo Claro">Amarillo Claro</option>
+                        <option value="Amarillo Oscuro">Amarillo Oscuro</option>
+                        <option value="Café claro">Café claro</option>
+                        <option value="Café oscuro">Café oscuro</option>
+                        <option value="Con sangre">Con sangre</option>
+                        <option value="Azul o verde">Azul o verde</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <FormLabel>Deposición</FormLabel>
+                      <div className="flex items-center gap-4 mt-1">
+                        <label className="flex items-center gap-1">
+                          <input
+                            type="radio"
+                            checked={deposicion === "si"}
+                            onChange={() => setDeposicion("si")}
+                          />
+                          <span>Sí</span>
+                        </label>
+                        <label className="flex items-center gap-1">
+                          <input
+                            type="radio"
+                            checked={deposicion === "no"}
+                            onChange={() => setDeposicion("no")}
+                          />
+                          <span>No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <FormLabel>Consistencia</FormLabel>
+                      <select
+                        className="mt-1 w-full border rounded-md px-2 py-1 text-sm"
+                        value={deposicionConsistencia ?? ""}
+                        onChange={(e) => form.setValue("deposicionConsistencia", e.target.value)}
+                        disabled={deposicion !== "si"}
+                      >
+                        <option value="">Seleccione...</option>
+                        <option value="Líquida">Líquida</option>
+                        <option value="Pastosa">Pastosa</option>
+                        <option value="Suave y blanda">Suave y blanda</option>
+                        <option value="Dura">Dura</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* COMPORTAMIENTO Y TERAPIAS */}
+                <Separator />
+                <div className="space-y-3">
+                  <FormLabel className="font-semibold">Comportamiento y terapias</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    {[
+                      { label: "Síndrome vespertino", value: sindromeVespertino, setter: setSindromeVespertino },
+                      { label: "Agitación", value: agitation, setter: setAgitation },
+                      { label: "Terapia física", value: physicalTherapy, setter: setPhysicalTherapy },
+                      { label: "Terapia ocupacional", value: occupationalTherapy, setter: setOccupationalTherapy },
+                      { label: "Acompañamiento espiritual", value: spiritualSupport, setter: setSpiritualSupport },
+                    ].map(({ label, value, setter }) => (
+                      <div key={label}>
+                        <FormLabel>{label}</FormLabel>
+                        <div className="flex items-center gap-4 mt-1">
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              checked={value === "si"}
+                              onChange={() => setter("si")}
+                            />
+                            <span>Sí</span>
+                          </label>
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              checked={value === "no"}
+                              onChange={() => setter("no")}
+                            />
+                            <span>No</span>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* NOTAS DE EVOLUCIÓN (múltiples) */}
+                <Separator />
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <FormLabel>Notas de Evolución</FormLabel>
+                    <FormLabel className="font-semibold">Evoluciones del día</FormLabel>
                     <Button
                       type="button"
                       variant="outline"
@@ -935,7 +1534,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   ))}
                 </div>
 
-                {/* Información de visita */}
+                {/* TIPO DE VISITA Y PROFESIONAL */}
                 <Separator />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
@@ -976,40 +1575,53 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="entryTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hora de Entrada</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="exitTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hora de Salida</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
-                {/* Evidencia fotográfica médica */}
+                {/* COMENTARIO FINAL DEL DÍA */}
+                <Separator />
+                <FormField
+                  control={form.control}
+                  name="finalComment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Comentario final del día / turno</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={4}
+                          placeholder="Evolución general del residente durante el día/turno."
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* PENDIENTES */}
+                <FormField
+                  control={form.control}
+                  name="pendingTasks"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pendientes</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={3}
+                          placeholder="Prescripciones, interconsultas, exámenes pendientes, observaciones para el siguiente turno, etc."
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 {renderPhotoEvidence()}
               </div>
             )}
 
-            {/* Sección suministro */}
             {reportType === 'suministro' && (
               <div className="space-y-4 pt-4 border-t">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1094,7 +1706,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   </Button>
                 </div>
 
-                {/* Evidencia fotográfica suministro */}
                 {renderPhotoEvidence()}
               </div>
             )}
@@ -1111,7 +1722,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         </form>
       </Form>
 
-      {/* Modal de vista previa */}
       {previewPhoto && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4" onClick={() => setPreviewPhoto(null)}>
           <div className="relative max-w-4xl max-h-full bg-white rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>

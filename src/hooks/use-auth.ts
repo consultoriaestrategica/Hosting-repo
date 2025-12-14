@@ -1,24 +1,35 @@
-"use client"
-import { useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase'; // Asegúrate de que la ruta a tu config de Firebase sea correcta
+"use client";
 
+import { useState, useEffect } from "react";
+import { auth } from "@/lib/firebase";
+import type { User } from "firebase/auth";
+
+/**
+ * Hook de autenticación centralizado
+ * - Se suscribe una sola vez a onAuthStateChanged
+ * - Usa auth.currentUser como estado inicial para evitar parpadeos
+ */
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Usamos auth.currentUser como valor inicial si ya hay sesión activa
+  const [user, setUser] = useState<User | null>(() => auth.currentUser);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // onAuthStateChanged es el escuchador de Firebase que nos dice
-    // si el estado de autenticación ha cambiado (login o logout).
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    // Listener único de Firebase Auth
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      setUser(firebaseUser);
       setIsLoading(false);
     });
 
-    // Limpiamos el escuchador cuando el componente se desmonta
-    // para evitar problemas de memoria.
-    return () => unsubscribe();
+    // Cleanup al desmontar
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  return { user, isLoading };
+  return {
+    user,
+    isLoading,
+    email: user?.email ?? null,
+  };
 }

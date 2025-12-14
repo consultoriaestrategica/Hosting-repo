@@ -1,102 +1,86 @@
-// Tipos de roles del sistema
-export type UserRole = "Administrativo" | "Personal Asistencial" | "Acceso Familiar";
+export type UserRole = 
+  | "Administrador" 
+  | "Supervisor" 
+  | "Personal de Cuidado" 
+  | "Acceso Familiar";
 
-// Tipos de estado para usuarios
-export type UserStatus = 'Activo' | 'Inactivo';
-
-// Interface base para usuarios
-export interface BaseUser {
+export interface AppUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
   isActive: boolean;
-  status: UserStatus; // Agregado para compatibilidad con contratos
   createdAt: Date;
   updatedAt?: Date;
 }
 
-// Interface para Staff (hereda de BaseUser)
-export interface Staff extends BaseUser {
-  // Campos específicos del staff
-  phone?: string;
+export interface Staff extends AppUser {
+  phone: string;
   position?: string;
   department?: string;
   hireDate?: Date;
-  permissions?: string[];
-  idNumber?: string; // Agregado para contratos
+  permissions: string[];
 }
 
-// Interface para Familiares (hereda de BaseUser)
-export interface FamilyMember extends BaseUser {
-  // Campos específicos de familiares
-  residentId: string; // ID del residente relacionado
-  relationship: string; // "Hijo", "Esposa", "Hermano", etc.
+// ✅ MODIFICADO: Agregadas propiedades residentName y phone
+export interface FamilyMember extends AppUser {
+  residentId: string;
+  residentName: string;          // ← AGREGADO
+  relationship: string;
+  phone?: string;                // ← AGREGADO
   emergencyContact: boolean;
-  visitingHours?: {
-    start: string;
-    end: string;
-    days: string[];
-  };
+  visitingHours?: string;
 }
 
-// Tipos específicos para residentes (para compatibilidad con contratos)
-export type RoomType = "Habitación compartida" | "Habitación individual";
-
-export interface Resident {
-  id: string;
-  name: string;
-  status: UserStatus;
-  roomType: RoomType;
-  roomNumber: string;
-  age: number;
-  idNumber: string;
-  // ... otras propiedades de residentes
-}
-
-// Union type para cualquier tipo de usuario
-export type AppUser = Staff | FamilyMember;
-
-// Type guards para verificar el tipo de usuario
 export function isStaff(user: AppUser): user is Staff {
-  return user.role === "Administrativo" || user.role === "Personal Asistencial";
+  return 'permissions' in user;
 }
 
 export function isFamilyMember(user: AppUser): user is FamilyMember {
-  return user.role === "Acceso Familiar";
+  return 'residentId' in user;
 }
 
-// Permisos por rol - Actualizado con todos los módulos
+export function hasPermission(role: UserRole, permission: string): boolean {
+  if (role === "Administrador") return true;
+  
+  // Verificar permisos específicos para otros roles
+  const rolePerms = ROLE_PERMISSIONS[role] || [];
+  return rolePerms.includes(permission);
+}
+
+// ✅ Definición de permisos por rol
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  "Administrativo": [
-    "dashboard",
-    "residents",
-    "staff", 
-    "contracts",
-    "visitors",
-    "logs",
-    "reports",
-    "settings",
-    "users",
-    "daily_records", // Agregado para registro diario
-    "admin_panel"
+  "Administrador": [
+    "manage_residents",
+    "manage_staff",
+    "manage_family",
+    "view_reports",
+    "create_reports",
+    "edit_reports",
+    "delete_reports",
+    "manage_settings",
+    "view_agenda",
+    "manage_agenda",
+    "access_all_modules",
   ],
-  "Personal Asistencial": [
-    "dashboard",
-    "residents",
-    "visitors", 
-    "logs",
-    "daily_records", // Agregado para registro diario
-    "reports"
+  "Supervisor": [
+    "view_residents",
+    "view_staff",
+    "view_reports",
+    "create_reports",
+    "edit_reports",
+    "view_agenda",
+    "manage_agenda",
+  ],
+  "Personal de Cuidado": [
+    "view_residents",
+    "view_reports",
+    "create_reports",
+    "view_agenda",
   ],
   "Acceso Familiar": [
-    "dashboard",
-    "my-resident", // Vista limitada del residente relacionado
-    "visitors" // Vista limitada de visitantes
-  ]
+    "view_residents",
+    "view_reports",
+    "view_agenda",
+  ],
 };
-
-// Función para verificar permisos
-export function hasPermission(role: UserRole, permission: string): boolean {
-  return ROLE_PERMISSIONS[role].includes(permission);
-}

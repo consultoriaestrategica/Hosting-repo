@@ -1,117 +1,169 @@
-
 "use client"
-import { useEffect } from "react"
-import { usePathname } from "next/navigation"
+
+import type { ReactNode } from "react"
+import { useRouter, usePathname } from "next/navigation"
+import { LogOut, ArrowLeft, Home } from "lucide-react"
+
+import { DashboardNav } from "@/components/dashboard-nav"
 import {
   SidebarProvider,
   Sidebar,
   SidebarHeader,
   SidebarContent,
+  SidebarFooter,
   SidebarTrigger,
-  useSidebarContext,
 } from "@/components/ui/sidebar"
-import { UserNav } from "@/components/user-nav"
-import { DashboardNav } from "@/components/dashboard-nav"
-import { Home } from "lucide-react"
-import Link from "next/link"
-import { cn } from "@/lib/utils"
-import { useResidents } from "@/hooks/use-residents"
-import { useToast } from "@/hooks/use-toast"
-import { isTomorrow, parseISO } from "date-fns"
-import AuthGuard from "@/components/auth-guard"
-
-
-function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { isOpen, isMobile, setIsOpen } = useSidebarContext()
-  const { residents, isLoading: residentsLoading } = useResidents()
-  const { toast } = useToast()
-  const pathname = usePathname()
-
-  useEffect(() => {
-    if (isMobile) {
-      setIsOpen(false)
-    }
-  }, [pathname, isMobile, setIsOpen])
-
-
-  useEffect(() => {
-    if (residentsLoading) return;
-
-    const LAST_CHECK_KEY = 'agenda_notification_last_check';
-    const lastCheck = localStorage.getItem(LAST_CHECK_KEY);
-    const today = new Date().toISOString().split('T')[0];
-
-    if (lastCheck === today) {
-      return; // Already checked today
-    }
-
-    let upcomingEvents = 0;
-
-    residents.forEach(resident => {
-      resident.agendaEvents?.forEach(event => {
-        if (event.status === 'Pendiente' && isTomorrow(parseISO(event.date))) {
-            upcomingEvents++;
-            toast({
-                title: `Evento Próximo: ${resident.name}`,
-                description: `Mañana: ${event.title} a las ${new Date(event.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`,
-            });
-        }
-      });
-    });
-
-    if (upcomingEvents > 0) {
-       toast({
-          title: "Recordatorio de Agenda",
-          description: `Tienes ${upcomingEvents} evento(s) programado(s) para mañana. Revisa las agendas.`,
-          variant: "default",
-       });
-    }
-
-    localStorage.setItem(LAST_CHECK_KEY, today);
-
-  }, [residents, residentsLoading, toast]);
-
-
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar>
-        <SidebarHeader>
-          <Link href="/dashboard" className="flex items-center gap-2 font-headline text-lg font-semibold">
-            <Home className="h-6 w-6" />
-            <span className={cn("font-semibold", !isOpen && "hidden")}>HOGAR SAN JUAN</span>
-          </Link>
-        </SidebarHeader>
-        <SidebarContent>
-          <DashboardNav />
-        </SidebarContent>
-      </Sidebar>
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-          <SidebarTrigger className="md:hidden" />
-          <div className="w-full flex-1" />
-           <SidebarProvider>
-            <UserNav />
-           </SidebarProvider>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
-          {children}
-        </main>
-      </div>
-    </div>
-  )
-}
-
+import { Button } from "@/components/ui/button"
+import { useUser } from "@/hooks/use-user"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { user } = useUser()
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      router.push("/login")
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error)
+    }
+  }
+
+  const isDashboardHome = pathname === "/dashboard"
+
   return (
-     <AuthGuard>
-        <SidebarProvider>
-          <DashboardLayoutContent>{children}</DashboardLayoutContent>
-        </SidebarProvider>
-    </AuthGuard>
+    <SidebarProvider>
+      {/* Contenedor raíz: ocupa toda la pantalla y no permite scroll horizontal */}
+      <div className="min-h-screen flex w-full bg-slate-50 text-slate-900 overflow-x-hidden">
+        {/* ======= SIDEBAR ======= */}
+        <Sidebar className="border-r bg-white/90 backdrop-blur">
+          <SidebarHeader className="px-4 py-4 border-b">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold tracking-tight">
+                Hogar San Juan
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Panel de administración
+              </p>
+            </div>
+          </SidebarHeader>
+
+          <SidebarContent className="py-3">
+            <DashboardNav />
+          </SidebarContent>
+
+          {/* Footer lateral solo para la barra */}
+          <SidebarFooter className="px-4 py-3 border-t text-[11px] text-muted-foreground">
+            © {new Date().getFullYear()} Hogar San Juan
+          </SidebarFooter>
+        </Sidebar>
+
+        {/* ======= COLUMNA DERECHA ======= */}
+        <div className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">
+          {/* HEADER SUPERIOR */}
+          <header className="border-b bg-white/80 backdrop-blur">
+            <div className="mx-auto flex h-14 md:h-16 max-w-6xl w-full items-center justify-between px-4 md:px-6">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Hamburguesa SOLO en móvil */}
+                <SidebarTrigger className="-ml-1 md:hidden" />
+
+                {/* Botones de navegación: Atrás / Inicio */}
+                {!isDashboardHome && (
+                  <div className="flex items-center gap-2">
+                    {/* Atrás – solo escritorio / tablets */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hidden sm:inline-flex"
+                      onClick={() => router.back()}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span className="sr-only">Volver atrás</span>
+                    </Button>
+
+                    {/* Inicio – botón con texto en desktop */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hidden md:inline-flex"
+                      onClick={() => router.push("/dashboard")}
+                    >
+                      <Home className="h-4 w-4 mr-1" />
+                      Inicio
+                    </Button>
+
+                    {/* Inicio – solo icono en mobile */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="inline-flex md:hidden"
+                      onClick={() => router.push("/dashboard")}
+                    >
+                      <Home className="h-4 w-4" />
+                      <span className="sr-only">Ir al inicio</span>
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex flex-col min-w-0">
+                  <h1 className="text-base font-semibold leading-tight md:text-lg truncate">
+                    Bienvenido{user?.name ? `, ${user.name}` : ""}
+                  </h1>
+                  <p className="text-[11px] md:text-xs text-muted-foreground hidden sm:block truncate">
+                    Gestiona residentes, personal, contratos y agenda en un solo
+                    lugar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {user && (
+                  <div className="hidden md:flex flex-col items-end max-w-[220px]">
+                    <span className="text-sm font-medium truncate">
+                      {user.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {user.email}
+                    </span>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Cerrar sesión</span>
+                  <span className="sm:hidden">Salir</span>
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          {/* CONTENIDO PRINCIPAL */}
+          <main className="flex-1 bg-slate-50 w-full">
+            <div className="mx-auto max-w-6xl w-full px-4 md:px-6 py-4 md:py-6 pb-8">
+              {children}
+            </div>
+          </main>
+
+          {/* FOOTER GLOBAL */}
+          <footer className="border-t bg-white/90 backdrop-blur px-4 md:px-6 py-2 text-[11px] md:text-xs text-muted-foreground flex items-center justify-between w-full">
+            <span>© {new Date().getFullYear()} Hogar San Juan</span>
+            <span className="hidden sm:inline">
+              Plataforma de gestión integral del hogar.
+            </span>
+          </footer>
+        </div>
+      </div>
+    </SidebarProvider>
   )
 }

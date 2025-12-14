@@ -1,6 +1,19 @@
 "use client"
 import Link from "next/link"
-import { PlusCircle, MoreHorizontal, Search, Eye, Edit, User, Mail, Phone, Home, Briefcase, DollarSign, Calendar, FileText } from "lucide-react"
+import {
+  PlusCircle,
+  MoreHorizontal,
+  Search,
+  Eye,
+  Edit,
+  Mail,
+  Phone,
+  Home,
+  Briefcase,
+  DollarSign,
+  Calendar,
+  FileText,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -32,7 +45,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogClose,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -46,45 +58,60 @@ import NewStaffContractForm from "./[id]/new-staff-contract-form"
 function StaffPageContent() {
   const { staff, isLoading } = useStaff()
   const { contracts, isLoading: contractsLoading } = useStaffContracts()
-  const { user, role } = useUser();
+  const { role } = useUser()
   const [isClient, setIsClient] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isContractFormOpen, setIsContractFormOpen] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
-  
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isContractFormOpen, setIsContractFormOpen] = useState(false)
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
+
   useEffect(() => {
     setIsClient(true)
   }, [])
 
+  // ✅ 1) Deduplicar staff por id para evitar elementos repetidos
+  const uniqueStaff = useMemo(() => {
+    const map = new Map<string, Staff>()
+    staff.forEach((member) => {
+      if (member.id && !map.has(member.id)) {
+        map.set(member.id, member)
+      }
+    })
+    return Array.from(map.values())
+  }, [staff])
+
+  // ✅ 2) Filtro sobre la lista ya deduplicada
   const filteredStaff = useMemo(() => {
-    return staff.filter(member => 
+    return uniqueStaff.filter(
+      (member) =>
         member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [staff, searchTerm]);
-
+    )
+  }, [uniqueStaff, searchTerm])
 
   if (!isClient || isLoading || contractsLoading) {
     return <div>Cargando...</div>
   }
-  
-  const getStatusVariant = (status: string) => {
-    return status === 'Activo' ? 'default' : 'secondary';
+
+  const getStatusVariant = (isActive: boolean) => {
+    return isActive ? "default" : "secondary"
   }
 
-  const isAdminRole = role === 'admin';
-  
-  const handleActionClick = (staffMember: Staff, action: 'profile' | 'contract') => {
-    setSelectedStaff(staffMember);
-    if (action === 'profile') setIsProfileOpen(true);
-    if (action === 'contract') setIsContractFormOpen(true);
+  const isAdminRole = role === "Administrador"
+
+  const handleActionClick = (staffMember: Staff, action: "profile" | "contract") => {
+    setSelectedStaff(staffMember)
+    if (action === "profile") setIsProfileOpen(true)
+    if (action === "contract") setIsContractFormOpen(true)
   }
-  
+
   const getStaffContract = (staffId: string): StaffContract | undefined => {
-      return contracts
-            .filter(c => c.staffId === staffId)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    return contracts
+      .filter((c) => c.staffId === staffId)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0]
   }
 
   return (
@@ -92,14 +119,16 @@ function StaffPageContent() {
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Gestión de Personal</h1>
         <div className="ml-auto flex items-center gap-2">
+          {isAdminRole && (
             <Button size="sm" className="h-8 gap-1" asChild>
-                <Link href="/dashboard/staff/new">
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Agregar Personal
-                    </span>
-                </Link>
+              <Link href="/dashboard/staff/new">
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Agregar Personal
+                </span>
+              </Link>
             </Button>
+          )}
         </div>
       </div>
 
@@ -127,45 +156,66 @@ function StaffPageContent() {
         <CardContent>
           {/* Mobile View: Card List */}
           <div className="md:hidden space-y-4">
-              {filteredStaff.length > 0 ? (
-                filteredStaff.map((member) => (
-                  <div key={member.id} className="border rounded-lg p-4 flex justify-between items-start">
-                      <div className="space-y-1 flex-1">
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-sm text-muted-foreground">{member.role}</p>
-                          <Badge variant={getStatusVariant(member.status)} className={member.status === 'Activo' ? 'bg-green-500 text-white' : ''}>
-                              {member.status}
-                          </Badge>
-                      </div>
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                              <Button aria-haspopup="true" size="icon" variant="ghost" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Toggle menu</span>
-                              </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleActionClick(member, 'profile')}>
-                                  <Eye className="mr-2 h-4 w-4" /> Ver Perfil
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleActionClick(member, 'contract')}>
-                                  <FileText className="mr-2 h-4 w-4" /> Crear Contrato
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                  <Link href={`/dashboard/staff/edit/${member.id}`}>
-                                      <Edit className="mr-2 h-4 w-4" /> Editar
-                                  </Link>
-                              </DropdownMenuItem>
-                          </DropdownMenuContent>
-                      </DropdownMenu>
+            {filteredStaff.length > 0 ? (
+              filteredStaff.map((member, index) => (
+                <div
+                  key={`${member.id}-${index}`} // ✅ key segura y única
+                  className="border rounded-lg p-4 flex justify-between items-start"
+                >
+                  <div className="space-y-1 flex-1">
+                    <p className="font-medium">{member.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {member.role}
+                    </p>
+                    <Badge
+                      variant={getStatusVariant(member.isActive)}
+                      className={
+                        member.isActive ? "bg-green-500 text-white" : ""
+                      }
+                    >
+                      {member.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
                   </div>
-                ))
-              ) : (
-                 <p className="text-center text-muted-foreground py-8">No se encontraron miembros del personal.</p>
-              )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        aria-haspopup="true"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Toggle menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() => handleActionClick(member, "profile")}
+                      >
+                        <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleActionClick(member, "contract")}
+                      >
+                        <FileText className="mr-2 h-4 w-4" /> Crear Contrato
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/staff/edit/${member.id}`}>
+                          <Edit className="mr-2 h-4 w-4" /> Editar
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                No se encontraron miembros del personal.
+              </p>
+            )}
           </div>
-          
+
           {/* Desktop View: Table */}
           <div className="hidden md:block">
             <Table>
@@ -182,17 +232,26 @@ function StaffPageContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStaff.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">{member.name}</TableCell>
+                {filteredStaff.map((member, index) => (
+                  <TableRow key={`${member.id}-${index}`}>
+                    <TableCell className="font-medium">
+                      {member.name}
+                    </TableCell>
                     <TableCell>{member.role}</TableCell>
                     <TableCell>
-                      <Badge variant={getStatusVariant(member.status)} className={member.status === 'Activo' ? 'bg-green-500' : ''}>
-                          {member.status}
+                      <Badge
+                        variant={getStatusVariant(member.isActive)}
+                        className={member.isActive ? "bg-green-500" : ""}
+                      >
+                        {member.isActive ? "Activo" : "Inactivo"}
                       </Badge>
                     </TableCell>
                     <TableCell>{member.phone}</TableCell>
-                    <TableCell>{new Date(member.hireDate).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {member.hireDate
+                        ? new Date(member.hireDate).toLocaleDateString()
+                        : "N/A"}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -207,16 +266,22 @@ function StaffPageContent() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleActionClick(member, 'profile')}>
-                              <Eye className="mr-2 h-4 w-4" /> Ver Perfil
+                          <DropdownMenuItem
+                            onClick={() => handleActionClick(member, "profile")}
+                          >
+                            <Eye className="mr-2 h-4 w-4" /> Ver Perfil
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleActionClick(member, 'contract')}>
-                              <FileText className="mr-2 h-4 w-4" /> Crear Contrato
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleActionClick(member, "contract")
+                            }
+                          >
+                            <FileText className="mr-2 h-4 w-4" /> Crear Contrato
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                              <Link href={`/dashboard/staff/edit/${member.id}`}>
-                                  <Edit className="mr-2 h-4 w-4" /> Editar
-                              </Link>
+                            <Link href={`/dashboard/staff/edit/${member.id}`}>
+                              <Edit className="mr-2 h-4 w-4" /> Editar
+                            </Link>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -228,104 +293,180 @@ function StaffPageContent() {
           </div>
         </CardContent>
       </Card>
-      
+
+      {/* Dialog Perfil */}
       <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
         <DialogContent className="sm:max-w-lg">
-            {selectedStaff && (
-                <>
-                    <DialogHeader>
-                        <DialogTitle>Perfil de {selectedStaff.name}</DialogTitle>
-                        <DialogDescription>{selectedStaff.role}</DialogDescription>
-                    </DialogHeader>
-                    <Tabs defaultValue="personal">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="personal">Información Personal</TabsTrigger>
-                            <TabsTrigger value="contract">Información Contractual</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="personal">
-                           <Table className="mt-4">
-                                <TableBody>
-                                    <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground"/> Cédula</TableCell>
-                                        <TableCell>{selectedStaff.idNumber}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground"/> Correo</TableCell>
-                                        <TableCell>{selectedStaff.email}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground"/> Teléfono</TableCell>
-                                        <TableCell>{selectedStaff.phone}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><Home className="h-4 w-4 text-muted-foreground"/> Dirección</TableCell>
-                                        <TableCell>{selectedStaff.address}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                           </Table>
-                        </TabsContent>
-                        <TabsContent value="contract">
-                            <Table className="mt-4">
-                                <TableBody>
-                                     <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground"/> Salario</TableCell>
-                                        <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(getStaffContract(selectedStaff.id)?.salary || 0)}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground"/> Fecha de Inicio</TableCell>
-                                        <TableCell>{new Date(getStaffContract(selectedStaff.id)?.startDate || "").toLocaleDateString('es-ES', {dateStyle: 'long'})}</TableCell>
-                                    </TableRow>
-                                     <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground"/> Fecha de Fin</TableCell>
-                                        <TableCell>{new Date(getStaffContract(selectedStaff.id)?.endDate || "").toLocaleDateString('es-ES', {dateStyle: 'long'})}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><Briefcase className="h-4 w-4 text-muted-foreground"/> Estado Contrato</TableCell>
-                                        <TableCell><Badge variant={getStatusVariant(getStaffContract(selectedStaff.id)?.status || '')}>{getStaffContract(selectedStaff.id)?.status}</Badge></TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground"/> Documento</TableCell>
-                                        <TableCell>{getStaffContract(selectedStaff.id)?.documentName || 'N/A'}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                           </Table>
-                        </TabsContent>
-                    </Tabs>
-                    <DialogFooter className="sm:justify-between pt-4">
-                         <Button 
-                            type="button" 
-                            variant="outline"
-                            onClick={() => {
-                                const contract = getStaffContract(selectedStaff.id);
-                                if (contract?.documentUrl) {
-                                    window.open(contract.documentUrl, '_blank');
-                                }
-                            }}
-                            disabled={!getStaffContract(selectedStaff.id)?.documentUrl}
-                        >
-                           Ver Contrato
-                        </Button>
-                        <DialogClose asChild>
-                            <Button type="button">Cerrar</Button>
-                        </DialogClose>
-                    </DialogFooter>
-                </>
-            )}
+          {selectedStaff && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Perfil de {selectedStaff.name}</DialogTitle>
+                <DialogDescription>{selectedStaff.role}</DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="personal">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="personal">
+                    Información Personal
+                  </TabsTrigger>
+                  <TabsTrigger value="contract">
+                    Información Contractual
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="personal">
+                  <Table className="mt-4">
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground" />{" "}
+                          Correo
+                        </TableCell>
+                        <TableCell>{selectedStaff.email}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />{" "}
+                          Teléfono
+                        </TableCell>
+                        <TableCell>{selectedStaff.phone}</TableCell>
+                      </TableRow>
+                      {selectedStaff.position && (
+                        <TableRow>
+                          <TableCell className="font-medium flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />{" "}
+                            Posición
+                          </TableCell>
+                          <TableCell>{selectedStaff.position}</TableCell>
+                        </TableRow>
+                      )}
+                      {selectedStaff.department && (
+                        <TableRow>
+                          <TableCell className="font-medium flex items-center gap-2">
+                            <Home className="h-4 w-4 text-muted-foreground" />{" "}
+                            Departamento
+                          </TableCell>
+                          <TableCell>{selectedStaff.department}</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                <TabsContent value="contract">
+                  <Table className="mt-4">
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />{" "}
+                          Salario
+                        </TableCell>
+                        <TableCell>
+                          {new Intl.NumberFormat("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                            minimumFractionDigits: 0,
+                          }).format(
+                            getStaffContract(selectedStaff.id)?.salary || 0
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />{" "}
+                          Fecha de Inicio
+                        </TableCell>
+                        <TableCell>
+                          {getStaffContract(selectedStaff.id)?.startDate
+                            ? new Date(
+                                getStaffContract(selectedStaff.id)!.startDate
+                              ).toLocaleDateString("es-ES", {
+                                dateStyle: "long",
+                              })
+                            : "N/A"}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />{" "}
+                          Fecha de Fin
+                        </TableCell>
+                        <TableCell>
+                          {getStaffContract(selectedStaff.id)?.endDate
+                            ? new Date(
+                                getStaffContract(selectedStaff.id)!.endDate
+                              ).toLocaleDateString("es-ES", {
+                                dateStyle: "long",
+                              })
+                            : "N/A"}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-muted-foreground" />{" "}
+                          Estado Contrato
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={getStatusVariant(
+                              getStaffContract(selectedStaff.id)?.status ===
+                                "Activo"
+                            )}
+                          >
+                            {getStaffContract(selectedStaff.id)?.status ||
+                              "N/A"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />{" "}
+                          Documento
+                        </TableCell>
+                        <TableCell>
+                          {getStaffContract(selectedStaff.id)?.documentName ||
+                            "N/A"}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+              </Tabs>
+              <DialogFooter className="sm:justify-between pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const contract = getStaffContract(selectedStaff.id)
+                    if (contract?.documentUrl) {
+                      window.open(contract.documentUrl, "_blank")
+                    }
+                  }}
+                  disabled={!getStaffContract(selectedStaff.id)?.documentUrl}
+                >
+                  Ver Contrato
+                </Button>
+                <DialogClose asChild>
+                  <Button type="button">Cerrar</Button>
+                </DialogClose>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
-       <Dialog open={isContractFormOpen} onOpenChange={setIsContractFormOpen}>
+
+      {/* Dialog nuevo contrato */}
+      <Dialog open={isContractFormOpen} onOpenChange={setIsContractFormOpen}>
         <DialogContent>
           {selectedStaff && (
             <>
               <DialogHeader>
                 <DialogTitle>Crear Nuevo Contrato</DialogTitle>
                 <DialogDescription>
-                  Adjunte el documento para el nuevo contrato de {selectedStaff.name}.
+                  Adjunte el documento para el nuevo contrato de{" "}
+                  {selectedStaff.name}.
                 </DialogDescription>
               </DialogHeader>
-              <NewStaffContractForm 
-                staffMember={selectedStaff} 
-                onFormSubmit={() => setIsContractFormOpen(false)} 
+              <NewStaffContractForm
+                staffMember={selectedStaff}
+                onFormSubmit={() => setIsContractFormOpen(false)}
               />
             </>
           )}

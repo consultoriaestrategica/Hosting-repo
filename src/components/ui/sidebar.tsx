@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -8,12 +7,23 @@ import { Menu, X } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button, type ButtonProps } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+// ======================
+// Hook de estado global del sidebar
+// ======================
 
 const useSidebar = () => {
   const [isOpen, setIsOpen] = React.useState(false)
   const isMobile = useIsMobile()
 
+  // En desktop: sidebar siempre abierto
+  // En móvil: cerrado por defecto
   React.useEffect(() => {
     if (!isMobile) {
       setIsOpen(true)
@@ -21,6 +31,31 @@ const useSidebar = () => {
       setIsOpen(false)
     }
   }, [isMobile])
+
+  // Bloquea el scroll del body cuando el sidebar móvil está abierto
+  React.useEffect(() => {
+    if (isMobile && isOpen) {
+      const original = document.body.style.overflow
+      document.body.style.overflow = "hidden"
+      return () => {
+        document.body.style.overflow = original
+      }
+    }
+  }, [isMobile, isOpen])
+
+  // Cierra con tecla ESC en móvil
+  React.useEffect(() => {
+    if (!isMobile || !isOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isMobile, isOpen])
 
   return { isOpen, setIsOpen, isMobile }
 }
@@ -46,27 +81,46 @@ function useSidebarContext() {
   return context
 }
 
+// ======================
+// Componente principal Sidebar
+// ======================
+
 const Sidebar = React.forwardRef<
   HTMLElement,
   React.HTMLAttributes<HTMLElement>
 >(({ className, ...props }, ref) => {
-  const { isOpen, isMobile } = useSidebarContext()
+  const { isOpen, isMobile, setIsOpen } = useSidebarContext()
 
   return (
-    <aside
-      ref={ref}
-      className={cn(
-        "fixed left-0 top-0 z-50 flex h-screen flex-shrink-0 flex-col border-r bg-card transition-[width,transform] duration-300 ease-in-out md:relative",
-        isMobile ? "max-w-xs" : "",
-        isMobile && !isOpen ? "-translate-x-full" : "",
-        !isMobile && (isOpen ? "w-72" : "w-20"),
-        className
+    <>
+      {/* Overlay en móvil para cerrar al hacer clic fuera */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm md:hidden"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
       )}
-      {...props}
-    />
+
+      <aside
+        ref={ref}
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen flex-shrink-0 flex-col border-r bg-card transition-[width,transform] duration-300 ease-in-out md:relative",
+          isMobile ? "w-72 max-w-xs md:w-72" : "",
+          isMobile && !isOpen ? "-translate-x-full" : "",
+          !isMobile && (isOpen ? "w-72" : "w-20"),
+          className
+        )}
+        {...props}
+      />
+    </>
   )
 })
 Sidebar.displayName = "Sidebar"
+
+// ======================
+// Secciones del sidebar
+// ======================
 
 function SidebarHeader({
   className,
@@ -81,7 +135,12 @@ function SidebarHeader({
         className
       )}
     >
-      <div className={cn("flex flex-1 items-center gap-2", !isOpen && "justify-center")}>
+      <div
+        className={cn(
+          "flex flex-1 items-center gap-2",
+          !isOpen && "justify-center"
+        )}
+      >
         {isOpen ? props.children : <SidebarToggle />}
       </div>
       {isOpen && <SidebarToggle />}
@@ -116,12 +175,13 @@ function SidebarFooter({
 }
 SidebarFooter.displayName = "SidebarFooter"
 
-const sidebarMenuStyles = cva(
-  "flex flex-col text-card-foreground",
-  {
-    variants: {},
-  }
-)
+// ======================
+// Menú y botones
+// ======================
+
+const sidebarMenuStyles = cva("flex flex-col text-card-foreground", {
+  variants: {},
+})
 
 function SidebarMenu({
   className,
@@ -156,8 +216,7 @@ const sidebarMenuButtonStyles = cva(
     variants: {
       isActive: {
         true: "bg-primary text-primary-foreground",
-        false:
-          "bg-transparent hover:bg-accent hover:text-accent-foreground",
+        false: "bg-transparent hover:bg-accent hover:text-accent-foreground",
       },
     },
     defaultVariants: {
@@ -221,9 +280,14 @@ const SidebarMenuButton = React.forwardRef<
 
   return button
 })
-
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
+// ======================
+// Triggers / toggles
+// ======================
+
+// Botón que se usa fuera del sidebar (por ejemplo en el header)
+// Solo se muestra en móvil
 function SidebarTrigger({ className, ...props }: ButtonProps) {
   const { isMobile, setIsOpen } = useSidebarContext()
   if (!isMobile) return null
@@ -235,16 +299,15 @@ function SidebarTrigger({ className, ...props }: ButtonProps) {
       {...props}
     >
       <Menu />
+      <span className="sr-only">Abrir menú</span>
     </Button>
   )
 }
 SidebarTrigger.displayName = "SidebarTrigger"
 
-function SidebarToggle({
-  className,
-  ...props
-}: ButtonProps) {
-  const { isMobile, isOpen, setIsOpen } = useSidebarContext();
+// Botón que se muestra dentro del sidebar (header lateral)
+function SidebarToggle({ className, ...props }: ButtonProps) {
+  const { isMobile, isOpen, setIsOpen } = useSidebarContext()
   return (
     <Button
       variant="ghost"
@@ -260,7 +323,7 @@ function SidebarToggle({
       )}
       <span className="sr-only">Alternar menú</span>
     </Button>
-  );
+  )
 }
 
 export {
