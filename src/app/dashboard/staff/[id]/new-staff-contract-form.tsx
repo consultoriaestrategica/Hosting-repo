@@ -21,7 +21,7 @@ interface NewStaffContractFormProps {
 
 export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewStaffContractFormProps) {
   const { toast } = useToast();
-  const { addContract, isLoading } = useStaffContracts();
+  const { addStaffContract, isLoading } = useStaffContracts();
   
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -60,7 +60,7 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
             createdAt: new Date().toISOString()
         };
 
-        await addContract(newContractData);
+        await addStaffContract(newContractData);
 
         toast({ title: "¡Contrato Guardado!", description: `El nuevo contrato para ${staffMember.name} ha sido creado.` });
         onFormSubmit(); // Llama a la función del padre para cerrar el modal

@@ -1,120 +1,149 @@
 "use client"
 
-import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from './use-auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { AppUser, Staff, FamilyMember, UserRole, isStaff, isFamilyMember, hasPermission } from '@/types/user';
+import { useState, useEffect, useMemo } from "react"
+import { useAuth } from "@/hooks/use-auth"
+import { db } from "@/lib/firebase"
+import { collection, query, where, onSnapshot } from "firebase/firestore"
+import { AppUser, Staff, UserRole, ROLE_PERMISSIONS } from "@/types/user"
+
+// Mapa de permisos "abstractos" (los del menú) → permisos reales
+const PERMISSION_ALIASES: Record<string, string[]> = {
+  dashboard: ["view_agenda", "view_residents", "view_reports"],
+  residents: ["view_residents", "manage_residents"],
+  staff: ["view_staff", "manage_staff"],
+  contracts: ["manage_settings"],
+  visitors: ["view_residents"],
+  logs: ["view_reports", "create_reports", "edit_reports"],
+  reports: ["view_reports", "create_reports", "edit_reports"],
+  settings: ["manage_settings"],
+}
 
 export function useUser() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
-  const [appUser, setAppUser] = useState<AppUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user: authUser, isLoading: authLoading } = useAuth()
+  const [appUser, setAppUser] = useState<AppUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (authLoading) {
-      setIsLoading(true);
-      return;
+      setIsLoading(true)
+      return
     }
-    
-    if (authUser?.email) {
-      setIsLoading(true);
-      
-      const collectionsToSearch = ["staff", "users", "family_members"];
-      let unsubscribes: (() => void)[] = [];
-      let foundUser = false;
 
-      const createSubscriber = (collectionName: string) => {
-        const q = query(collection(db, collectionName), where("email", "==", authUser.email));
-        
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          if (foundUser || snapshot.empty) {
-            // If we already found the user in a higher priority collection, or this one is empty, do nothing
-            return;
-          }
+    if (!authUser?.email) {
+      setAppUser(null)
+      setIsLoading(false)
+      return
+    }
 
-          foundUser = true; // Mark as found to stop other subscribers from overwriting
-          
-          const doc = snapshot.docs[0];
-          const data = doc.data();
+    let unsubscribe: (() => void) | null = null
+    let cancelled = false
 
-          let user: AppUser | null = null;
-          
-          if (collectionName === "staff" || collectionName === "users") {
-            user = {
-              id: doc.id,
-              email: data.email,
-              name: data.name || data.Name,
-              role: data.role as UserRole,
-              isActive: data.isActive,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
-              phone: data.phone || "",
-              position: data.position,
-              department: data.department,
-              hireDate: data.hireDate?.toDate ? data.hireDate.toDate() : (data.hireDate ? new Date(data.hireDate) : undefined),
-              permissions: data.permissions || [],
-            } as Staff;
-          } else if (collectionName === "family_members") {
-             user = {
-                id: doc.id,
-                email: data.email,
-                name: data.name,
-                role: "Acceso Familiar",
-                isActive: data.isActive,
-                createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-                updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
-                residentId: data.residentId,
-                relationship: data.relationship,
-                emergencyContact: data.emergencyContact || false,
-                visitingHours: data.visitingHours,
-              } as FamilyMember
-          }
-          
-          setAppUser(user);
-          setIsLoading(false);
-          
-          // Unsubscribe from all listeners once we've found our user
-          unsubscribes.forEach(unsub => unsub());
+    const q = query(
+      collection(db, "staff"),
+      where("email", "==", authUser.email)
+    )
 
-        }, (error) => {
-          console.error(`Error fetching from ${collectionName}:`, error);
-          // Don't stop loading on error, let other queries try
-        });
+    unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (cancelled) return
 
-        unsubscribes.push(unsubscribe);
-      };
-      
-      collectionsToSearch.forEach(createSubscriber);
-      
-      // If no user is found after a short period, stop loading
-      const timeoutId = setTimeout(() => {
-        if (!foundUser) {
-          setIsLoading(false);
-          setAppUser(null);
+        if (snapshot.empty) {
+          setAppUser(null)
+          setIsLoading(false)
+          return
         }
-      }, 3000); // 3-second timeout
 
-      return () => {
-        clearTimeout(timeoutId);
-        unsubscribes.forEach(unsub => unsub());
-      };
+        // Si hay más de un doc con el mismo email, tomamos el primero.
+        const doc = snapshot.docs[0]
+        const data = doc.data()
 
-    } else {
-      setAppUser(null);
-      setIsLoading(false);
+        // Normalizar rol desde Firestore
+        const rawRole = (data.role || "Personal de Cuidado") as string
+        let normalizedRole: UserRole
+
+        switch (rawRole) {
+          case "Administrativo":
+            normalizedRole = "Administrador"
+            break
+          case "Personal Asistencial":
+            normalizedRole = "Personal de Cuidado"
+            break
+          default:
+            normalizedRole = rawRole as UserRole
+            break
+        }
+
+        // Permisos: si el doc no trae lista, usamos ROLE_PERMISSIONS por defecto
+        const userPermissions: string[] =
+          (Array.isArray(data.permissions) && data.permissions.length > 0
+            ? data.permissions
+            : ROLE_PERMISSIONS[normalizedRole]) || []
+
+        const user: Staff = {
+          id: doc.id,
+          email: data.email,
+          name: data.name || data.Name,
+          role: normalizedRole,
+          isActive: data.isActive ?? true,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.(),
+          phone: data.phone || "",
+          position: data.position,
+          department: data.department,
+          hireDate:
+            data.hireDate?.toDate?.() ||
+            (data.hireDate ? new Date(data.hireDate) : undefined),
+          permissions: userPermissions,
+        }
+
+        setAppUser(user)
+        setIsLoading(false)
+      },
+      (error) => {
+        console.error("useUser: error leyendo staff:", error)
+        if (!cancelled) {
+          setAppUser(null)
+          setIsLoading(false)
+        }
+      }
+    )
+
+    return () => {
+      cancelled = true
+      if (unsubscribe) unsubscribe()
     }
-  }, [authUser, authLoading]);
+  }, [authUser, authLoading])
 
-  const role = useMemo(() => appUser?.role || null, [appUser]);
+  const role = useMemo<UserRole | null>(() => {
+    return appUser?.role ?? null
+  }, [appUser])
 
-  return { 
-    user: appUser, 
-    role, 
+  const hasPermission = (permissionKey: string): boolean => {
+    if (!role) return false
+
+    // Admin todo acceso
+    if (role === "Administrador") return true
+
+    if (!appUser || !("permissions" in appUser)) return false
+
+    const userPermissions = (appUser as Staff).permissions || []
+
+    // Clave del menú → lista de permisos reales
+    const mappedPermissions = PERMISSION_ALIASES[permissionKey] || [permissionKey]
+
+    const hasAllModules = userPermissions.includes("access_all_modules")
+    const hasAnyMapped = mappedPermissions.some((p) =>
+      userPermissions.includes(p)
+    )
+
+    return hasAllModules || hasAnyMapped
+  }
+
+  return {
+    user: appUser,
+    role,
     isLoading,
-    hasPermission: (permission: string) => {
-      if (!role) return false;
-      return hasPermission(role, permission);
-    }
-  };
+    hasPermission,
+  }
 }

@@ -470,7 +470,7 @@ export default function NewContractPage() {
                           </FormControl>
                           <SelectContent>
                             {staff
-                              .filter(s => s.status === 'Activo')
+                              .filter(s => s.isActive)
                               .map(s => (
                                 <SelectItem key={s.id} value={s.id}>
                                   {s.name}

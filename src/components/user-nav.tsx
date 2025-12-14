@@ -1,87 +1,51 @@
-
 "use client"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import Link from "next/link"
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useUser } from "@/hooks/use-user"
-import { useAuth } from "@/hooks/use-auth"
-import { useSidebarContext } from "@/components/ui/sidebar"
-import { useRouter } from "next/navigation"
-import { getAuth, signOut } from "firebase/auth"
-import { cn } from "@/lib/utils"
 
 export function UserNav() {
-  const { user: appUser, role } = useUser();
-  const { user: authUser } = useAuth();
-  const router = useRouter();
+  const { user, role, isLoading } = useUser()
 
-  if (!authUser || !appUser) {
+  if (isLoading) {
     return (
-       <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>--</AvatarFallback>
-          </Avatar>
-        </Button>
+      <div className="flex items-center gap-3">
+        <div className="hidden sm:block text-right">
+          <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+          <div className="h-3 w-16 bg-muted animate-pulse rounded mt-1"></div>
+        </div>
+        <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+      </div>
     )
   }
-  
-  const handleLogout = async () => {
-    const auth = getAuth();
-    await signOut(auth);
-    router.push('/');
+
+  if (!user) {
+    return null
   }
 
+  // Obtener iniciales del nombre
   const getInitials = (name: string) => {
-    if (!name) return "--";
-    const names = name.split(' ');
-    if (names.length > 1) {
-      return `${names[0][0]}${names[names.length - 1][0]}`;
-    }
-    return name.substring(0, 2);
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(appUser.name)}`} alt={`@${appUser.email}`} />
-              <AvatarFallback>{getInitials(appUser.name)}</AvatarFallback>
-            </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{appUser.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {appUser.email}
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem>
-            Perfil
-          </DropdownMenuItem>
-           <DropdownMenuItem asChild>
-             <Link href="/dashboard/settings">Configuración</Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
-          Cerrar Sesión
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center gap-3">
+      {/* Información del usuario - visible solo en desktop */}
+      <div className="hidden sm:block text-right">
+        <p className="text-sm font-medium leading-none">{user.name}</p>
+        <p className="text-xs text-muted-foreground mt-1">{role}</p>
+      </div>
+      
+      {/* Avatar con iniciales */}
+      <Avatar className="h-10 w-10">
+        <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+          {getInitials(user.name)}
+        </AvatarFallback>
+      </Avatar>
+    </div>
   )
 }

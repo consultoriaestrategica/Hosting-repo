@@ -112,13 +112,12 @@ export default function NewStaffPage() {
         // Step 1: Create staff member
         const staffData = {
             name: data.name,
-            idNumber: data.idNumber,
-            role: data.role,
+            role: data.role as any, // El tipo de role del formulario no coincide exactamente con UserRole
             phone: data.phone,
             email: data.email,
-            address: data.address,
-            status: "Activo" as const, // Always set status to Active on creation
             hireDate: new Date(data.hireDate),
+            permissions: [], // Staff requiere permissions
+            isActive: true, // En lugar de status: 'Activo'
         }
         const newStaffMember = await addStaffMember(staffData)
 

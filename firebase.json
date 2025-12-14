@@ -1,10 +1,15 @@
 {
   "hosting": {
-    "public": "out",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
+    "site": "guardian-angel-nrxl7",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "studio-app",
+          "region": "us-central1"
+        }
+      }
     ]
   }
 }

@@ -2,58 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================================================
+   PREVENCIÓN DE SCROLL HORIZONTAL (MOBILE + DESKTOP)
+   ===================================================== */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-body), sans-serif;
 }
 
+/* =====================================================
+   VARIABLES DE TEMA (LIGHT / DARK)
+   ===================================================== */
 @layer base {
   :root {
-    --background: 210 40% 98%; /* Almost White: #F8FAFC */
+    --background: 210 40% 98%; /* #F8FAFC */
     --foreground: 222 47% 11%;
+
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 217 91% 60%; /* Calming Blue: #3B82F6 */
+
+    --primary: 217 91% 60%; /* #3B82F6 */
     --primary-foreground: 0 0% 100%;
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11%;
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215 20% 65%;
-    --accent: 173 80% 40%; /* Teal Accent: #14B8A6 */
+
+    --accent: 173 80% 40%; /* #14B8A6 */
     --accent-foreground: 0 0% 100%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 217 91% 60%;
+
     --radius: 0.5rem;
-    --chart-1: 217 91% 60%; /* Calming Blue */
-    --chart-2: 173 80% 40%; /* Teal */
-    --chart-3: 217 80% 75%; /* Lighter Blue */
-    --chart-4: 173 70% 55%; /* Lighter Teal */
-    --chart-5: 217 50% 50%; /* Darker Blue */
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 173 80% 40%;
+    --chart-3: 217 80% 75%;
+    --chart-4: 173 70% 55%;
+    --chart-5: 217 50% 50%;
   }
+
   .dark {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
+
     --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
+
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
+
     --primary: 217 91% 60%;
     --primary-foreground: 210 40% 98%;
+
     --secondary: 217 27% 17%;
     --secondary-foreground: 210 40% 98%;
+
     --muted: 217 27% 17%;
     --muted-foreground: 215 20% 65%;
+
     --accent: 173 80% 40%;
     --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+
     --border: 217 27% 17%;
     --input: 217 27% 17%;
     --ring: 217 91% 60%;
+
     --chart-1: 217 91% 60%;
     --chart-2: 173 80% 40%;
     --chart-3: 217 80% 75%;
@@ -62,11 +95,59 @@ body {
   }
 }
 
+/* =====================================================
+   BASE GLOBAL (TAILWIND)
+   ===================================================== */
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* =====================================================
+   ESTILOS PERSONALIZADOS PARA SIDEBAR
+   ===================================================== */
+
+/* Sidebar ocupa toda la altura sin generar scroll lateral */
+[data-sidebar="sidebar"] {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Scroll vertical interno del sidebar */
+[data-sidebar-content] {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Scrollbar Webkit (opcional, estético) */
+[data-sidebar-content]::-webkit-scrollbar {
+  width: 6px;
+}
+
+[data-sidebar-content]::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+[data-sidebar-content]::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+[data-sidebar-content]::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Firefox */
+[data-sidebar-content] {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }

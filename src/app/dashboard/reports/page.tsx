@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -34,6 +33,13 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 
+// 🔹 Asegúrate de que residentLogs esté incluido aquí
+type ReportKind =
+  | "general"
+  | "individual"
+  | "dateRange"
+  | "logsGeneral"
+  | "residentLogs"
 
 export default function ReportsPage() {
   const { toast } = useToast()
@@ -41,79 +47,146 @@ export default function ReportsPage() {
   const { logs, isLoading: logsLoading } = useLogs()
 
   const [selectedResidentId, setSelectedResidentId] = useState<string>("")
+  const [selectedResidentLogsId, setSelectedResidentLogsId] = useState<string>("")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [residentLogsRange, setResidentLogsRange] = useState<DateRange | undefined>()
+  const [isGenerating, setIsGenerating] = useState(false)
 
   const downloadPdf = (base64: string, fileName: string) => {
-    const linkSource = `data:application/pdf;base64,${base64}`;
-    const downloadLink = document.createElement("a");
-    downloadLink.href = linkSource;
-    downloadLink.download = fileName;
-    downloadLink.click();
+    const linkSource = `data:application/pdf;base64,${base64}`
+    const downloadLink = document.createElement("a")
+    downloadLink.href = linkSource
+    downloadLink.download = fileName
+    downloadLink.click()
   }
 
-
-  const handleGenerateReport = async (reportType: 'general' | 'individual' | 'dateRange') => {
-    setIsGenerating(true);
-    let reportInput: ReportInput | null = null;
-    let residentName: string | undefined;
+  const handleGenerateReport = async (reportType: ReportKind) => {
+    setIsGenerating(true)
+    let reportInput: ReportInput | null = null
 
     try {
-        switch(reportType) {
-            case 'general':
-                reportInput = { reportType: 'general', data: { residents } };
-                break;
-            case 'individual':
-                const resident = residents.find(r => r.id === selectedResidentId);
-                if (!resident) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Por favor seleccione un residente válido.' });
-                    setIsGenerating(false);
-                    return;
-                }
-                residentName = resident.name;
-                reportInput = { reportType: 'individual', data: { resident } };
-                break;
-            case 'dateRange':
-                if (!dateRange?.from || !dateRange?.to) {
-                     toast({ variant: 'destructive', title: 'Error', description: 'Por favor seleccione un rango de fechas válido.' });
-                     setIsGenerating(false);
-                     return;
-                }
-                const filteredLogs = logs.filter(log => {
-                    const logDate = new Date(log.endDate);
-                    return logDate >= dateRange.from! && logDate <= dateRange.to!;
-                });
-                reportInput = { reportType: 'dateRange', data: { logs: filteredLogs, range: { from: dateRange.from.toISOString(), to: dateRange.to.toISOString() } } };
-                break;
+      switch (reportType) {
+        case "general": {
+          reportInput = { reportType: "general", data: { residents } }
+          break
         }
 
-        toast({
-          title: "Generando Reporte...",
-          description: "Esto puede tardar unos segundos. Por favor espere.",
-        })
-        
-        const result = await generatePdfReport(reportInput);
-        
-        downloadPdf(result.pdfBase64, result.fileName);
-        
-        toast({
-            title: "Reporte Generado",
-            description: "El PDF se ha descargado exitosamente.",
-        });
+        case "individual": {
+          const resident = residents.find((r) => r.id === selectedResidentId)
+          if (!resident) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Por favor seleccione un residente válido.",
+            })
+            setIsGenerating(false)
+            return
+          }
+          reportInput = { reportType: "individual", data: { resident } }
+          break
+        }
 
+        case "dateRange": {
+          if (!dateRange?.from || !dateRange?.to) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Por favor seleccione un rango de fechas válido.",
+            })
+            setIsGenerating(false)
+            return
+          }
+          const filteredLogs = logs.filter((log) => {
+            const logDate = new Date(log.endDate)
+            return logDate >= dateRange.from! && logDate <= dateRange.to!
+          })
+          reportInput = {
+            reportType: "dateRange",
+            data: {
+              logs: filteredLogs,
+              range: {
+                from: dateRange.from.toISOString(),
+                to: dateRange.to.toISOString(),
+              },
+            },
+          }
+          break
+        }
+
+        case "logsGeneral": {
+          reportInput = {
+            reportType: "logsGeneral",
+            data: { logs },
+          }
+          break
+        }
+
+        case "residentLogs": {
+          const resident = residents.find((r) => r.id === selectedResidentLogsId)
+          if (!resident) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Seleccione un residente para generar el reporte de registros.",
+            })
+            setIsGenerating(false)
+            return
+          }
+
+          // Filtrar logs por residente y rango opcional
+          let filteredLogs = logs.filter((log) => log.residentId === resident.id)
+          let rangePayload: { from: string; to: string } | undefined = undefined
+
+          if (residentLogsRange?.from && residentLogsRange?.to) {
+            filteredLogs = filteredLogs.filter((log) => {
+              const d = new Date(log.endDate)
+              return d >= residentLogsRange.from! && d <= residentLogsRange.to!
+            })
+            rangePayload = {
+              from: residentLogsRange.from.toISOString(),
+              to: residentLogsRange.to.toISOString(),
+            }
+          }
+
+          reportInput = {
+            reportType: "residentLogs",
+            data: {
+              resident,
+              logs: filteredLogs,
+              range: rangePayload,
+            },
+          }
+          break
+        }
+      }
+
+      if (!reportInput) return
+
+      toast({
+        title: "Generando reporte...",
+        description: "Esto puede tardar unos segundos. Por favor espere.",
+      })
+
+      const result = await generatePdfReport(reportInput)
+      downloadPdf(result.pdfBase64, result.fileName)
+
+      toast({
+        title: "Reporte generado",
+        description: "El PDF se ha descargado exitosamente.",
+      })
     } catch (error) {
-        console.error("Failed to generate report:", error);
-        toast({
-            variant: "destructive",
-            title: "Error al Generar Reporte",
-            description: "No se pudo crear el PDF. Por favor, inténtelo de nuevo.",
-        });
+      console.error("Failed to generate report:", error)
+      toast({
+        variant: "destructive",
+        title: "Error al generar reporte",
+        description: "No se pudo crear el PDF. Por favor, inténtelo de nuevo.",
+      })
     } finally {
-        setIsGenerating(false);
+      setIsGenerating(false)
     }
   }
 
-  const isLoading = residentsLoading || logsLoading;
+  const isLoading = residentsLoading || logsLoading
 
   if (isLoading) {
     return <div>Cargando...</div>
@@ -138,12 +211,22 @@ export default function ReportsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">Este reporte no requiere parámetros adicionales.</p>
+            <p className="text-sm text-muted-foreground">
+              Este reporte no requiere parámetros adicionales.
+            </p>
           </CardContent>
           <CardFooter>
-            <Button className="w-full" onClick={() => handleGenerateReport("general")} disabled={isGenerating}>
-              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-              {isGenerating ? 'Generando...' : 'Generar PDF'}
+            <Button
+              className="w-full"
+              onClick={() => handleGenerateReport("general")}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              {isGenerating ? "Generando..." : "Generar PDF"}
             </Button>
           </CardFooter>
         </Card>
@@ -174,26 +257,30 @@ export default function ReportsPage() {
             </Select>
           </CardContent>
           <CardFooter>
-            <Button 
-                className="w-full" 
-                disabled={!selectedResidentId || isGenerating}
-                onClick={() => handleGenerateReport("individual")}
+            <Button
+              className="w-full"
+              disabled={!selectedResidentId || isGenerating}
+              onClick={() => handleGenerateReport("individual")}
             >
-              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-              {isGenerating ? 'Generando...' : 'Generar PDF'}
+              {isGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              {isGenerating ? "Generando..." : "Generar PDF"}
             </Button>
           </CardFooter>
         </Card>
-        
-        {/* Reporte de Registros por Fecha */}
+
+        {/* Registros por Rango de Fecha (todos los residentes) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-6 w-6" />
-                Reporte de Registros por Fecha
+              <CalendarIcon className="h-6 w-6" />
+              Registros por Rango de Fecha
             </CardTitle>
             <CardDescription>
-              Genera un informe con todos los registros (médicos y de suministros) dentro de un rango de fechas.
+              Todos los registros médicos y de suministros dentro de un rango de fechas.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -236,13 +323,134 @@ export default function ReportsPage() {
             </Popover>
           </CardContent>
           <CardFooter>
-             <Button 
-                className="w-full" 
-                disabled={!dateRange?.from || !dateRange?.to || isGenerating}
-                onClick={() => handleGenerateReport("dateRange")}
+            <Button
+              className="w-full"
+              disabled={!dateRange?.from || !dateRange?.to || isGenerating}
+              onClick={() => handleGenerateReport("dateRange")}
             >
-              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-              {isGenerating ? 'Generando...' : 'Generar PDF'}
+              {isGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              {isGenerating ? "Generando..." : "Generar PDF"}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* NUEVO: Reporte de registros diarios por residente */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-6 w-6" />
+              Registros diarios del residente
+            </CardTitle>
+            <CardDescription>
+              Exporta todos los registros médicos y de suministros de un residente, con rango de fechas opcional.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Select
+              onValueChange={setSelectedResidentLogsId}
+              value={selectedResidentLogsId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccione un residente..." />
+              </SelectTrigger>
+              <SelectContent>
+                {residents.map((resident) => (
+                  <SelectItem key={resident.id} value={resident.id}>
+                    {resident.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="logs-range"
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !residentLogsRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {residentLogsRange?.from ? (
+                    residentLogsRange.to ? (
+                      <>
+                        {format(residentLogsRange.from, "LLL dd, y", { locale: es })} -{" "}
+                        {format(residentLogsRange.to, "LLL dd, y", { locale: es })}
+                      </>
+                    ) : (
+                      format(residentLogsRange.from, "LLL dd, y", { locale: es })
+                    )
+                  ) : (
+                    <span>Rango opcional de fechas</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={residentLogsRange?.from}
+                  selected={residentLogsRange}
+                  onSelect={setResidentLogsRange}
+                  numberOfMonths={2}
+                  locale={es}
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+              Si no selecciona rango, se exportarán todos los registros del residente.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button
+              className="w-full"
+              disabled={!selectedResidentLogsId || isGenerating}
+              onClick={() => handleGenerateReport("residentLogs")}
+            >
+              {isGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              {isGenerating ? "Generando..." : "Generar PDF"}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Reporte General de Registros Diarios */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-6 w-6" />
+              Reporte General de Registros Diarios
+            </CardTitle>
+            <CardDescription>
+              Exporta en PDF todos los registros médicos y de suministros registrados en la base de datos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Incluye todos los registros actuales de la base de datos.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button
+              className="w-full"
+              disabled={isGenerating}
+              onClick={() => handleGenerateReport("logsGeneral")}
+            >
+              {isGenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              {isGenerating ? "Generando..." : "Generar PDF de Registros"}
             </Button>
           </CardFooter>
         </Card>

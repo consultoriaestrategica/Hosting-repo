@@ -1,0 +1,253 @@
+"use client"
+import { useStaff } from "@/hooks/use-staff";
+import { useStaffContracts } from "@/hooks/use-staff-contracts";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2, UploadCloud, File as FileIcon, X } from "lucide-react";
+
+const staffFormSchema = z.object({
+  // Staff fields
+  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
+  phone: z.string().min(7, { message: "El teléfono debe ser válido." }),
+  email: z.string().email({ message: "Correo electrónico inválido." }),
+  salary: z.coerce.number().min(0, { message: "El salario debe ser un número positivo."}),
+  hireDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de contratación inválida." }),
+
+  // Contract fields
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
+  document: z.any().optional(),
+}).refine(data => new Date(data.endDate) > new Date(data.hireDate), {
+    message: "La fecha de fin debe ser posterior a la fecha de inicio.",
+    path: ["endDate"],
+});
+
+type StaffFormValues = z.infer<typeof staffFormSchema>
+
+// ✅ Componente principal exportado
+export default function EditStaffForm({ staffId }: { staffId: string }) {
+    const { staff, updateStaffMember, isLoading: staffLoading } = useStaff();
+    const { contracts: staffContracts, updateStaffContract, isLoading: contractsLoading } = useStaffContracts();
+    const { toast } = useToast();
+    const router = useRouter();
+    const [isSaving, setIsSaving] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const isLoading = staffLoading || contractsLoading || isSaving;
+
+    const staffMember = useMemo(() => staff.find(s => s.id === staffId), [staff, staffId]);
+    const contract = useMemo(() => {
+        if (!staffMember) return null;
+        return staffContracts
+            .filter(c => c.staffId === staffMember.id)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+    }, [staffContracts, staffMember]);
+
+    const form = useForm<StaffFormValues>({
+        resolver: zodResolver(staffFormSchema),
+        defaultValues: {
+            name: "",
+            phone: "",
+            email: "",
+            salary: 0,
+            hireDate: "",
+            endDate: "",
+            document: undefined,
+        },
+    });
+
+    useEffect(() => {
+        if (staffMember && contract) {
+            form.reset({
+                name: staffMember.name || "",
+                phone: staffMember.phone || "",
+                email: staffMember.email || "",
+                hireDate: staffMember.hireDate ? new Date(staffMember.hireDate).toISOString().split('T')[0] : "",
+                endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : "",
+                salary: contract.salary || 0,
+                document: contract.documentName,
+            });
+        }
+    }, [staffMember, contract, form]);
+    
+    const documentValue = form.watch("document");
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0]) {
+          const file = event.target.files[0];
+          if (file.type !== "application/pdf") {
+              toast({ variant: "destructive", title: "Archivo inválido", description: "Por favor, suba un archivo en formato PDF." });
+              if (fileInputRef.current) fileInputRef.current.value = "";
+              form.resetField("document");
+              return;
+          }
+          form.setValue("document", file, { shouldValidate: true }); 
+        }
+    };
+
+    const removeFile = () => {
+        if(fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+        form.setValue("document", undefined, { shouldValidate: true });
+    };
+
+    const handleSaveChanges = async (data: StaffFormValues) => {
+        if (!staffMember || !contract) {
+            toast({ variant: "destructive", title: "Error", description: "No se encontraron los datos del personal o del contrato para actualizar." });
+            return;
+        }
+        setIsSaving(true);
+        
+        try {
+            // Update staff member details
+            const staffData = {
+                name: data.name,
+                phone: data.phone,
+                email: data.email,
+                hireDate: new Date(data.hireDate),
+            };
+            await updateStaffMember(staffMember.id, staffData);
+
+            // Prepare contract updates
+            const contractUpdates: any = {
+                startDate: data.hireDate,
+                endDate: data.endDate,
+                salary: data.salary,
+            };
+
+            // Check if a new file was uploaded
+            if (data.document instanceof File) {
+                const fileToUpload = data.document;
+                const storageRef = ref(storage, `contracts/staff/${staffMember.id}/${Date.now()}-${fileToUpload.name}`);
+                await uploadBytes(storageRef, fileToUpload);
+                const documentUrl = await getDownloadURL(storageRef);
+                contractUpdates.documentUrl = documentUrl;
+                contractUpdates.documentName = fileToUpload.name;
+            }
+
+            await updateStaffContract(contract.id, contractUpdates);
+
+            toast({
+                title: "Datos Actualizados",
+                description: `Los datos de ${data.name} y su contrato han sido actualizados.`,
+            });
+            router.push("/dashboard/staff");
+        } catch (error) {
+             console.error("Error updating staff and contract:", error);
+             toast({
+                variant: "destructive",
+                title: "Error al Guardar",
+                description: "No se pudieron actualizar los datos. Por favor, revise la consola.",
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    if (staffLoading || contractsLoading) {
+        return <div>Cargando...</div>;
+    }
+    
+    if (!staffMember) {
+        return <div>Personal no encontrado.</div>;
+    }
+    
+    if (!contract) {
+        return <div>Contrato no encontrado para este miembro del personal.</div>;
+    }
+
+    return (
+        <>
+            <h1 className="text-3xl font-bold font-headline mb-6">Editar Personal y Contrato</h1>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Datos de {staffMember.name}</CardTitle>
+                    <CardDescription>Actualice la información del miembro del personal y su contrato laboral.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-8">
+                             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej. Ana Pérez" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><Input placeholder="Ej. 3001234567" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input type="email" placeholder="ejemplo@email.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salario Mensual (COP)</FormLabel><FormControl><Input type="number" placeholder="2500000" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="hireDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio Contrato</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin Contrato</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+
+                             <FormField
+                                control={form.control}
+                                name="document"
+                                render={() => (
+                                    <FormItem>
+                                        <FormLabel>Documento del Contrato (PDF)</FormLabel>
+                                        {documentValue ? (
+                                            <div className="p-3 rounded-lg border bg-muted/50 flex justify-between items-center text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <FileIcon className="h-5 w-5 text-muted-foreground" />
+                                                    <span className="truncate max-w-xs">{typeof documentValue === 'string' ? documentValue : documentValue.name}</span>
+                                                </div>
+                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={removeFile}>
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <FormControl>
+                                                <label htmlFor="file-upload" className="relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-card py-6 hover:bg-muted">
+                                                    <div className=" text-center">
+                                                        <UploadCloud size={20} />
+                                                        <p className="mt-2 text-sm text-gray-500">
+                                                            <span className="font-semibold">Subir nuevo PDF</span>
+                                                        </p>
+                                                    </div>
+                                                     <Input id="file-upload" ref={fileInputRef} type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+                                                </label>
+                                            </FormControl>
+                                        )}
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" disabled={isLoading}>
+                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {isLoading ? "Guardando..." : "Guardar Cambios"}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+        </>
+    )
+}
