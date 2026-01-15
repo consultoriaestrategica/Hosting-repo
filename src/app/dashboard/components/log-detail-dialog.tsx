@@ -412,31 +412,15 @@ export default function LogDetailDialog({
 
         {/* ACCIONES */}
         <div className="flex flex-col sm:flex-row gap-2 px-6 pb-4 pt-3 border-t bg-slate-50/60">
-          {/* BOTÓN DEBUG TEMPORAL */}
-          <Button
-            variant="secondary"
-            className="w-full sm:w-auto"
-            onClick={() => {
-              alert(`Evoluciones en este log: ${evolutionEntries.length}\n\nVer consola para detalles completos`)
-              console.log("=== DEBUG LOG COMPLETO ===")
-              console.log("Log:", typedLog)
-              console.log("evolutionEntries:", typedLog.evolutionEntries)
-              console.log("evolutionNotes:", typedLog.evolutionNotes)
-              console.log("Evoluciones procesadas:", evolutionEntries)
-              console.log("=========================")
-            }}
-          >
-            🐛 Debug
-          </Button>
           <Button
             variant="outline"
-            className="w-full sm:w-auto order-2 sm:order-1"
+            className="w-full sm:w-auto"
             onClick={() => onOpenChange(false)}
           >
             Cerrar
           </Button>
           <Button
-            className="w-full sm:w-auto order-1 sm:order-2"
+            className="w-full sm:w-auto"
             onClick={handleExportPdf}
           >
             <FileText className="h-4 w-4 mr-2" />
