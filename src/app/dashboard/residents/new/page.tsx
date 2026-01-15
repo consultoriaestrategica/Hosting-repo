@@ -203,11 +203,11 @@ export default function NewResidentPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
            <Tabs defaultValue="general">
-              <TabsList className="inline-flex h-auto w-full md:grid md:grid-cols-4 overflow-x-auto">
-                  <TabsTrigger value="general" className="flex-1 whitespace-nowrap text-xs md:text-sm">Información General</TabsTrigger>
-                  <TabsTrigger value="medical" className="flex-1 whitespace-nowrap text-xs md:text-sm">Perfil Médico</TabsTrigger>
-                  <TabsTrigger value="contacts" className="flex-1 whitespace-nowrap text-xs md:text-sm">Contactos Familiares</TabsTrigger>
-                  <TabsTrigger value="documents" className="flex-1 whitespace-nowrap text-xs md:text-sm">Documentos</TabsTrigger>
+              <TabsList className="inline-flex h-auto w-full md:grid md:grid-cols-4 overflow-x-auto px-1">
+                  <TabsTrigger value="general" className="flex-1 whitespace-nowrap text-xs md:text-sm min-w-fit">Información General</TabsTrigger>
+                  <TabsTrigger value="medical" className="flex-1 whitespace-nowrap text-xs md:text-sm min-w-fit">Perfil Médico</TabsTrigger>
+                  <TabsTrigger value="contacts" className="flex-1 whitespace-nowrap text-xs md:text-sm min-w-fit">Contactos Familiares</TabsTrigger>
+                  <TabsTrigger value="documents" className="flex-1 whitespace-nowrap text-xs md:text-sm min-w-fit">Documentos</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general">
