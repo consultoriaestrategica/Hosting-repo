@@ -17,7 +17,7 @@ import {
   Image as ImageIcon,
   FileText,
 } from "lucide-react"
-import { Log } from "@/hooks/use-logs"
+import { Log, EvolutionEntry } from "@/hooks/use-logs"
 import { cn } from "@/lib/utils"
 
 interface LogDetailDialogProps {
@@ -38,6 +38,7 @@ type EvolutionBackend =
 
 type LogWithExtras = Log & {
   evolutionNotes?: EvolutionBackend[] | EvolutionBackend
+  evolutionEntries?: EvolutionEntry[]
   images?: string[]
   photoUrls?: string[]
   supplyDescription?: string
@@ -47,6 +48,14 @@ type LogWithExtras = Log & {
 type EvolutionEntryUI = {
   text: string
   time?: string
+  heartRate?: number
+  respiratoryRate?: number
+  spo2?: number
+  bloodPressureSys?: number
+  bloodPressureDia?: number
+  temperature?: number
+  professionalName?: string
+  visitType?: string
 }
 
 export default function LogDetailDialog({
@@ -77,71 +86,88 @@ export default function LogDetailDialog({
   // =========================
   //   NORMALIZAR EVOLUCIONES
   // =========================
-  const rawEvolution =
-    "evolutionNotes" in typedLog && typedLog.evolutionNotes
-      ? typedLog.evolutionNotes
-      : []
-
   let evolutionEntries: EvolutionEntryUI[] = []
 
-  if (Array.isArray(rawEvolution)) {
-    // Puede ser array de strings o de objetos
-    evolutionEntries = rawEvolution.map((item) => {
-      if (typeof item === "string") {
-        return { text: item }
-      }
-      const anyItem = item as any
-      const text = anyItem.text ?? anyItem.note ?? String(anyItem ?? "")
-      let time: string | undefined
+  // Priorizar evolutionEntries (nuevo sistema) sobre evolutionNotes (viejo)
+  if (typedLog.evolutionEntries && typedLog.evolutionEntries.length > 0) {
+    evolutionEntries = typedLog.evolutionEntries.map((entry) => ({
+      text: entry.note,
+      time: entry.createdTimeLabel,
+      heartRate: entry.heartRate,
+      respiratoryRate: entry.respiratoryRate,
+      spo2: entry.spo2,
+      bloodPressureSys: entry.bloodPressureSys,
+      bloodPressureDia: entry.bloodPressureDia,
+      temperature: entry.temperature,
+      professionalName: entry.professionalName,
+      visitType: entry.visitType,
+    }))
+  } else {
+    // Fallback al sistema viejo (evolutionNotes)
+    const rawEvolution =
+      "evolutionNotes" in typedLog && typedLog.evolutionNotes
+        ? typedLog.evolutionNotes
+        : []
 
-      const rawCreatedAt: string | Date | undefined =
-        anyItem.createdAt ?? anyItem.time
-
-      if (rawCreatedAt) {
-        const date =
-          rawCreatedAt instanceof Date
-            ? rawCreatedAt
-            : new Date(rawCreatedAt)
-        if (!isNaN(date.getTime())) {
-          time = date.toLocaleTimeString("es-ES", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+    if (Array.isArray(rawEvolution)) {
+      // Puede ser array de strings o de objetos
+      evolutionEntries = rawEvolution.map((item) => {
+        if (typeof item === "string") {
+          return { text: item }
         }
-      }
+        const anyItem = item as any
+        const text = anyItem.text ?? anyItem.note ?? String(anyItem ?? "")
+        let time: string | undefined
 
-      return { text, time }
-    })
+        const rawCreatedAt: string | Date | undefined =
+          anyItem.createdAt ?? anyItem.time
 
-    // Orden cronológico ascendente (primero la evolución más antigua)
-    evolutionEntries.sort((a, b) => {
-      if (!a.time || !b.time) return 0
-      // comparar solo por la cadena HH:mm
-      return a.time.localeCompare(b.time)
-    })
-  } else if (rawEvolution) {
-    // Un solo valor (string u objeto)
-    if (typeof rawEvolution === "string") {
-      evolutionEntries = [{ text: rawEvolution }]
-    } else {
-      const anyItem = rawEvolution as any
-      const text = anyItem.text ?? anyItem.note ?? String(anyItem ?? "")
-      let time: string | undefined
-      const rawCreatedAt: string | Date | undefined =
-        anyItem.createdAt ?? anyItem.time
-      if (rawCreatedAt) {
-        const date =
-          rawCreatedAt instanceof Date
-            ? rawCreatedAt
-            : new Date(rawCreatedAt)
-        if (!isNaN(date.getTime())) {
-          time = date.toLocaleTimeString("es-ES", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+        if (rawCreatedAt) {
+          const date =
+            rawCreatedAt instanceof Date
+              ? rawCreatedAt
+              : new Date(rawCreatedAt)
+          if (!isNaN(date.getTime())) {
+            time = date.toLocaleTimeString("es-ES", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          }
         }
+
+        return { text, time }
+      })
+
+      // Orden cronológico ascendente (primero la evolución más antigua)
+      evolutionEntries.sort((a, b) => {
+        if (!a.time || !b.time) return 0
+        // comparar solo por la cadena HH:mm
+        return a.time.localeCompare(b.time)
+      })
+    } else if (rawEvolution) {
+      // Un solo valor (string u objeto)
+      if (typeof rawEvolution === "string") {
+        evolutionEntries = [{ text: rawEvolution }]
+      } else {
+        const anyItem = rawEvolution as any
+        const text = anyItem.text ?? anyItem.note ?? String(anyItem ?? "")
+        let time: string | undefined
+        const rawCreatedAt: string | Date | undefined =
+          anyItem.createdAt ?? anyItem.time
+        if (rawCreatedAt) {
+          const date =
+            rawCreatedAt instanceof Date
+              ? rawCreatedAt
+              : new Date(rawCreatedAt)
+          if (!isNaN(date.getTime())) {
+            time = date.toLocaleTimeString("es-ES", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          }
+        }
+        evolutionEntries = [{ text, time }]
       }
-      evolutionEntries = [{ text, time }]
     }
   }
 
@@ -239,19 +265,29 @@ export default function LogDetailDialog({
             {/* BLOQUE PRINCIPAL */}
             {isMedical ? (
               <section className="mb-5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-2">
-                  <FileText className="h-4 w-4" />
-                  <span>Notas de Evolución</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <FileText className="h-4 w-4" />
+                    <span>Notas de Evolución</span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {evolutionEntries.length} {evolutionEntries.length === 1 ? 'evolución' : 'evoluciones'}
+                  </Badge>
                 </div>
 
                 {evolutionEntries.length > 0 ? (
                   <div className="space-y-3">
+                    {evolutionEntries.length > 1 && (
+                      <div className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-200">
+                        ℹ️ Este registro tiene {evolutionEntries.length} evoluciones registradas durante el día. Scroll para ver todas.
+                      </div>
+                    )}
                     {evolutionEntries.map((entry, index) => (
                       <div
                         key={index}
                         className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-sm text-slate-700"
                       >
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold text-xs text-slate-500">
                             Evolución #{index + 1}
                           </span>
@@ -261,6 +297,58 @@ export default function LogDetailDialog({
                             </span>
                           )}
                         </div>
+
+                        {/* Información del profesional */}
+                        {(entry.professionalName || entry.visitType) && (
+                          <div className="mb-2 pb-2 border-b border-slate-200">
+                            {entry.professionalName && (
+                              <p className="text-xs text-slate-600">
+                                <span className="font-medium">Profesional:</span> {entry.professionalName}
+                              </p>
+                            )}
+                            {entry.visitType && (
+                              <p className="text-xs text-slate-600">
+                                <span className="font-medium">Tipo de visita:</span> {entry.visitType}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Signos vitales */}
+                        {(entry.heartRate || entry.respiratoryRate || entry.spo2 || entry.bloodPressureSys || entry.temperature) && (
+                          <div className="mb-2 pb-2 border-b border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-1">Signos vitales:</p>
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                              {entry.heartRate && (
+                                <p className="text-xs text-slate-600">
+                                  FC: <span className="font-medium">{entry.heartRate} lpm</span>
+                                </p>
+                              )}
+                              {entry.respiratoryRate && (
+                                <p className="text-xs text-slate-600">
+                                  FR: <span className="font-medium">{entry.respiratoryRate} rpm</span>
+                                </p>
+                              )}
+                              {entry.spo2 && (
+                                <p className="text-xs text-slate-600">
+                                  SpO₂: <span className="font-medium">{entry.spo2}%</span>
+                                </p>
+                              )}
+                              {entry.temperature && (
+                                <p className="text-xs text-slate-600">
+                                  Temp: <span className="font-medium">{entry.temperature}°C</span>
+                                </p>
+                              )}
+                              {(entry.bloodPressureSys && entry.bloodPressureDia) && (
+                                <p className="text-xs text-slate-600">
+                                  PA: <span className="font-medium">{entry.bloodPressureSys}/{entry.bloodPressureDia} mmHg</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Nota de evolución */}
                         <p className="whitespace-pre-wrap leading-relaxed">
                           {entry.text}
                         </p>
@@ -324,6 +412,22 @@ export default function LogDetailDialog({
 
         {/* ACCIONES */}
         <div className="flex flex-col sm:flex-row gap-2 px-6 pb-4 pt-3 border-t bg-slate-50/60">
+          {/* BOTÓN DEBUG TEMPORAL */}
+          <Button
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => {
+              alert(`Evoluciones en este log: ${evolutionEntries.length}\n\nVer consola para detalles completos`)
+              console.log("=== DEBUG LOG COMPLETO ===")
+              console.log("Log:", typedLog)
+              console.log("evolutionEntries:", typedLog.evolutionEntries)
+              console.log("evolutionNotes:", typedLog.evolutionNotes)
+              console.log("Evoluciones procesadas:", evolutionEntries)
+              console.log("=========================")
+            }}
+          >
+            🐛 Debug
+          </Button>
           <Button
             variant="outline"
             className="w-full sm:w-auto order-2 sm:order-1"

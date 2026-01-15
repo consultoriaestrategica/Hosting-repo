@@ -8,6 +8,7 @@ import {
   addDoc,
   updateDoc,
   doc,
+  getDoc,
 } from "firebase/firestore"
 
 // ==============================
@@ -161,8 +162,13 @@ export function useResidents() {
 
   const addAgendaEvent = useCallback(
     async (residentId: string, data: Omit<AgendaEvent, "id">) => {
-      const resident = residents.find((r) => r.id === residentId)
-      if (!resident) return
+      // Obtener datos frescos de Firestore en lugar del estado
+      const residentDoc = doc(db, "residents", residentId)
+      const residentSnap = await getDoc(residentDoc)
+
+      if (!residentSnap.exists()) return
+
+      const resident = residentSnap.data() as Resident
 
       await updateResident(residentId, {
         agendaEvents: [
@@ -171,7 +177,7 @@ export function useResidents() {
         ],
       })
     },
-    [residents, updateResident]
+    [updateResident]
   )
 
   const updateAgendaEvent = useCallback(
@@ -180,8 +186,13 @@ export function useResidents() {
       eventId: string,
       partial: Partial<AgendaEvent>
     ) => {
-      const resident = residents.find((r) => r.id === residentId)
-      if (!resident) return
+      // Obtener datos frescos de Firestore en lugar del estado
+      const residentDoc = doc(db, "residents", residentId)
+      const residentSnap = await getDoc(residentDoc)
+
+      if (!residentSnap.exists()) return
+
+      const resident = residentSnap.data() as Resident
 
       const updated = (resident.agendaEvents || []).map((ev) =>
         ev.id === eventId ? { ...ev, ...partial } : ev
@@ -189,13 +200,18 @@ export function useResidents() {
 
       await updateResident(residentId, { agendaEvents: updated })
     },
-    [residents, updateResident]
+    [updateResident]
   )
 
   const deleteAgendaEvent = useCallback(
     async (residentId: string, eventId: string) => {
-      const resident = residents.find((r) => r.id === residentId)
-      if (!resident) return
+      // Obtener datos frescos de Firestore en lugar del estado
+      const residentDoc = doc(db, "residents", residentId)
+      const residentSnap = await getDoc(residentDoc)
+
+      if (!residentSnap.exists()) return
+
+      const resident = residentSnap.data() as Resident
 
       const updated = (resident.agendaEvents || []).filter(
         (ev) => ev.id !== eventId
@@ -203,13 +219,18 @@ export function useResidents() {
 
       await updateResident(residentId, { agendaEvents: updated })
     },
-    [residents, updateResident]
+    [updateResident]
   )
 
   const addVisit = useCallback(
     async (residentId: string, visitData: Omit<Visit, "id" | "visitDate">) => {
-      const resident = residents.find((r) => r.id === residentId)
-      if (!resident) return
+      // Obtener datos frescos de Firestore en lugar del estado
+      const residentDoc = doc(db, "residents", residentId)
+      const residentSnap = await getDoc(residentDoc)
+
+      if (!residentSnap.exists()) return
+
+      const resident = residentSnap.data() as Resident
 
       const updated = [
         ...(resident.visits || []),
@@ -222,7 +243,7 @@ export function useResidents() {
 
       await updateResident(residentId, { visits: updated })
     },
-    [residents, updateResident]
+    [updateResident]
   )
 
   return {
