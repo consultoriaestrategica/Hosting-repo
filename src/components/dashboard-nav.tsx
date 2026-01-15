@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Users, ClipboardList, FileText, Settings, BookUser, HardHat, Car } from "lucide-react"
+import { Home, Users, ClipboardList, FileText, Settings, HardHat, Car } from "lucide-react"
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -31,22 +31,23 @@ function DashboardNav() {
       icon: <Users className="h-5 w-5" />, 
       permission: "residents"
     },
-    { 
-      href: "/dashboard/staff", 
-      label: "Personal", 
-      icon: <HardHat className="h-5 w-5" />, 
+    {
+      href: "/dashboard/staff",
+      label: "Personal",
+      icon: <HardHat className="h-5 w-5" />,
       permission: "staff"
     },
-    { 
-      href: "/dashboard/contracts", 
-      label: "Contratos", 
-      icon: <BookUser className="h-5 w-5" />, 
-      permission: "contracts"
-    },
-    { 
-      href: "/dashboard/visitors", 
-      label: "Visitantes", 
-      icon: <Car className="h-5 w-5" />, 
+    // MÓDULO TEMPORAL: Contratos deshabilitado - descomentar cuando esté listo
+    // {
+    //   href: "/dashboard/contracts",
+    //   label: "Contratos",
+    //   icon: <BookUser className="h-5 w-5" />,
+    //   permission: "contracts"
+    // },
+    {
+      href: "/dashboard/visitors",
+      label: "Visitantes",
+      icon: <Car className="h-5 w-5" />,
       permission: "visitors"
     },
     { 
