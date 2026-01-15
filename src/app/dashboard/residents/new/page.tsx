@@ -203,11 +203,11 @@ export default function NewResidentPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
            <Tabs defaultValue="general">
-              <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="general">Información General</TabsTrigger>
-                  <TabsTrigger value="medical">Perfil Médico</TabsTrigger>
-                  <TabsTrigger value="contacts">Contactos Familiares</TabsTrigger>
-                  <TabsTrigger value="documents">Documentos</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+                  <TabsTrigger value="general" className="text-xs sm:text-sm">Información General</TabsTrigger>
+                  <TabsTrigger value="medical" className="text-xs sm:text-sm">Perfil Médico</TabsTrigger>
+                  <TabsTrigger value="contacts" className="text-xs sm:text-sm">Contactos Familiares</TabsTrigger>
+                  <TabsTrigger value="documents" className="text-xs sm:text-sm">Documentos</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general">
@@ -217,13 +217,13 @@ export default function NewResidentPage() {
                         <CardDescription>Complete los datos demográficos y administrativos.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-6">
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Fecha de Nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="idNumber" render={({ field }) => (<FormItem><FormLabel>Nº de Cédula</FormLabel><FormControl><Input placeholder="Ej. 12345678" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Género</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un género" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Femenino">Femenino</SelectItem><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="admissionDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem className="sm:col-span-2 lg:col-span-1"><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="roomNumber" render={({ field }) => (<FormItem><FormLabel>Número de Habitación</FormLabel><FormControl><Input placeholder="Ej. 101A" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Estado</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione el estado" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Activo">Activo</SelectItem><SelectItem value="Inactivo">Inactivo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
@@ -252,11 +252,13 @@ export default function NewResidentPage() {
                         <div>
                             <FormLabel>Medicamentos Recetados</FormLabel>
                             {medicationFields.map((field, index) => (
-                                <div key={field.id} className="flex items-end gap-4 mt-2 p-4 border rounded-md relative">
-                                    <FormField control={form.control} name={`medications.${index}.name`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Medicamento</FormLabel><FormControl><Input placeholder="Ej. Lisinopril" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name={`medications.${index}.dose`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Dosis</FormLabel><FormControl><Input placeholder="Ej. 20mg" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name={`medications.${index}.frequency`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Frecuencia</FormLabel><FormControl><Input placeholder="Ej. Cada 12 horas" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <Button type="button" variant="destructive" size="icon" onClick={() => removeMedication(index)}><Trash2 className="h-4 w-4" /></Button>
+                                <div key={field.id} className="mt-2 p-4 border rounded-md relative">
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-10" onClick={() => removeMedication(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pr-10">
+                                        <FormField control={form.control} name={`medications.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Medicamento</FormLabel><FormControl><Input placeholder="Ej. Lisinopril" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name={`medications.${index}.dose`} render={({ field }) => (<FormItem><FormLabel>Dosis</FormLabel><FormControl><Input placeholder="Ej. 20mg" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name={`medications.${index}.frequency`} render={({ field }) => (<FormItem><FormLabel>Frecuencia</FormLabel><FormControl><Input placeholder="Ej. Cada 12 horas" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
                                 </div>
                             ))}
                             <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendMedication({ name: "", dose: "", frequency: "" })}>
@@ -362,21 +364,21 @@ function FamilyContactFields({ form, contactIndex, removeContact }: { form: any,
 
     return (
         <div className="p-4 border rounded-md space-y-4 relative">
-            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeContact(contactIndex)}>
+            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-10" onClick={() => removeContact(contactIndex)}>
                 <Trash2 className="h-4 w-4" />
             </Button>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pr-10 sm:pr-0">
                 <FormField control={form.control} name={`familyContacts.${contactIndex}.name`} render={({ field }) => (<FormItem><FormLabel>Nombre del Contacto</FormLabel><FormControl><Input placeholder="Ej. Juan Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name={`familyContacts.${contactIndex}.kinship`} render={({ field }) => (<FormItem><FormLabel>Parentesco</FormLabel><FormControl><Input placeholder="Ej. Hijo" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name={`familyContacts.${contactIndex}.email`} render={({ field }) => (<FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input placeholder="Ej. juan.r@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
             <FormField control={form.control} name={`familyContacts.${contactIndex}.address`} render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123, Ciudad" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            
+
             <div>
                 <FormLabel>Números de Teléfono</FormLabel>
                 <div className="space-y-2 mt-2">
                     {phoneFields.map((field, phoneIndex) => (
-                        <div key={field.id} className="flex items-center gap-2">
+                        <div key={field.id} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                            <FormField
                                 control={form.control}
                                 name={`familyContacts.${contactIndex}.phones.${phoneIndex}.number`}
@@ -389,13 +391,13 @@ function FamilyContactFields({ form, contactIndex, removeContact }: { form: any,
                                     </FormItem>
                                 )}
                             />
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removePhone(phoneIndex)}>
+                            <Button type="button" variant="ghost" size="icon" className="w-full sm:w-auto" onClick={() => removePhone(phoneIndex)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                         </div>
                     ))}
                 </div>
-                 <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendPhone({ number: "" })}>
+                 <Button type="button" variant="outline" size="sm" className="mt-2 w-full sm:w-auto" onClick={() => appendPhone({ number: "" })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Agregar Teléfono
                 </Button>
             </div>
