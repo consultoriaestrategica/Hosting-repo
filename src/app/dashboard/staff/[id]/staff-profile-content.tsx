@@ -1,36 +1,33 @@
 "use client"
-import { useState, useMemo } from "react";
-import { useStaff } from "@/hooks/use-staff"; 
-import { useStaffContracts } from "@/hooks/use-staff-contracts";
-import NewStaffContractForm from "./new-staff-contract-form";
+import { useMemo } from "react";
+import { useStaff } from "@/hooks/use-staff";
+// import { useStaffContracts } from "@/hooks/use-staff-contracts"; // Deshabilitado temporalmente
+// import NewStaffContractForm from "./new-staff-contract-form"; // Deshabilitado temporalmente
 
 // Componentes de UI
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableRow, TableCell, TableHead, TableHeader } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
 // Iconos
-import { User, Mail, Phone, Briefcase, DollarSign, Calendar, PlusCircle, Eye, Building } from "lucide-react";
-import Link from "next/link";
+import { User, Mail, Phone, Briefcase, Calendar, Building } from "lucide-react";
 
 // ✅ Componente principal exportado
 export default function StaffProfilePageContent({ staffId }: { staffId: string }) {
   const { staff, isLoading: staffLoading } = useStaff();
-  const { contracts: staffContracts, isLoading: contractsLoading } = useStaffContracts();
-  const [isContractFormOpen, setIsContractFormOpen] = useState(false);
-  
-  const isLoading = staffLoading || contractsLoading;
+  // const { contracts: staffContracts, isLoading: contractsLoading } = useStaffContracts(); // Deshabilitado temporalmente
+  // const [isContractFormOpen, setIsContractFormOpen] = useState(false); // Deshabilitado temporalmente
+
+  const isLoading = staffLoading; // || contractsLoading;
 
   const staffMember = useMemo(() => staff.find(s => s.id === staffId), [staff, staffId]);
-  
-  const contracts = useMemo(() => {
-    if (!staffMember) return [];
-    return staffContracts
-        .filter(c => c.staffId === staffMember.id)
-        .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [staffContracts, staffMember]);
+
+  // const contracts = useMemo(() => {
+  //   if (!staffMember) return [];
+  //   return staffContracts
+  //       .filter(c => c.staffId === staffMember.id)
+  //       .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // }, [staffContracts, staffMember]);
 
   if (isLoading) {
     return <div className="p-8">Cargando perfil del personal...</div>;
@@ -39,10 +36,10 @@ export default function StaffProfilePageContent({ staffId }: { staffId: string }
   if (!staffMember) {
     return <div className="p-8">Personal no encontrado.</div>;
   }
-  
-  const getStatusVariant = (status: string) => {
-    return status === "Activo" ? "default" : "secondary";
-  };
+
+  // const getStatusVariant = (status: string) => {
+  //   return status === "Activo" ? "default" : "secondary";
+  // };
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -110,19 +107,21 @@ export default function StaffProfilePageContent({ staffId }: { staffId: string }
                     <TableCell>{new Date(staffMember.hireDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</TableCell>
                   </TableRow>
                 )}
-                {contracts.length > 0 && (
+                {/* TEMPORAL: Salario desde contratos deshabilitado */}
+                {/* {contracts.length > 0 && (
                   <TableRow>
                     <TableCell className="font-medium flex items-center gap-2"><DollarSign className="h-4 w-4"/> Salario Actual</TableCell>
                     <TableCell>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(contracts[0].salary)}</TableCell>
                   </TableRow>
-                )}
+                )} */}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      {/* MÓDULO TEMPORAL: Sección de contratos deshabilitada - descomentar cuando esté lista */}
+      {/* <Card>
         <CardHeader className="flex flex-row items-center">
           <div className="flex-1">
             <CardTitle>Historial de Contratos</CardTitle>
@@ -139,9 +138,9 @@ export default function StaffProfilePageContent({ staffId }: { staffId: string }
                   Complete los detalles del nuevo contrato para {staffMember.name}.
                 </DialogDescription>
               </DialogHeader>
-              <NewStaffContractForm 
-                staffMember={staffMember} 
-                onFormSubmit={() => setIsContractFormOpen(false)} 
+              <NewStaffContractForm
+                staffMember={staffMember}
+                onFormSubmit={() => setIsContractFormOpen(false)}
               />
             </DialogContent>
           </Dialog>
@@ -185,7 +184,7 @@ export default function StaffProfilePageContent({ staffId }: { staffId: string }
             </TableBody>
           </Table>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
