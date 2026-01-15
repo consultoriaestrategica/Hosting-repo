@@ -24,7 +24,7 @@ import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2, Weight } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -106,8 +106,12 @@ export default function EditResidentForm({ residentId }: { residentId: string })
     }
   });
   
+  // Usar useRef para evitar resets continuos cuando Firestore actualiza
+  const hasInitialized = React.useRef(false);
+
   useEffect(() => {
-    if (resident) {
+    // Solo inicializar una vez cuando el residente se carga por primera vez
+    if (resident && !hasInitialized.current) {
         form.reset({
             name: resident.name || "",
             dob: resident.dob || "",
@@ -128,14 +132,16 @@ export default function EditResidentForm({ residentId }: { residentId: string })
             roomNumber: resident.roomNumber || "",
             documents: resident.documents || [],
         });
-        
+
         const initialDocs = resident.documents?.reduce((acc, doc) => {
             acc[doc.type] = { name: doc.name, size: doc.size };
             return acc;
         }, {} as Record<string, { name: string, size: number }>) || {};
         setUploadedFiles(initialDocs);
+
+        hasInitialized.current = true;
     }
-  }, [resident, form]);
+  }, [resident]);
   
   const { fields: familyContactFields, append: appendFamilyContact, remove: removeFamilyContact } = useFieldArray({
     control: form.control,

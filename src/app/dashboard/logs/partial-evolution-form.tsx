@@ -68,18 +68,21 @@ export function PartialEvolutionForm({ log, onSaved }: PartialEvolutionFormProps
     try {
       await addEvolutionEntry(log.id, entry)
 
+      // Calcular el total de evoluciones de forma segura
+      const currentCount = log.reportType === "medico" && log.evolutionEntries ? log.evolutionEntries.length : 0
+
       toast({
         title: "Evolución registrada",
-        description: "Se agregó una evolución parcial al registro diario.",
+        description: `Se agregó una evolución parcial. Total de evoluciones: ${currentCount + 1}`,
       })
 
       onSaved()
     } catch (error) {
-      console.error("❌ Error al guardar evolución parcial:", error)
+      console.error("Error al guardar evolución parcial:", error)
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "No se pudo guardar la evolución parcial.",
+        title: "Error al guardar",
+        description: error instanceof Error ? error.message : "No se pudo guardar la evolución parcial.",
       })
     }
   }

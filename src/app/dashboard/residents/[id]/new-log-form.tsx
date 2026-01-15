@@ -645,13 +645,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     if (isListening) {
       recognitionRef.current?.stop()
     }
-    
-    const currentTime = new Date().toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
+
+    const currentTime = new Date().toLocaleTimeString('es-ES', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
-    
+
     const baseLogData = {
       residentId: data.residentId,
       startDate: startDateRef.current,
@@ -677,6 +677,22 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         combinedEvolutionNotes.push(structuredSummary)
       }
 
+      // Crear el evolutionEntry inicial con todos los detalles
+      const initialEvolutionEntry = {
+        id: `evo-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        createdTimeLabel: currentTime,
+        professionalName: data.professionalName,
+        visitType: data.visitType,
+        note: combinedEvolutionNotes.join("\n\n"),
+        heartRate: data.heartRate,
+        respiratoryRate: data.respiratoryRate,
+        spo2: data.spo2,
+        bloodPressureSys: data.bloodPressureSys,
+        bloodPressureDia: data.bloodPressureDia,
+        temperature: data.temperature,
+      };
+
       const medicalLogData = {
         ...baseLogData,
         notes: combinedEvolutionNotes.join("\n\n"),
@@ -685,6 +701,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         spo2: data.spo2,
         feedingType: data.feedingType,
         evolutionNotes: combinedEvolutionNotes,
+        evolutionEntries: [initialEvolutionEntry], // Nuevo campo con detalles completos
         photoEvidence: data.photoEvidence,
         visitType: data.visitType,
         professionalName: data.professionalName,

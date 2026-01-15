@@ -70,6 +70,7 @@ import Link from "next/link";
 import AlertForm from "./alert-form";
 import NewLogForm from "./new-log-form";
 import AgendaForm from "../../components/agenda-form";
+import { PartialEvolutionForm } from "../../logs/partial-evolution-form";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -91,6 +92,12 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
   const { toast } = useToast();
   const { user, role } = useUser();
 
+  // Memoizar el residente específico para evitar re-renders innecesarios
+  const resident = React.useMemo(
+    () => residents.find(r => r.id === residentId),
+    [residents, residentId]
+  );
+
   const [isClient, setIsClient] = useState(false);
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -100,12 +107,12 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
   const [isAgendaFormOpen, setIsAgendaFormOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isPartialEvolutionDialogOpen, setIsPartialEvolutionDialogOpen] = useState(false);
+  const [logForPartialEvolution, setLogForPartialEvolution] = useState<Log | null>(null);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  const resident = residents.find(r => r.id === residentId);
 
   const filteredContracts = useMemo(() => {
     return residentContracts
@@ -690,17 +697,44 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                 <div className="md:hidden space-y-4">
                   {paginatedLogs.length > 0 ? (
                     paginatedLogs.map((log) => (
-                      <div key={log.id} onClick={() => handleLogClick(log)} className="cursor-pointer border p-4 rounded-lg space-y-2">
+                      <div key={log.id} className="border p-4 rounded-lg space-y-2">
                         <div className="flex items-center justify-between">
                           <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
                             {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1.5" /> : <Truck className="h-3 w-3 mr-1.5" />}
                             {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                            {log.reportType === 'medico' && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setLogForPartialEvolution(log);
+                                      setIsPartialEvolutionDialogOpen(true);
+                                    }}
+                                  >
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Agregar Evolución
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleLogClick(log)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Ver Detalle
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground truncate">
+                        <p className="text-sm font-medium text-muted-foreground truncate cursor-pointer" onClick={() => handleLogClick(log)}>
                           {log.reportType === 'medico' ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución') : log.supplyDescription}
                         </p>
                       </div>
@@ -720,27 +754,57 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                         <TableHead>Fecha</TableHead>
                         <TableHead>Tipo de Reporte</TableHead>
                         <TableHead>Detalle Principal</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {paginatedLogs.length > 0 ? (
                         paginatedLogs.map((log) => (
-                          <TableRow key={log.id} onClick={() => handleLogClick(log)} className="cursor-pointer">
-                            <TableCell className="font-medium">{new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
-                            <TableCell>
+                          <TableRow key={log.id}>
+                            <TableCell className="font-medium cursor-pointer" onClick={() => handleLogClick(log)}>
+                              {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
+                            </TableCell>
+                            <TableCell className="cursor-pointer" onClick={() => handleLogClick(log)}>
                               <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
                                 {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
                                 {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
                               </Badge>
                             </TableCell>
-                            <TableCell className="max-w-xs truncate">
+                            <TableCell className="max-w-xs truncate cursor-pointer" onClick={() => handleLogClick(log)}>
                               {log.reportType === 'medico' ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución') : log.supplyDescription}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {log.reportType === 'medico' && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setLogForPartialEvolution(log);
+                                        setIsPartialEvolutionDialogOpen(true);
+                                      }}
+                                    >
+                                      <PlusCircle className="mr-2 h-4 w-4" />
+                                      Agregar Evolución
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleLogClick(log)}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Ver Detalle
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={3} className="h-24 text-center">
+                          <TableCell colSpan={4} className="h-24 text-center">
                             No se han encontrado registros para este residente.
                           </TableCell>
                         </TableRow>
@@ -807,6 +871,27 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
           log={selectedLog}
           residentName={resident.name}
         />
+      )}
+
+      {/* Diálogo para agregar evolución parcial */}
+      {logForPartialEvolution && (
+        <Dialog open={isPartialEvolutionDialogOpen} onOpenChange={setIsPartialEvolutionDialogOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Agregar Evolución Parcial</DialogTitle>
+              <DialogDescription>
+                Registre una nueva evolución para el reporte del {new Date(logForPartialEvolution.endDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} de {resident.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <PartialEvolutionForm
+              log={logForPartialEvolution}
+              onSaved={() => {
+                setIsPartialEvolutionDialogOpen(false);
+                setLogForPartialEvolution(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

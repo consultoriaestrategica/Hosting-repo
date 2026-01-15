@@ -93,6 +93,8 @@ export function useLogs() {
     let isMounted = true
 
     const logsColRef = collection(db, "logs")
+    // NOTA: Este listener escucha TODOS los logs. Para mejor performance en producción,
+    // considera filtrar por residentId cuando sea posible con where("residentId", "==", id)
     const q = query(logsColRef)
 
     const unsubscribe = onSnapshot(
@@ -158,11 +160,16 @@ export function useLogs() {
     async (logId: string, entry: EvolutionEntry) => {
       const ref = doc(db, "logs", logId)
 
-      await updateDoc(ref, {
-        evolutionEntries: arrayUnion(entry),
-        endDate: entry.createdAt, // actualizamos última hora de evolución
-        updatedAt: serverTimestamp(),
-      })
+      try {
+        await updateDoc(ref, {
+          evolutionEntries: arrayUnion(entry),
+          endDate: entry.createdAt,
+          updatedAt: serverTimestamp(),
+        })
+      } catch (error) {
+        console.error("Error al guardar evolución:", error)
+        throw error
+      }
     },
     []
   )
