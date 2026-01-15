@@ -92,6 +92,21 @@ interface Resident {
   notes?: string;
 }
 
+interface EvolutionEntry {
+  id: string;
+  createdAt: string;
+  createdTimeLabel: string;
+  professionalName?: string;
+  visitType?: string;
+  note: string;
+  heartRate?: number;
+  respiratoryRate?: number;
+  spo2?: number;
+  bloodPressureSys?: number;
+  bloodPressureDia?: number;
+  temperature?: number;
+}
+
 interface Log {
   reportType: 'medico' | 'suministro';
   endDate: string;
@@ -99,6 +114,7 @@ interface Log {
   respiratoryRate?: number;
   spo2?: number;
   evolutionNotes?: string | string[];
+  evolutionEntries?: EvolutionEntry[]; // Nuevo sistema de evoluciones
   supplierName?: string;
   supplyDescription?: string;
 }
@@ -301,6 +317,26 @@ function getIndividualReportHtml(resident: Resident): string {
   `;
 }
 
+// ---------- Helper para extraer notas de evolución ----------
+
+function extractEvolutionNotes(log: Log): string {
+  // Priorizar evolutionEntries (sistema nuevo) sobre evolutionNotes (sistema antiguo)
+  if (log.reportType === 'medico') {
+    if (log.evolutionEntries && log.evolutionEntries.length > 0) {
+      return log.evolutionEntries
+        .map((entry) => `${entry.createdTimeLabel || ''}: ${entry.note}`)
+        .join(' | ');
+    }
+    // Fallback al sistema antiguo
+    if (Array.isArray(log.evolutionNotes)) {
+      return log.evolutionNotes.join(' | ');
+    }
+    return log.evolutionNotes || '';
+  }
+  // Para registros de suministro
+  return `${log.supplierName || ''} ${log.supplyDescription || ''}`.trim() || 'N/A';
+}
+
 // ---------- Reportes de registros diarios (logs) ----------
 
 function getLogsReportHtml(
@@ -327,12 +363,7 @@ function getLogsReportHtml(
       const hr = log.reportType === 'medico' ? log.heartRate ?? 'N/A' : '-';
       const rr = log.reportType === 'medico' ? log.respiratoryRate ?? 'N/A' : '-';
       const spo2 = log.reportType === 'medico' ? log.spo2 ?? 'N/A' : '-';
-      const notes =
-        log.reportType === 'medico'
-          ? Array.isArray(log.evolutionNotes)
-            ? log.evolutionNotes.join(' | ')
-            : log.evolutionNotes || ''
-          : `${log.supplierName || ''} ${log.supplyDescription || ''}`.trim() || 'N/A';
+      const notes = extractEvolutionNotes(log);
 
       return `
         <tr>
@@ -417,12 +448,7 @@ function getResidentLogsReportHtml(
       const hr = log.reportType === 'medico' ? log.heartRate ?? 'N/A' : '-';
       const rr = log.reportType === 'medico' ? log.respiratoryRate ?? 'N/A' : '-';
       const spo2 = log.reportType === 'medico' ? log.spo2 ?? 'N/A' : '-';
-      const notes =
-        log.reportType === 'medico'
-          ? Array.isArray(log.evolutionNotes)
-            ? log.evolutionNotes.join(' | ')
-            : log.evolutionNotes || ''
-          : `${log.supplierName || ''} ${log.supplyDescription || ''}`.trim() || 'N/A';
+      const notes = extractEvolutionNotes(log);
 
       return `
         <tr>
