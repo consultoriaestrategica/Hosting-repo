@@ -13,40 +13,25 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Listener en tiempo real del estado de autenticación
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("🔐 AuthGuard: Estado de autenticación cambió", {
-        user: user?.email,
-        pathname,
-        isAuthenticated: !!user
-      });
-
       setIsAuthenticated(!!user);
-      
+
       if (!user && pathname !== "/") {
-        // Usuario no autenticado intentando acceder a ruta protegida
-        console.log("⚠️ AuthGuard: Redirigiendo a login - usuario no autenticado");
         router.push("/");
       } else if (user && pathname === "/") {
-        // Usuario autenticado en página de login, redirigir a dashboard
-        console.log("✅ AuthGuard: Redirigiendo a dashboard - usuario ya autenticado");
         router.push("/dashboard");
       }
-      
+
       setIsLoading(false);
     }, (error) => {
-      // Manejo de errores en la verificación de auth
-      console.error("❌ AuthGuard: Error en verificación de auth:", error);
       setIsAuthenticated(false);
       setIsLoading(false);
-      
-      // Si hay error y no estamos en login, redirigir
+
       if (pathname !== "/") {
         router.push("/");
       }
     });
 
-    // Cleanup del listener cuando el componente se desmonta
     return () => {
-      console.log("🧹 AuthGuard: Limpiando listener de auth");
       unsubscribe();
     };
   }, [router, pathname]);
@@ -73,13 +58,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Permitir acceso a la página de login sin autenticación
   if (!isAuthenticated && pathname === "/") {
-    console.log("✅ AuthGuard: Mostrando página de login");
     return <>{children}</>;
   }
 
-  // Requerir autenticación para rutas protegidas (dashboard)
   if (!isAuthenticated && pathname !== "/") {
-    console.log("⚠️ AuthGuard: Bloqueando acceso - esperando redirección");
     // No mostrar nada mientras redirige para evitar flash de contenido
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -88,7 +70,5 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Usuario autenticado, mostrar contenido protegido
-  console.log("✅ AuthGuard: Usuario autenticado, mostrando contenido");
   return <>{children}</>;
 }
