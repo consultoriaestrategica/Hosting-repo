@@ -227,6 +227,16 @@ export default function SettingsPage() {
 
       setIsUserDialogOpen(false)
       setEditingUser(null)
+
+      // FIX: Limpiar estilos residuales del Dialog de Radix
+      // Radix UI a veces no limpia pointer-events y overflow del body
+      // cuando el dialog se cierra programáticamente desde un callback async
+      setTimeout(() => {
+        document.body.style.pointerEvents = '';
+        if (document.body.style.overflow === 'hidden') {
+          document.body.style.overflow = '';
+        }
+      }, 100)
     } catch (error: any) {
       console.error("Error creating/updating user:", error)
 
@@ -540,7 +550,13 @@ export default function SettingsPage() {
       <Dialog
         open={isUserDialogOpen}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setEditingUser(null)
+          if (!isOpen) {
+            setEditingUser(null)
+            // FIX: Limpiar estilos residuales de Radix
+            setTimeout(() => {
+              document.body.style.pointerEvents = '';
+            }, 100)
+          }
           setIsUserDialogOpen(isOpen)
         }}
       >

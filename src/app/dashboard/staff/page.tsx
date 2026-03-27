@@ -294,7 +294,12 @@ function StaffPageContent() {
       </Card>
 
       {/* Dialog Perfil */}
-      <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+      <Dialog open={isProfileOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setTimeout(() => { document.body.style.pointerEvents = ''; }, 100)
+        }
+        setIsProfileOpen(isOpen)
+      }}>
         <DialogContent className="sm:max-w-lg">
           {selectedStaff && (
             <>
@@ -448,7 +453,12 @@ function StaffPageContent() {
       </Dialog>
 
       {/* Dialog nuevo contrato */}
-      <Dialog open={isContractFormOpen} onOpenChange={setIsContractFormOpen}>
+      <Dialog open={isContractFormOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setTimeout(() => { document.body.style.pointerEvents = ''; }, 100)
+        }
+        setIsContractFormOpen(isOpen)
+      }}>
         <DialogContent>
           {selectedStaff && (
             <>
