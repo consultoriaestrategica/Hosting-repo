@@ -71,7 +71,6 @@ function DashboardNav() {
   ]
 
   if (isLoading) {
-    console.log("⏳ DashboardNav: Cargando usuario...")
     return (
       <SidebarMenu>
         <SidebarMenuItem className="px-4 py-2">
@@ -82,7 +81,6 @@ function DashboardNav() {
   }
 
   if (!user) {
-    console.log("⚠️ DashboardNav: No hay usuario")
     return (
       <SidebarMenu>
         <SidebarMenuItem className="px-4 py-2">
@@ -92,14 +90,10 @@ function DashboardNav() {
     )
   }
 
-  console.log("✅ DashboardNav: Renderizando menú para:", user.email, "| Rol:", user.role)
-
   return (
     <SidebarMenu>
       {navItems.map((item) => {
         const canAccess = hasPermission(item.permission)
-        console.log(`🔑 Item: ${item.label} | Permiso: ${item.permission} | Acceso: ${canAccess}`)
-        
         return canAccess ? (
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton

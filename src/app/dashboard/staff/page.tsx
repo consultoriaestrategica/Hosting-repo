@@ -89,6 +89,14 @@ function StaffPageContent() {
     )
   }, [uniqueStaff, searchTerm])
 
+  // ✅ 3) Contrato activo del miembro seleccionado (memoizado)
+  const selectedContract = useMemo(() => {
+    if (!selectedStaff) return undefined;
+    return contracts
+      .filter((c) => c.staffId === selectedStaff.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  }, [contracts, selectedStaff]);
+
   if (!isClient || isLoading || contractsLoading) {
     return <div>Cargando...</div>
   }
@@ -103,15 +111,6 @@ function StaffPageContent() {
     setSelectedStaff(staffMember)
     if (action === "profile") setIsProfileOpen(true)
     if (action === "contract") setIsContractFormOpen(true)
-  }
-
-  const getStaffContract = (staffId: string): StaffContract | undefined => {
-    return contracts
-      .filter((c) => c.staffId === staffId)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0]
   }
 
   return (
@@ -364,7 +363,7 @@ function StaffPageContent() {
                             currency: "COP",
                             minimumFractionDigits: 0,
                           }).format(
-                            getStaffContract(selectedStaff.id)?.salary || 0
+                            selectedContract?.salary || 0
                           )}
                         </TableCell>
                       </TableRow>
@@ -374,9 +373,9 @@ function StaffPageContent() {
                           Fecha de Inicio
                         </TableCell>
                         <TableCell>
-                          {getStaffContract(selectedStaff.id)?.startDate
+                          {selectedContract?.startDate
                             ? new Date(
-                                getStaffContract(selectedStaff.id)!.startDate
+                                selectedContract.startDate
                               ).toLocaleDateString("es-ES", {
                                 dateStyle: "long",
                               })
@@ -389,9 +388,9 @@ function StaffPageContent() {
                           Fecha de Fin
                         </TableCell>
                         <TableCell>
-                          {getStaffContract(selectedStaff.id)?.endDate
+                          {selectedContract?.endDate
                             ? new Date(
-                                getStaffContract(selectedStaff.id)!.endDate
+                                selectedContract.endDate
                               ).toLocaleDateString("es-ES", {
                                 dateStyle: "long",
                               })
@@ -406,12 +405,10 @@ function StaffPageContent() {
                         <TableCell>
                           <Badge
                             variant={getStatusVariant(
-                              getStaffContract(selectedStaff.id)?.status ===
-                                "Activo"
+                              selectedContract?.status === "Activo"
                             )}
                           >
-                            {getStaffContract(selectedStaff.id)?.status ||
-                              "N/A"}
+                            {selectedContract?.status || "N/A"}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -421,8 +418,7 @@ function StaffPageContent() {
                           Documento
                         </TableCell>
                         <TableCell>
-                          {getStaffContract(selectedStaff.id)?.documentName ||
-                            "N/A"}
+                          {selectedContract?.documentName || "N/A"}
                         </TableCell>
                       </TableRow>
                     </TableBody>
@@ -434,12 +430,11 @@ function StaffPageContent() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    const contract = getStaffContract(selectedStaff.id)
-                    if (contract?.documentUrl) {
-                      window.open(contract.documentUrl, "_blank")
+                    if (selectedContract?.documentUrl) {
+                      window.open(selectedContract.documentUrl, "_blank")
                     }
                   }}
-                  disabled={!getStaffContract(selectedStaff.id)?.documentUrl}
+                  disabled={!selectedContract?.documentUrl}
                 >
                   Ver Contrato
                 </Button>
