@@ -70,7 +70,6 @@ export default function SettingsPage() {
   const { settings, setSettings, isLoading: settingsLoading } = useSettings()
   const {
     staff,
-    addStaffMember,
     updateStaffMember,
     isLoading: staffLoading,
   } = useStaff()
@@ -186,8 +185,6 @@ export default function SettingsPage() {
         // ==========================
         // 🆕 CREACIÓN DE USUARIO
         // ==========================
-        console.log("Creando nuevo usuario:", userData.email)
-
         if (!userData.password || String(userData.password).length < 6) {
           throw new Error("La contraseña debe tener al menos 6 caracteres.")
         }
@@ -198,8 +195,6 @@ export default function SettingsPage() {
           String(userData.email),
           String(userData.password)
         )
-
-        console.log("Usuario creado en Auth (secondary):", userCredential.user.uid)
 
         // 2. Definir colección según el rol interno
         const collectionName = isAdministrative ? "users" : "staff"
@@ -221,22 +216,13 @@ export default function SettingsPage() {
           uid: userCredential.user.uid,
         }
 
-        console.log(`Guardando en colección: ${collectionName}`, staffData)
-
-        const docRef = await addDoc(collection(db, collectionName), staffData)
-
-        // Opcional: actualizar estado local si tu hook lo requiere
-        addStaffMember({
-          id: docRef.id,
-          ...staffData,
-        } as any)
+        await addDoc(collection(db, collectionName), staffData)
 
         toast({
           title: "Usuario Creado",
           description: `El usuario ${userData.name} ha sido creado con cuenta de acceso.`,
         })
 
-        console.log("Usuario guardado exitosamente en la base de datos")
       }
 
       setIsUserDialogOpen(false)
