@@ -1,9 +1,9 @@
-
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export type Settings = {
   prices: {
@@ -30,41 +30,55 @@ export function useSettings() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
-    const unsubscribe = onSnapshot(settingsDocRef, (doc) => {
+    let unsubSnapshot: (() => void) | null = null;
+
+    // FIX: Esperar autenticación antes de suscribirse
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubSnapshot) {
+        unsubSnapshot();
+        unsubSnapshot = null;
+      }
+
+      if (!user) {
+        setSettingsState(initialSettings);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      unsubSnapshot = onSnapshot(settingsDocRef, (doc) => {
         if (doc.exists()) {
-            setSettingsState(doc.data() as Settings);
+          setSettingsState(doc.data() as Settings);
         } else {
-            // Document doesn't exist, so create it with initial settings
-            setDoc(settingsDocRef, initialSettings).catch(error => {
-                 console.error("Failed to initialize settings in Firestore", error);
-            });
-            setSettingsState(initialSettings);
+          setDoc(settingsDocRef, initialSettings).catch(error => {
+            console.error("Failed to initialize settings in Firestore", error);
+          });
+          setSettingsState(initialSettings);
         }
         setIsLoading(false);
-    }, (error) => {
+      }, (error) => {
         console.error("Error fetching settings from Firestore: ", error);
-        setSettingsState(initialSettings); // Fallback to initial settings on error
+        setSettingsState(initialSettings);
         setIsLoading(false);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubAuth();
+      if (unsubSnapshot) unsubSnapshot();
+    };
   }, []);
-  
+
   const setSettings = useCallback(async (newSettings: Settings | ((prev: Settings) => Settings)) => {
     const updatedSettings = typeof newSettings === 'function' ? newSettings(settings) : newSettings;
-    
-    setSettingsState(updatedSettings); // Optimistic update
+    setSettingsState(updatedSettings);
 
     try {
-        await setDoc(settingsDocRef, updatedSettings, { merge: true });
+      await setDoc(settingsDocRef, updatedSettings, { merge: true });
     } catch (error) {
-        console.error("Failed to save settings to Firestore", error);
-        // Optionally revert optimistic update or show error to user
-        // For simplicity, we'll just log the error here.
+      console.error("Failed to save settings to Firestore", error);
     }
   }, [settings]);
-
 
   return { settings, setSettings, isLoading };
 }

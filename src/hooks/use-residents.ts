@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { db } from "@/lib/firebase"
+import { db, auth } from "@/lib/firebase"
 import {
   collection,
   onSnapshot,
@@ -10,6 +10,7 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore"
+import { onAuthStateChanged } from "firebase/auth"
 
 // ==============================
 // TIPOS (sin cambios)
@@ -27,11 +28,7 @@ type FamilyContact = {
 
 type Medication = { name: string; dose: string; frequency: string }
 
-type ResidentDocument = {
-  type: string
-  name: string
-  size: number
-}
+type ResidentDocument = { type: string; name: string; size: number }
 
 export type DischargeDetails = {
   dischargeDate: string
@@ -94,44 +91,58 @@ export function useResidents() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    let isMounted = true
+    let unsubSnapshot: (() => void) | null = null
 
-    setIsLoading(true)
+    // ========================================================
+    // FIX: Esperar autenticación antes de suscribirse a
+    // Firestore. Sin esto, el onSnapshot falla con permisos
+    // insuficientes si se monta antes del login.
+    // ========================================================
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      // Limpiar suscripción anterior
+      if (unsubSnapshot) {
+        unsubSnapshot()
+        unsubSnapshot = null
+      }
 
-    const residentsColRef = collection(db, "residents")
-
-    const unsubscribe = onSnapshot(
-      residentsColRef,
-      (snapshot) => {
-        if (!isMounted) return
-
-        const data = snapshot.docs.map(
-          (docSnap) =>
-            ({
-              id: docSnap.id,
-              ...docSnap.data(),
-            } as Resident)
-        )
-
-        setResidents(data)
-        setIsLoading(false)
-      },
-      (error) => {
-        console.error("❌ useResidents: error al obtener residentes:", error)
-        if (!isMounted) return
+      if (!user) {
         setResidents([])
         setIsLoading(false)
+        return
       }
-    )
+
+      setIsLoading(true)
+      const residentsColRef = collection(db, "residents")
+
+      unsubSnapshot = onSnapshot(
+        residentsColRef,
+        (snapshot) => {
+          const data = snapshot.docs.map(
+            (docSnap) =>
+              ({
+                id: docSnap.id,
+                ...docSnap.data(),
+              } as Resident)
+          )
+          setResidents(data)
+          setIsLoading(false)
+        },
+        (error) => {
+          console.error("❌ useResidents: error al obtener residentes:", error)
+          setResidents([])
+          setIsLoading(false)
+        }
+      )
+    })
 
     return () => {
-      isMounted = false
-      unsubscribe()
+      unsubAuth()
+      if (unsubSnapshot) unsubSnapshot()
     }
   }, [])
 
   // ==============================
-  // ACCIONES
+  // ACCIONES (sin cambios)
   // ==============================
 
   const addResident = useCallback(
@@ -162,12 +173,9 @@ export function useResidents() {
 
   const addAgendaEvent = useCallback(
     async (residentId: string, data: Omit<AgendaEvent, "id">) => {
-      // Obtener datos frescos de Firestore en lugar del estado
       const residentDoc = doc(db, "residents", residentId)
       const residentSnap = await getDoc(residentDoc)
-
       if (!residentSnap.exists()) return
-
       const resident = residentSnap.data() as Resident
 
       await updateResident(residentId, {
@@ -186,18 +194,14 @@ export function useResidents() {
       eventId: string,
       partial: Partial<AgendaEvent>
     ) => {
-      // Obtener datos frescos de Firestore en lugar del estado
       const residentDoc = doc(db, "residents", residentId)
       const residentSnap = await getDoc(residentDoc)
-
       if (!residentSnap.exists()) return
-
       const resident = residentSnap.data() as Resident
 
       const updated = (resident.agendaEvents || []).map((ev) =>
         ev.id === eventId ? { ...ev, ...partial } : ev
       )
-
       await updateResident(residentId, { agendaEvents: updated })
     },
     [updateResident]
@@ -205,18 +209,14 @@ export function useResidents() {
 
   const deleteAgendaEvent = useCallback(
     async (residentId: string, eventId: string) => {
-      // Obtener datos frescos de Firestore en lugar del estado
       const residentDoc = doc(db, "residents", residentId)
       const residentSnap = await getDoc(residentDoc)
-
       if (!residentSnap.exists()) return
-
       const resident = residentSnap.data() as Resident
 
       const updated = (resident.agendaEvents || []).filter(
         (ev) => ev.id !== eventId
       )
-
       await updateResident(residentId, { agendaEvents: updated })
     },
     [updateResident]
@@ -224,12 +224,9 @@ export function useResidents() {
 
   const addVisit = useCallback(
     async (residentId: string, visitData: Omit<Visit, "id" | "visitDate">) => {
-      // Obtener datos frescos de Firestore en lugar del estado
       const residentDoc = doc(db, "residents", residentId)
       const residentSnap = await getDoc(residentDoc)
-
       if (!residentSnap.exists()) return
-
       const resident = residentSnap.data() as Resident
 
       const updated = [
@@ -240,7 +237,6 @@ export function useResidents() {
           visitDate: new Date().toISOString(),
         },
       ]
-
       await updateResident(residentId, { visits: updated })
     },
     [updateResident]

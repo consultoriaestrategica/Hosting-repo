@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { db } from "@/lib/firebase"
+import { db, auth } from "@/lib/firebase"
 import {
   collection,
   query,
@@ -11,6 +11,7 @@ import {
   doc,
   Timestamp,
 } from "firebase/firestore"
+import { onAuthStateChanged } from "firebase/auth"
 import { Staff } from "@/types/user"
 
 export function useStaff() {
@@ -21,54 +22,64 @@ export function useStaff() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    let isMounted = true
-    setIsLoading(true)
+    let unsubSnapshot: (() => void) | null = null
 
-    const staffColRef = collection(db, "staff")
-    const staffQuery = query(staffColRef)
+    // FIX: Esperar autenticación antes de suscribirse
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubSnapshot) {
+        unsubSnapshot()
+        unsubSnapshot = null
+      }
 
-    const unsubscribe = onSnapshot(
-      staffQuery,
-      (querySnapshot) => {
-        if (!isMounted) return
-
-        const staffData: Staff[] = querySnapshot.docs.map((snap) => {
-          const data = snap.data() as any
-
-          return {
-            id: snap.id,
-            ...data,
-            // Compatibilidad y normalización de tipos
-            isActive: data.isActive ?? true,
-            hireDate: data.hireDate?.toDate
-              ? data.hireDate.toDate()
-              : data.hireDate
-              ? new Date(data.hireDate)
-              : undefined,
-            createdAt: data.createdAt?.toDate
-              ? data.createdAt.toDate()
-              : new Date(),
-            updatedAt: data.updatedAt?.toDate
-              ? data.updatedAt.toDate()
-              : undefined,
-          } as Staff
-        })
-
-        setStaff(staffData)
+      if (!user) {
+        setStaff([])
         setIsLoading(false)
         setError(null)
-      },
-      (err) => {
-        console.error("❌ useStaff: error al cargar personal:", err)
-        if (!isMounted) return
-        setError("Error al cargar el personal")
-        setIsLoading(false)
+        return
       }
-    )
+
+      setIsLoading(true)
+      const staffColRef = collection(db, "staff")
+      const staffQuery = query(staffColRef)
+
+      unsubSnapshot = onSnapshot(
+        staffQuery,
+        (querySnapshot) => {
+          const staffData: Staff[] = querySnapshot.docs.map((snap) => {
+            const data = snap.data() as any
+            return {
+              id: snap.id,
+              ...data,
+              isActive: data.isActive ?? true,
+              hireDate: data.hireDate?.toDate
+                ? data.hireDate.toDate()
+                : data.hireDate
+                ? new Date(data.hireDate)
+                : undefined,
+              createdAt: data.createdAt?.toDate
+                ? data.createdAt.toDate()
+                : new Date(),
+              updatedAt: data.updatedAt?.toDate
+                ? data.updatedAt.toDate()
+                : undefined,
+            } as Staff
+          })
+
+          setStaff(staffData)
+          setIsLoading(false)
+          setError(null)
+        },
+        (err) => {
+          console.error("❌ useStaff: error al cargar personal:", err)
+          setError("Error al cargar el personal")
+          setIsLoading(false)
+        }
+      )
+    })
 
     return () => {
-      isMounted = false
-      unsubscribe()
+      unsubAuth()
+      if (unsubSnapshot) unsubSnapshot()
     }
   }, [])
 
