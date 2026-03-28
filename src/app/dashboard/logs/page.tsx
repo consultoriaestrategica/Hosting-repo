@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, Suspense } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import {
   Card,
   CardContent,
@@ -44,6 +44,22 @@ function LogsPageContent() {
   // Estado para evolución parcial
   const [isPartialDialogOpen, setIsPartialDialogOpen] = useState(false)
   const [logForPartial, setLogForPartial] = useState<Log | null>(null)
+
+  useEffect(() => {
+    if (!isNewLogDialogOpen && !isDetailDialogOpen && !isPartialDialogOpen) {
+      const cleanup = () => {
+        if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+          document.body.style.pointerEvents = '';
+          document.body.style.removeProperty('pointer-events');
+          if (document.body.style.length === 0) document.body.removeAttribute('style');
+        }
+      };
+      cleanup();
+      const t1 = setTimeout(cleanup, 150);
+      const t2 = setTimeout(cleanup, 500);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [isNewLogDialogOpen, isDetailDialogOpen, isPartialDialogOpen]);
 
   const isLoading = logsLoading || residentsLoading
 

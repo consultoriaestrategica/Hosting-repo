@@ -74,6 +74,22 @@ function ResidentsPageContent() {
     setIsClient(true)
   }, [])
 
+  useEffect(() => {
+    if (!isLogDialogOpen && !isPreviewDialogOpen && !isAgendaDialogOpen && !isAgendaFormOpen) {
+      const cleanup = () => {
+        if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+          document.body.style.pointerEvents = '';
+          document.body.style.removeProperty('pointer-events');
+          if (document.body.style.length === 0) document.body.removeAttribute('style');
+        }
+      };
+      cleanup();
+      const t1 = setTimeout(cleanup, 150);
+      const t2 = setTimeout(cleanup, 500);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [isLogDialogOpen, isPreviewDialogOpen, isAgendaDialogOpen, isAgendaFormOpen]);
+
   const filteredResidents = useMemo(() => {
     return residents.filter((resident) => {
       const nameMatch = resident.name

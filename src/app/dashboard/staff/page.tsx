@@ -69,6 +69,22 @@ function StaffPageContent() {
     setIsClient(true)
   }, [])
 
+  useEffect(() => {
+    if (!isProfileOpen && !isContractFormOpen) {
+      const cleanup = () => {
+        if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+          document.body.style.pointerEvents = '';
+          document.body.style.removeProperty('pointer-events');
+          if (document.body.style.length === 0) document.body.removeAttribute('style');
+        }
+      };
+      cleanup();
+      const t1 = setTimeout(cleanup, 150);
+      const t2 = setTimeout(cleanup, 500);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [isProfileOpen, isContractFormOpen]);
+
   // ✅ 1) Deduplicar staff por id para evitar elementos repetidos
   const uniqueStaff = useMemo(() => {
     const map = new Map<string, Staff>()
@@ -294,12 +310,7 @@ function StaffPageContent() {
       </Card>
 
       {/* Dialog Perfil */}
-      <Dialog open={isProfileOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          setTimeout(() => { document.body.style.pointerEvents = ''; }, 100)
-        }
-        setIsProfileOpen(isOpen)
-      }}>
+      <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
         <DialogContent className="sm:max-w-lg">
           {selectedStaff && (
             <>
@@ -453,12 +464,7 @@ function StaffPageContent() {
       </Dialog>
 
       {/* Dialog nuevo contrato */}
-      <Dialog open={isContractFormOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          setTimeout(() => { document.body.style.pointerEvents = ''; }, 100)
-        }
-        setIsContractFormOpen(isOpen)
-      }}>
+      <Dialog open={isContractFormOpen} onOpenChange={setIsContractFormOpen}>
         <DialogContent>
           {selectedStaff && (
             <>

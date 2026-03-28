@@ -56,7 +56,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { db } from "@/lib/firebase"
@@ -80,6 +80,38 @@ export default function SettingsPage() {
   const [syncingUser, setSyncingUser] = useState<Staff | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [isCreatingUser, setIsCreatingUser] = useState(false)
+
+  useEffect(() => {
+    if (!isUserDialogOpen) {
+      const cleanup = () => {
+        if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+          document.body.style.pointerEvents = '';
+          document.body.style.removeProperty('pointer-events');
+          if (document.body.style.length === 0) document.body.removeAttribute('style');
+        }
+      };
+      cleanup();
+      const t1 = setTimeout(cleanup, 150);
+      const t2 = setTimeout(cleanup, 500);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [isUserDialogOpen]);
+
+  useEffect(() => {
+    if (!isSyncDialogOpen) {
+      const cleanup = () => {
+        if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+          document.body.style.pointerEvents = '';
+          document.body.style.removeProperty('pointer-events');
+          if (document.body.style.length === 0) document.body.removeAttribute('style');
+        }
+      };
+      cleanup();
+      const t1 = setTimeout(cleanup, 150);
+      const t2 = setTimeout(cleanup, 500);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [isSyncDialogOpen]);
 
   // 🔁 Mapea los valores del Select a los roles internos del sistema
   const mapRoleFromForm = (rawRole: string): UserRole => {
@@ -227,16 +259,6 @@ export default function SettingsPage() {
 
       setIsUserDialogOpen(false)
       setEditingUser(null)
-
-      // FIX: Limpiar estilos residuales del Dialog de Radix
-      // Radix UI a veces no limpia pointer-events y overflow del body
-      // cuando el dialog se cierra programáticamente desde un callback async
-      setTimeout(() => {
-        document.body.style.pointerEvents = '';
-        if (document.body.style.overflow === 'hidden') {
-          document.body.style.overflow = '';
-        }
-      }, 100)
     } catch (error: any) {
       console.error("Error creating/updating user:", error)
 
@@ -550,13 +572,7 @@ export default function SettingsPage() {
       <Dialog
         open={isUserDialogOpen}
         onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setEditingUser(null)
-            // FIX: Limpiar estilos residuales de Radix
-            setTimeout(() => {
-              document.body.style.pointerEvents = '';
-            }, 100)
-          }
+          if (!isOpen) setEditingUser(null)
           setIsUserDialogOpen(isOpen)
         }}
       >

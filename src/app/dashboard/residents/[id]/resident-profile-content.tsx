@@ -114,6 +114,22 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
     setIsClient(true);
   }, []);
 
+  useEffect(() => {
+    if (!isDetailDialogOpen && !isDischargeDialogOpen && !isAlertDialogOpen && !isNewLogDialogOpen && !isAgendaFormOpen && !isPartialEvolutionDialogOpen) {
+      const cleanup = () => {
+        if (!document.querySelector('[data-state="open"][role="dialog"]')) {
+          document.body.style.pointerEvents = '';
+          document.body.style.removeProperty('pointer-events');
+          if (document.body.style.length === 0) document.body.removeAttribute('style');
+        }
+      };
+      cleanup();
+      const t1 = setTimeout(cleanup, 150);
+      const t2 = setTimeout(cleanup, 500);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [isDetailDialogOpen, isDischargeDialogOpen, isAlertDialogOpen, isNewLogDialogOpen, isAgendaFormOpen, isPartialEvolutionDialogOpen]);
+
   const filteredContracts = useMemo(() => {
     return residentContracts
       .filter(c => c.residentId === residentId)
