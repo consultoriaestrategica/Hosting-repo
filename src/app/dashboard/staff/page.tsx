@@ -55,6 +55,14 @@ import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import NewStaffContractForm from "./[id]/new-staff-contract-form"
 
+function formatName(name: string): string {
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 function StaffPageContent() {
   const { staff, isLoading } = useStaff()
   const { contracts, isLoading: contractsLoading } = useStaffContracts()
@@ -178,7 +186,7 @@ function StaffPageContent() {
                   className="border rounded-lg p-4 flex justify-between items-start"
                 >
                   <div className="space-y-1 flex-1">
-                    <p className="font-medium">{member.name}</p>
+                    <p className="font-medium">{formatName(member.name)}</p>
                     <p className="text-sm text-muted-foreground">
                       {member.role}
                     </p>
@@ -250,7 +258,7 @@ function StaffPageContent() {
                 {filteredStaff.map((member, index) => (
                   <TableRow key={`${member.id}-${index}`}>
                     <TableCell className="font-medium">
-                      {member.name}
+                      {formatName(member.name)}
                     </TableCell>
                     <TableCell>{member.role}</TableCell>
                     <TableCell>

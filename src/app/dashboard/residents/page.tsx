@@ -53,6 +53,14 @@ import ResidentPreviewDialog from "./resident-preview-dialog"
 import AgendaPreviewDialog from "../components/agenda-preview-dialog"
 import AgendaForm from "../components/agenda-form"
 
+function formatName(name: string): string {
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 const ITEMS_PER_PAGE = 8
 
 function ResidentsPageContent() {
@@ -307,22 +315,50 @@ END:VCALENDAR`
           </div>
         </CardHeader>
         <CardContent>
-          {/* Wrapper para scroll horizontal en móviles */}
-          <div className="w-full overflow-x-auto">
-            <Table className="min-w-[720px]">
+          {/* Vista Mobile (tarjetas) */}
+          <div className="md:hidden space-y-4">
+            {filteredResidents.length > 0 ? (
+              filteredResidents.map((resident) => (
+                <div key={resident.id} className="border rounded-xl p-4 space-y-3 bg-white shadow-sm">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/dashboard/residents/${resident.id}/`} className="font-semibold text-base hover:underline">
+                        {formatName(resident.name)}
+                      </Link>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {resident.roomType} {resident.roomNumber ? `#${resident.roomNumber}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>
+                      {resident.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                    <span>Ingreso: {new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
+                    <Badge variant="outline">{resident.dependency}</Badge>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/dashboard/residents/${resident.id}/`}>Ver perfil</Link>
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No se encontraron residentes.</p>
+            )}
+          </div>
+
+          {/* Vista Desktop (tabla) */}
+          <div className="hidden md:block">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    Habitación
-                  </TableHead>
+                  <TableHead>Habitación</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    F. de Ingreso
-                  </TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    Nivel de Dependencia
-                  </TableHead>
+                  <TableHead>F. de Ingreso</TableHead>
+                  <TableHead>Nivel de Dependencia</TableHead>
                   <TableHead>
                     <span className="sr-only">Acciones</span>
                   </TableHead>
@@ -336,10 +372,10 @@ END:VCALENDAR`
                         href={`/dashboard/residents/${resident.id}`}
                         className="hover:underline"
                       >
-                        {resident.name}
+                        {formatName(resident.name)}
                       </Link>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
                       <Badge
                         variant={
                           resident.roomType === "Habitación individual"
@@ -364,10 +400,10 @@ END:VCALENDAR`
                         {resident.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {resident.admissionDate}
+                    <TableCell>
+                      {new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
                       <Badge
                         variant={
                           resident.dependency === "Dependiente"

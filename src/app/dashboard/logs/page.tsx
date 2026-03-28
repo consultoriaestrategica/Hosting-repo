@@ -184,10 +184,11 @@ function LogsPageContent() {
 
                   <p className="text-sm text-muted-foreground pt-2 border-t line-clamp-2">
                     {log.reportType === "medico"
-                      ? Array.isArray(log.evolutionNotes) &&
-                        log.evolutionNotes.length > 0
-                        ? log.evolutionNotes[0]
-                        : "Sin notas de evolución"
+                      ? ((log as any).evolutionEntries && (log as any).evolutionEntries.length > 0
+                        ? (log as any).evolutionEntries[0].note
+                        : (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0
+                          ? log.evolutionNotes[0]
+                          : "Sin notas de evolución"))
                       : log.supplyDescription}
                   </p>
 
@@ -280,10 +281,11 @@ function LogsPageContent() {
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
                         {log.reportType === "medico"
-                          ? Array.isArray(log.evolutionNotes) &&
-                            log.evolutionNotes.length > 0
-                            ? log.evolutionNotes[0]
-                            : "Sin notas de evolución"
+                          ? ((log as any).evolutionEntries && (log as any).evolutionEntries.length > 0
+                            ? (log as any).evolutionEntries[0].note
+                            : (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0
+                              ? log.evolutionNotes[0]
+                              : "Sin notas de evolución"))
                           : log.supplyDescription}
                       </TableCell>
                       <TableCell className="text-right">

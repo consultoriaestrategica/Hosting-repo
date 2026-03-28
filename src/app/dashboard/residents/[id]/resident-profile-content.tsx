@@ -350,7 +350,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                       <InfoRow label="Nombre Completo" value={resident.name} />
                       <InfoRow label="Fecha de Nacimiento" value={`${resident.dob} (${resident.age} años)`} />
                       <InfoRow label="Cédula" value={resident.idNumber} />
-                      <InfoRow label="Tipo de Sangre" value={<Badge variant="outline">{resident.bloodType || 'N/A'}</Badge>} />
+                      <InfoRow label="Tipo de Sangre" value={resident.bloodType ? <Badge variant="outline">{resident.bloodType}</Badge> : <span className="text-muted-foreground text-sm">No registrado</span>} />
                     </TableBody>
                   </Table>
                 </CardContent>
