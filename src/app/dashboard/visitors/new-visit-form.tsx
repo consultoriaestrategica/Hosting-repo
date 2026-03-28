@@ -97,7 +97,29 @@ export default function NewVisitForm({ onFormSubmit }: NewVisitFormProps) {
                  <FormField control={form.control} name="visitorName" render={({ field }) => (<FormItem><FormLabel>Nombre del Visitante</FormLabel><FormControl><Input placeholder="Ej. Juan Pérez" {...field} /></FormControl><FormMessage /></FormItem>)} />
                  <FormField control={form.control} name="visitorIdNumber" render={({ field }) => (<FormItem><FormLabel>Cédula del Visitante</FormLabel><FormControl><Input placeholder="Ej. 11223344" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
-            <FormField control={form.control} name="kinship" render={({ field }) => (<FormItem><FormLabel>Parentesco</FormLabel><FormControl><Input placeholder="Ej. Hijo, Nieta, Amigo" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="kinship" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Parentesco</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione parentesco" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Hijo/a">Hijo/a</SelectItem>
+                    <SelectItem value="Esposo/a">Esposo/a</SelectItem>
+                    <SelectItem value="Hermano/a">Hermano/a</SelectItem>
+                    <SelectItem value="Nieto/a">Nieto/a</SelectItem>
+                    <SelectItem value="Sobrino/a">Sobrino/a</SelectItem>
+                    <SelectItem value="Amigo/a">Amigo/a</SelectItem>
+                    <SelectItem value="Profesional de salud">Profesional de salud</SelectItem>
+                    <SelectItem value="Otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
             <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Observaciones (Opcional)</FormLabel><FormControl><Textarea placeholder="Observaciones sobre la visita..." {...field} /></FormControl><FormMessage /></FormItem>)} />
         </div>
         <DialogFooter>

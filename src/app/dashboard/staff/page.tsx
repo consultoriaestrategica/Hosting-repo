@@ -122,7 +122,22 @@ function StaffPageContent() {
   }, [contracts, selectedStaff]);
 
   if (!isClient || isLoading || contractsLoading) {
-    return <div>Cargando...</div>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+          </div>
+          <div className="h-9 w-40 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   const getStatusVariant = (isActive: boolean) => {
@@ -208,7 +223,7 @@ function StaffPageContent() {
                         className="h-8 w-8"
                       >
                         <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
+                        <span className="sr-only">Abrir menú</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -284,7 +299,7 @@ function StaffPageContent() {
                             variant="ghost"
                           >
                             <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
+                            <span className="sr-only">Abrir menú</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">

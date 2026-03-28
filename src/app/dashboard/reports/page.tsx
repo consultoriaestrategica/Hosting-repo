@@ -198,7 +198,8 @@ export default function ReportsPage() {
         <h1 className="text-3xl font-bold font-headline">Generador de Reportes</h1>
       </div>
 
-      <div className="grid gap-6 mt-6 md:grid-cols-2 lg:grid-cols-3">
+      <h2 className="text-lg font-semibold mt-4 mb-2">Reportes de Residentes</h2>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Reporte General de Residentes */}
         <Card>
           <CardHeader>
@@ -272,6 +273,9 @@ export default function ReportsPage() {
           </CardFooter>
         </Card>
 
+      </div>
+      <h2 className="text-lg font-semibold mt-6 mb-2">Reportes de Registros Diarios</h2>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Registros por Rango de Fecha (todos los residentes) */}
         <Card>
           <CardHeader>

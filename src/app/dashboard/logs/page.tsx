@@ -34,6 +34,20 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { PartialEvolutionForm } from "./partial-evolution-form"
 
+function getLogPreview(log: Log): string {
+  if (log.reportType !== "medico") return (log as any).supplyDescription || ""
+  const entries = (log as any).evolutionEntries
+  if (entries && entries.length > 0) {
+    const text = entries[0].note || ""
+    return text.length > 100 ? text.substring(0, 100) + "..." : text
+  }
+  if (Array.isArray((log as any).evolutionNotes) && (log as any).evolutionNotes.length > 0) {
+    const text = (log as any).evolutionNotes[0]
+    return typeof text === "string" ? (text.length > 100 ? text.substring(0, 100) + "..." : text) : "Sin notas"
+  }
+  return "Sin notas de evolución"
+}
+
 function LogsPageContent() {
   const { logs, isLoading: logsLoading } = useLogs()
   const { residents, isLoading: residentsLoading } = useResidents()
@@ -88,7 +102,22 @@ function LogsPageContent() {
   }
 
   if (isLoading) {
-    return <div>Cargando registros...</div>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+          </div>
+          <div className="h-9 w-40 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -183,13 +212,7 @@ function LogsPageContent() {
                   </div>
 
                   <p className="text-sm text-muted-foreground pt-2 border-t line-clamp-2">
-                    {log.reportType === "medico"
-                      ? ((log as any).evolutionEntries && (log as any).evolutionEntries.length > 0
-                        ? (log as any).evolutionEntries[0].note
-                        : (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0
-                          ? log.evolutionNotes[0]
-                          : "Sin notas de evolución"))
-                      : log.supplyDescription}
+                    {getLogPreview(log)}
                   </p>
 
                   <div className="flex justify-end gap-2 pt-2">
@@ -280,13 +303,7 @@ function LogsPageContent() {
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
-                        {log.reportType === "medico"
-                          ? ((log as any).evolutionEntries && (log as any).evolutionEntries.length > 0
-                            ? (log as any).evolutionEntries[0].note
-                            : (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0
-                              ? log.evolutionNotes[0]
-                              : "Sin notas de evolución"))
-                          : log.supplyDescription}
+                        {getLogPreview(log)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

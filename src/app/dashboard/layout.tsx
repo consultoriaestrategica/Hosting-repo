@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { LogOut, ArrowLeft, Home } from "lucide-react"
 
@@ -14,6 +15,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
@@ -26,6 +36,7 @@ export default function DashboardLayout({
   const router = useRouter()
   const pathname = usePathname()
   const { user } = useUser()
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -138,7 +149,7 @@ export default function DashboardLayout({
                   variant="outline"
                   size="sm"
                   className="gap-2"
-                  onClick={handleLogout}
+                  onClick={() => setIsLogoutDialogOpen(true)}
                 >
                   <LogOut className="h-4 w-4" />
                   <span className="hidden sm:inline">Cerrar sesión</span>
@@ -164,6 +175,20 @@ export default function DashboardLayout({
           </footer>
         </div>
       </div>
+      <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cerrar sesión</DialogTitle>
+            <DialogDescription>¿Está seguro que desea cerrar sesión? Deberá iniciar sesión nuevamente para acceder al sistema.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={handleLogout}>Cerrar sesión</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 }

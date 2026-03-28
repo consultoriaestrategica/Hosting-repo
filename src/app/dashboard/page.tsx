@@ -5,6 +5,9 @@ import { CalendarDays, FileText, Users, UserCircle2 } from "lucide-react"
 
 import  AuthGuard  from "@/components/auth-guard"
 import { useUser } from "@/hooks/use-user"
+import { useResidents } from "@/hooks/use-residents"
+import { useLogs } from "@/hooks/use-logs"
+import { useStaff } from "@/hooks/use-staff"
 import {
   Card,
   CardHeader,
@@ -16,6 +19,17 @@ import { Button } from "@/components/ui/button"
 
 export default function DashboardHomePage() {
   const { user } = useUser()
+  const { residents } = useResidents()
+  const { logs } = useLogs()
+  const { staff } = useStaff()
+
+  const activeResidents = residents.filter(r => r.status === "Activo").length
+  const totalResidents = residents.length
+  const totalStaff = staff.length
+  const todayLogs = logs.filter(l => {
+    const logDate = new Date(l.endDate).toDateString()
+    return logDate === new Date().toDateString()
+  }).length
 
   return (
     <AuthGuard>
@@ -29,6 +43,50 @@ export default function DashboardHomePage() {
             Desde aquí puedes gestionar residentes, personal, contratos y
             registros diarios del hogar.
           </p>
+        </section>
+
+        {/* KPIs */}
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Residentes Activos</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeResidents}</div>
+              <p className="text-xs text-muted-foreground">de {totalResidents} en total</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Personal</CardTitle>
+              <UserCircle2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalStaff}</div>
+              <p className="text-xs text-muted-foreground">miembros activos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Registros Hoy</CardTitle>
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{todayLogs}</div>
+              <p className="text-xs text-muted-foreground">evoluciones y suministros</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ocupación</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeResidents > 0 ? Math.round((activeResidents / Math.max(totalResidents, 1)) * 100) : 0}%</div>
+              <p className="text-xs text-muted-foreground">residentes activos</p>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Accesos rápidos / módulos principales */}

@@ -76,6 +76,7 @@ function ResidentsPageContent() {
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [dateFilter, setDateFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"all" | "Activo" | "Inactivo">("all")
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
@@ -99,16 +100,13 @@ function ResidentsPageContent() {
   }, [isLogDialogOpen, isPreviewDialogOpen, isAgendaDialogOpen, isAgendaFormOpen]);
 
   const filteredResidents = useMemo(() => {
-    return residents.filter((resident) => {
-      const nameMatch = resident.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-      const dateMatch = dateFilter
-        ? resident.admissionDate.includes(dateFilter)
-        : true
-      return nameMatch && dateMatch
+    return residents.filter((r) => {
+      const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesDate = dateFilter ? r.admissionDate === dateFilter : true
+      const matchesStatus = statusFilter === "all" ? true : r.status === statusFilter
+      return matchesSearch && matchesDate && matchesStatus
     })
-  }, [residents, searchTerm, dateFilter])
+  }, [residents, searchTerm, dateFilter, statusFilter])
 
   const totalActiveResidents = useMemo(() => {
     return residents.filter((r) => r.status === "Activo").length
@@ -223,7 +221,26 @@ END:VCALENDAR`
   }
 
   if (!isClient || isLoading) {
-    return <div>Cargando residentes...</div>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+          </div>
+          <div className="h-9 w-40 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+          <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   const isAdminRole = role === "Administrador"
@@ -313,6 +330,22 @@ END:VCALENDAR`
               onChange={(e) => setDateFilter(e.target.value)}
             />
           </div>
+          <div className="flex gap-2 mt-3">
+            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("all")}>
+              Todos ({residents.length})
+            </Button>
+            <Button variant={statusFilter === "Activo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Activo")}>
+              Activos ({residents.filter(r => r.status === "Activo").length})
+            </Button>
+            <Button variant={statusFilter === "Inactivo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Inactivo")}>
+              Inactivos ({residents.filter(r => r.status === "Inactivo").length})
+            </Button>
+          </div>
+          {(searchTerm || statusFilter !== "all") && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Mostrando {filteredResidents.length} de {residents.length} residentes
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {/* Vista Mobile (tarjetas) */}
