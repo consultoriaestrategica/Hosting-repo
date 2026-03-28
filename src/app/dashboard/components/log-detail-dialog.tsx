@@ -36,11 +36,23 @@ type EvolutionBackend =
       time?: string
     }
 
+type PhotoEvidenceItem = {
+  id: string
+  name: string
+  originalName?: string
+  url: string
+  size: number
+  type: string
+  uploadDate?: string
+}
+
 type LogWithExtras = Log & {
   evolutionNotes?: EvolutionBackend[] | EvolutionBackend
   evolutionEntries?: EvolutionEntry[]
   images?: string[]
   photoUrls?: string[]
+  photoEvidence?: PhotoEvidenceItem[]
+  supplyPhotoEvidence?: PhotoEvidenceItem[]
   supplyDescription?: string
   supplyDate?: string
 }
@@ -171,7 +183,12 @@ export default function LogDetailDialog({
     }
   }
 
-  const imageUrls: string[] = typedLog.images ?? typedLog.photoUrls ?? []
+  const photoEvidenceItems: PhotoEvidenceItem[] = isMedical
+    ? (typedLog.photoEvidence ?? [])
+    : (typedLog.supplyPhotoEvidence ?? [])
+
+  // Compatibilidad con formato viejo (arrays de strings)
+  const legacyImageUrls: string[] = typedLog.images ?? typedLog.photoUrls ?? []
 
   const handleExportPdf = async () => {
     if (typeof window === "undefined") return
@@ -381,17 +398,40 @@ export default function LogDetailDialog({
               </section>
             )}
 
-            {/* FOTOS */}
-            {imageUrls.length > 0 && (
+            {/* EVIDENCIA FOTOGRÁFICA */}
+            {(photoEvidenceItems.length > 0 || legacyImageUrls.length > 0) && (
               <section className="mb-5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-2">
-                  <ImageIcon className="h-4 w-4" />
-                  <span>Fotografías del reporte</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <ImageIcon className="h-4 w-4" />
+                    <span>Evidencia Fotográfica</span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {photoEvidenceItems.length + legacyImageUrls.length} foto(s)
+                  </Badge>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {imageUrls.map((url, idx) => (
+                  {photoEvidenceItems.map((photo) => (
                     <button
-                      key={idx}
+                      key={photo.id}
+                      type="button"
+                      className="group relative overflow-hidden rounded-lg border bg-slate-50"
+                      onClick={() => window.open(photo.url, "_blank")}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.url}
+                        alt={photo.name || "Evidencia"}
+                        className="h-28 w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1">
+                        <p className="text-[10px] text-white truncate">{photo.name}</p>
+                      </div>
+                    </button>
+                  ))}
+                  {legacyImageUrls.map((url, idx) => (
+                    <button
+                      key={`legacy-${idx}`}
                       type="button"
                       className="group relative overflow-hidden rounded-lg border bg-slate-50"
                       onClick={() => window.open(url, "_blank")}
