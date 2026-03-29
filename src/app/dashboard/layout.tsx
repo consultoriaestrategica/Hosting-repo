@@ -11,7 +11,6 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarFooter,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
@@ -70,10 +69,6 @@ export default function DashboardLayout({
             <DashboardNav />
           </SidebarContent>
 
-          {/* Footer lateral solo para la barra */}
-          <SidebarFooter className="px-4 py-3 border-t text-[11px] text-muted-foreground">
-            © {new Date().getFullYear()} Hogar San Juan
-          </SidebarFooter>
         </Sidebar>
 
         {/* ======= COLUMNA DERECHA ======= */}

@@ -34,6 +34,7 @@ import {
   Droplet,
   Stethoscope,
   Package,
+  Eye,
 } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
@@ -162,6 +163,11 @@ export default function FamilyPortalPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-4 flex items-center gap-2">
+          <Eye className="h-4 w-4 text-blue-600 shrink-0" />
+          <p className="text-xs text-blue-800">Portal de consulta — La información es actualizada por el equipo del hogar geriátrico.</p>
+        </div>
+
         {/* ================================================ */}
         {/* HEADER - Título y botón de cerrar sesión */}
         {/* ================================================ */}

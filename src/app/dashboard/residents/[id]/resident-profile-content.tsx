@@ -329,13 +329,33 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
             <TabsTrigger value="general">Perfil General</TabsTrigger>
             {isAdminRole && (
               <>
-                <TabsTrigger value="contacts">Contactos</TabsTrigger>
-                <TabsTrigger value="documents">Documentos</TabsTrigger>
-                <TabsTrigger value="contracts">Contratos</TabsTrigger>
+                <TabsTrigger value="contacts">
+                  Contactos {resident.familyContacts && resident.familyContacts.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.familyContacts.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="documents">
+                  Documentos {resident.documents && resident.documents.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.documents.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="contracts">
+                  Contratos {filteredContracts.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{filteredContracts.length}</Badge>
+                  )}
+                </TabsTrigger>
               </>
             )}
-            <TabsTrigger value="agenda">Agenda</TabsTrigger>
-            <TabsTrigger value="logs">Registros</TabsTrigger>
+            <TabsTrigger value="agenda">
+              Agenda {resident.agendaEvents && resident.agendaEvents.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.agendaEvents.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="logs">
+              Registros {residentLogs.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{residentLogs.length}</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="mt-4">

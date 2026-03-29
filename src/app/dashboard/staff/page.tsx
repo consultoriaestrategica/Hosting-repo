@@ -13,6 +13,7 @@ import {
   DollarSign,
   Calendar,
   FileText,
+  HardHat,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -248,9 +249,11 @@ function StaffPageContent() {
                 </div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-8">
-                No se encontraron miembros del personal.
-              </p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <HardHat className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold text-muted-foreground">No se encontró personal</h3>
+                <p className="text-sm text-muted-foreground/70 mt-1">Ajusta la búsqueda o agrega nuevo personal.</p>
+              </div>
             )}
           </div>
 
@@ -270,7 +273,17 @@ function StaffPageContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStaff.map((member, index) => (
+                {filteredStaff.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <HardHat className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-lg font-semibold text-muted-foreground">No se encontró personal</h3>
+                        <p className="text-sm text-muted-foreground/70 mt-1">Ajusta la búsqueda o agrega nuevo personal.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredStaff.map((member, index) => (
                   <TableRow key={`${member.id}-${index}`}>
                     <TableCell className="font-medium">
                       {formatName(member.name)}

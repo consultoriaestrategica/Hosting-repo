@@ -25,7 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Stethoscope, Truck, Eye } from "lucide-react"
+import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList } from "lucide-react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
@@ -246,9 +246,11 @@ function LogsPageContent() {
                 </div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-8 text-sm">
-                Aún no hay registros para mostrar.
-              </p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold text-muted-foreground">Sin registros</h3>
+                <p className="text-sm text-muted-foreground/70 mt-1">Aún no hay registros para mostrar. Crea el primero.</p>
+              </div>
             )}
           </div>
 
@@ -331,8 +333,12 @@ function LogsPageContent() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      Aún no hay registros para mostrar.
+                    <TableCell colSpan={5}>
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-lg font-semibold text-muted-foreground">Sin registros</h3>
+                        <p className="text-sm text-muted-foreground/70 mt-1">Aún no hay registros para mostrar. Crea el primero.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}

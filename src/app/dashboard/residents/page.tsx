@@ -45,6 +45,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useResidents, Resident, AgendaEvent } from "@/hooks/use-residents"
+import { useLogs } from "@/hooks/use-logs"
 import { useEffect, useState, useMemo, Suspense } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useUser } from "@/hooks/use-user"
@@ -65,9 +66,17 @@ const ITEMS_PER_PAGE = 8
 
 function ResidentsPageContent() {
   const { residents, addAgendaEvent, isLoading } = useResidents()
+  const { logs } = useLogs()
   const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
   const { user, role } = useUser()
+
+  const getLastLogDate = (residentId: string): string => {
+    const residentLogs = logs.filter(l => l.residentId === residentId)
+    if (residentLogs.length === 0) return "Sin registros"
+    const sorted = residentLogs.sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())
+    return new Date(sorted[0].endDate).toLocaleDateString('es-ES', { dateStyle: 'medium' })
+  }
 
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false)
@@ -370,6 +379,9 @@ END:VCALENDAR`
                     <span>Ingreso: {new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
                     <Badge variant="outline">{resident.dependency}</Badge>
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    Último registro: {getLastLogDate(resident.id)}
+                  </div>
                   <div className="flex justify-end">
                     <Button asChild variant="outline" size="sm">
                       <Link href={`/dashboard/residents/${resident.id}/`}>Ver perfil</Link>
@@ -378,7 +390,14 @@ END:VCALENDAR`
                 </div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-8">No se encontraron residentes.</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold text-muted-foreground">No se encontraron residentes</h3>
+                <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">Intenta ajustar los filtros de búsqueda o agrega un nuevo residente.</p>
+                <Button asChild variant="outline" size="sm" className="mt-4">
+                  <Link href="/dashboard/residents/new/">Agregar residente</Link>
+                </Button>
+              </div>
             )}
           </div>
 
@@ -392,13 +411,27 @@ END:VCALENDAR`
                   <TableHead>Estado</TableHead>
                   <TableHead>F. de Ingreso</TableHead>
                   <TableHead>Nivel de Dependencia</TableHead>
+                  <TableHead className="hidden lg:table-cell">Último Registro</TableHead>
                   <TableHead>
                     <span className="sr-only">Acciones</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedResidents.map((resident) => (
+                {paginatedResidents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-lg font-semibold text-muted-foreground">No se encontraron residentes</h3>
+                        <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">Intenta ajustar los filtros de búsqueda o agrega un nuevo residente.</p>
+                        <Button asChild variant="outline" size="sm" className="mt-4">
+                          <Link href="/dashboard/residents/new/">Agregar residente</Link>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedResidents.map((resident) => (
                   <TableRow key={resident.id}>
                     <TableCell className="font-medium">
                       <Link
@@ -446,6 +479,9 @@ END:VCALENDAR`
                       >
                         {resident.dependency}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
+                      {getLastLogDate(resident.id)}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
