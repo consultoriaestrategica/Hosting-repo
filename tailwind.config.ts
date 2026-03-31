@@ -17,8 +17,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Alegreya', 'serif'],
-        headline: ['Alegreya', 'serif'],
+        body: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'system-ui', 'sans-serif'],
+        headline: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'system-ui', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -63,13 +63,13 @@ export default {
           '5': 'hsl(var(--chart-5))',
         },
         sidebar: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-          border: "hsl(var(--border))",
-          active: "hsl(var(--primary))",
-          "active-foreground": "hsl(var(--primary-foreground))",
-          hover: "hsl(var(--accent))",
-          "hover-foreground": "hsl(var(--accent-foreground))",
+          DEFAULT: "hsl(150, 17%, 21%)",
+          foreground: "hsl(150, 30%, 72%)",
+          border: "hsla(0, 0%, 100%, 0.1)",
+          active: "hsl(147, 23%, 46%)",
+          "active-foreground": "#ffffff",
+          hover: "hsla(0, 0%, 100%, 0.07)",
+          "hover-foreground": "hsl(150, 30%, 82%)",
         },
       },
       borderRadius: {

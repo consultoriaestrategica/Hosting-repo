@@ -100,6 +100,7 @@ function DashboardNav() {
               asChild
               isActive={isActive(item.href)}
               tooltip={item.label}
+              className={isActive(item.href) ? "text-white" : "text-[#9AB8A6] hover:text-[#c8e0d1]"}
             >
               <Link href={item.href}>
                 {item.icon}

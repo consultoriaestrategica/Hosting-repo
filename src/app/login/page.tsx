@@ -255,7 +255,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F0E8] via-[#E8EDE4] to-[#F5F0E8] p-4">
       {/* Card más compacto, pero con logo dominante */}
       <Card className="w-full max-w-xl shadow-xl">
         <CardHeader className="text-center pt-6 pb-3">

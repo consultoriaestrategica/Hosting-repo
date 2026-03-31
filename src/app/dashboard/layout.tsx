@@ -51,15 +51,15 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       {/* Contenedor raíz: ocupa toda la pantalla y no permite scroll horizontal */}
-      <div className="min-h-screen flex w-full bg-slate-50 text-slate-900 overflow-x-hidden">
+      <div className="min-h-screen flex w-full bg-background text-foreground overflow-x-hidden">
         {/* ======= SIDEBAR ======= */}
-        <Sidebar className="border-r bg-white/90 backdrop-blur">
+        <Sidebar className="border-r bg-sidebar">
           <SidebarHeader className="px-4 py-4 border-b">
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold tracking-tight">
+              <p className="text-sm font-semibold tracking-tight text-[#E8F5EC]">
                 Hogar San Juan
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[#6B8F7B]">
                 Panel de administración
               </p>
             </div>
@@ -74,7 +74,7 @@ export default function DashboardLayout({
         {/* ======= COLUMNA DERECHA ======= */}
         <div className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">
           {/* HEADER SUPERIOR */}
-          <header className="border-b bg-white/80 backdrop-blur">
+          <header className="border-b bg-card/80 backdrop-blur">
             <div className="mx-auto flex h-14 md:h-16 max-w-6xl w-full items-center justify-between px-4 md:px-6">
               <div className="flex items-center gap-3 min-w-0">
                 {/* Hamburguesa SOLO en móvil */}
@@ -155,14 +155,14 @@ export default function DashboardLayout({
           </header>
 
           {/* CONTENIDO PRINCIPAL */}
-          <main className="flex-1 bg-slate-50 w-full">
+          <main className="flex-1 bg-background w-full">
             <div className="mx-auto max-w-6xl w-full px-4 md:px-6 py-4 md:py-6 pb-8">
               {children}
             </div>
           </main>
 
           {/* FOOTER GLOBAL */}
-          <footer className="border-t bg-white/90 backdrop-blur px-4 md:px-6 py-2 text-[11px] md:text-xs text-muted-foreground flex items-center justify-between w-full">
+          <footer className="border-t bg-card/90 backdrop-blur px-4 md:px-6 py-2 text-[11px] md:text-xs text-muted-foreground flex items-center justify-between w-full">
             <span>© {new Date().getFullYear()} Hogar San Juan</span>
             <span className="hidden sm:inline">
               Plataforma de gestión integral del hogar.
