@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarDays, FileText, Users, UserCircle2 } from "lucide-react"
+import { CalendarDays, FileText, Users, UserCircle2, Calendar } from "lucide-react"
 
 import  AuthGuard  from "@/components/auth-guard"
+import AgendaDashboard from "./components/agenda-dashboard"
 import { useUser } from "@/hooks/use-user"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
@@ -164,6 +165,25 @@ export default function DashboardHomePage() {
               <Button asChild size="sm" className="w-full">
                 <Link href="/dashboard/reports">Ir a reportes</Link>
               </Button>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  Próximos Eventos
+                </CardTitle>
+                <CardDescription>
+                  Citas médicas, gestiones y eventos programados para los próximos 7 días.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <AgendaDashboard />
             </CardContent>
           </Card>
         </section>
