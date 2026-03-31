@@ -64,6 +64,8 @@ function formatName(name: string): string {
     .join(' ')
 }
 
+const ITEMS_PER_PAGE = 10
+
 function StaffPageContent() {
   const { staff, isLoading } = useStaff()
   const { contracts, isLoading: contractsLoading } = useStaffContracts()
@@ -73,6 +75,7 @@ function StaffPageContent() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isContractFormOpen, setIsContractFormOpen] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     setIsClient(true)
@@ -113,6 +116,16 @@ function StaffPageContent() {
         member.role.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [uniqueStaff, searchTerm])
+
+  const totalPages = Math.ceil(filteredStaff.length / ITEMS_PER_PAGE)
+  const paginatedStaff = filteredStaff.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   // ✅ 3) Contrato activo del miembro seleccionado (memoizado)
   const selectedContract = useMemo(() => {
@@ -196,7 +209,7 @@ function StaffPageContent() {
           {/* Mobile View: Card List */}
           <div className="md:hidden space-y-4">
             {filteredStaff.length > 0 ? (
-              filteredStaff.map((member, index) => (
+              paginatedStaff.map((member, index) => (
                 <div
                   key={`${member.id}-${index}`} // ✅ key segura y única
                   className="border rounded-lg p-4 flex justify-between items-start"
@@ -283,7 +296,7 @@ function StaffPageContent() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filteredStaff.map((member, index) => (
+                ) : paginatedStaff.map((member, index) => (
                   <TableRow key={`${member.id}-${index}`}>
                     <TableCell className="font-medium">
                       {formatName(member.name)}
@@ -343,6 +356,22 @@ function StaffPageContent() {
             </Table>
           </div>
         </CardContent>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Mostrando {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredStaff.length)}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredStaff.length)} de {filteredStaff.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</span>
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Dialog Perfil */}

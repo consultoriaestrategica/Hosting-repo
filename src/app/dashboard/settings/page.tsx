@@ -80,6 +80,8 @@ export default function SettingsPage() {
   const [syncingUser, setSyncingUser] = useState<Staff | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [usersCurrentPage, setUsersCurrentPage] = useState(1)
+  const USERS_PER_PAGE = 10
 
   useEffect(() => {
     if (!isUserDialogOpen) {
@@ -309,6 +311,12 @@ export default function SettingsPage() {
     setSyncingUser(null)
   }
 
+  const totalUsersPages = Math.ceil(staff.length / USERS_PER_PAGE)
+  const paginatedUsers = staff.slice(
+    (usersCurrentPage - 1) * USERS_PER_PAGE,
+    usersCurrentPage * USERS_PER_PAGE
+  )
+
   if (settingsLoading || staffLoading) {
     return <div>Cargando configuración...</div>
   }
@@ -435,7 +443,7 @@ export default function SettingsPage() {
               {/* Mobile: lista de tarjetas */}
               <div className="md:hidden space-y-4">
                 {staff.length > 0 ? (
-                  staff.map((user) => (
+                  paginatedUsers.map((user) => (
                     <div
                       key={user.id}
                       className="border rounded-lg p-4 flex justify-between items-start"
@@ -508,7 +516,7 @@ export default function SettingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {staff.map((user) => (
+                    {paginatedUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">
                           <div>{user.name}</div>
@@ -559,6 +567,22 @@ export default function SettingsPage() {
                 </Table>
               </div>
             </CardContent>
+            {totalUsersPages > 1 && (
+              <div className="flex items-center justify-between px-6 pb-4">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {Math.min((usersCurrentPage - 1) * USERS_PER_PAGE + 1, staff.length)}-{Math.min(usersCurrentPage * USERS_PER_PAGE, staff.length)} de {staff.length} usuarios
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setUsersCurrentPage(p => Math.max(1, p - 1))} disabled={usersCurrentPage === 1}>
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-muted-foreground">Página {usersCurrentPage} de {totalUsersPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setUsersCurrentPage(p => Math.min(totalUsersPages, p + 1))} disabled={usersCurrentPage === totalUsersPages}>
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
 

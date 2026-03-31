@@ -45,11 +45,14 @@ type EnrichedVisit = Visit & {
     residentId: string;
 };
 
+const ITEMS_PER_PAGE = 10
+
 function VisitorsPageContent() {
   const { residents, isLoading } = useResidents()
   const [isClient, setIsClient] = useState(false)
   const [isVisitFormOpen, setIsVisitFormOpen] = useState(false)
-  
+  const [currentPage, setCurrentPage] = useState(1)
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [appliedDateRange, setAppliedDateRange] = useState<DateRange | undefined>();
 
@@ -87,6 +90,16 @@ function VisitorsPageContent() {
     }
     return filtered.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
   }, [allVisits, appliedDateRange]);
+
+  const totalPages = Math.ceil(filteredVisits.length / ITEMS_PER_PAGE)
+  const paginatedVisits = filteredVisits.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [appliedDateRange])
 
   if (!isClient || isLoading) {
     return <div>Cargando...</div>
@@ -181,7 +194,7 @@ function VisitorsPageContent() {
           {/* Mobile View: Card List */}
           <div className="md:hidden space-y-4">
              {filteredVisits.length > 0 ? (
-                filteredVisits.map((visit) => (
+                paginatedVisits.map((visit) => (
                     <div key={visit.id} className="border rounded-lg p-4 space-y-2">
                         <div>
                             <p className="font-semibold">{visit.visitorName} ({visit.kinship})</p>
@@ -219,7 +232,7 @@ function VisitorsPageContent() {
                 </TableHeader>
                 <TableBody>
                 {filteredVisits.length > 0 ? (
-                    filteredVisits.map((visit) => (
+                    paginatedVisits.map((visit) => (
                     <TableRow key={visit.id}>
                         <TableCell className="font-medium">{new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</TableCell>
                         <TableCell>
@@ -248,6 +261,22 @@ function VisitorsPageContent() {
             </Table>
           </div>
         </CardContent>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Mostrando {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredVisits.length)}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredVisits.length)} de {filteredVisits.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</span>
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </>
   )
