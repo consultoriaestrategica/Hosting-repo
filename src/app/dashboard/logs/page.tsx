@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, Suspense } from "react"
+import { useState, useMemo, useEffect, Suspense, Fragment } from "react"
 import {
   Card,
   CardContent,
@@ -25,7 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList } from "lucide-react"
+import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
@@ -48,12 +48,15 @@ function getLogPreview(log: Log): string {
   return "Sin notas de evolución"
 }
 
+const ITEMS_PER_PAGE = 10
+
 function LogsPageContent() {
   const { logs, isLoading: logsLoading } = useLogs()
   const { residents, isLoading: residentsLoading } = useResidents()
   const [isNewLogDialogOpen, setIsNewLogDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<Log | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Estado para evolución parcial
   const [isPartialDialogOpen, setIsPartialDialogOpen] = useState(false)
@@ -90,6 +93,17 @@ function LogsPageContent() {
         (a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()
       )
   }, [logs, residents])
+
+  const totalPages = Math.max(1, Math.ceil(enrichedLogs.length / ITEMS_PER_PAGE))
+
+  const paginatedLogs = useMemo(
+    () => enrichedLogs.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [enrichedLogs, currentPage]
+  )
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [enrichedLogs.length])
 
   const handleLogClick = (log: Log) => {
     setSelectedLog(log)
@@ -174,7 +188,7 @@ function LogsPageContent() {
           {/* Vista Mobile (tarjetas) */}
           <div className="md:hidden space-y-4">
             {enrichedLogs.length > 0 ? (
-              enrichedLogs.map((log) => (
+              paginatedLogs.map((log) => (
                 <div
                   key={log.id}
                   className="w-full border rounded-xl p-4 space-y-3 cursor-pointer bg-white shadow-sm"
@@ -270,7 +284,7 @@ function LogsPageContent() {
               </TableHeader>
               <TableBody>
                 {enrichedLogs.length > 0 ? (
-                  enrichedLogs.map((log) => (
+                  paginatedLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-medium">
                         {new Date(log.endDate).toLocaleString("es-ES", {
@@ -347,6 +361,62 @@ function LogsPageContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Controles de paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+            const showPage =
+              page === 1 ||
+              page === totalPages ||
+              Math.abs(page - currentPage) <= 1
+
+            if (!showPage) {
+              const isLeftEllipsis = page === 2 && currentPage > 4
+              const isRightEllipsis = page === totalPages - 1 && currentPage < totalPages - 3
+              if (isLeftEllipsis || isRightEllipsis) {
+                return (
+                  <Fragment key={page}>
+                    <span className="px-2 text-muted-foreground text-sm">…</span>
+                  </Fragment>
+                )
+              }
+              return null
+            }
+
+            return (
+              <Fragment key={page}>
+                <Button
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  className="w-9"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              </Fragment>
+            )
+          })}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Dialog de detalle */}
       {selectedLog && (
