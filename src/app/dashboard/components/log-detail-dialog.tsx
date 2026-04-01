@@ -55,6 +55,10 @@ type LogWithExtras = Log & {
   supplyPhotoEvidence?: PhotoEvidenceItem[]
   supplyDescription?: string
   supplyDate?: string
+  finalComment?: string
+  pendingTasks?: string
+  supplyNotes?: string
+  notes?: string
 }
 
 type EvolutionEntryUI = {
@@ -394,6 +398,53 @@ export default function LogDetailDialog({
                       <span className="font-medium">{typedLog.supplyDate}</span>
                     </p>
                   )}
+                </div>
+                {!isMedical && typedLog.supplyNotes && (
+                  <div className="mt-2 rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-sm text-slate-700">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Observaciones:</p>
+                    <p className="whitespace-pre-wrap">{typedLog.supplyNotes}</p>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* COMENTARIO FINAL Y TAREAS PENDIENTES (solo registros médicos) */}
+            {isMedical && (typedLog.finalComment || typedLog.pendingTasks) && (
+              <section className="mb-5 space-y-3">
+                {typedLog.finalComment && (
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-1">
+                      <FileText className="h-4 w-4" />
+                      <span>Comentario final del turno</span>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-sm text-slate-700 whitespace-pre-wrap">
+                      {typedLog.finalComment}
+                    </div>
+                  </div>
+                )}
+                {typedLog.pendingTasks && (
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-amber-700 mb-1">
+                      <Clock className="h-4 w-4" />
+                      <span>Tareas pendientes</span>
+                    </div>
+                    <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-sm text-amber-900 whitespace-pre-wrap">
+                      {typedLog.pendingTasks}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* OBSERVACIONES GENERALES */}
+            {typedLog.notes && (
+              <section className="mb-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-2">
+                  <FileText className="h-4 w-4" />
+                  <span>Observaciones generales</span>
+                </div>
+                <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-sm text-slate-700 whitespace-pre-wrap">
+                  {typedLog.notes}
                 </div>
               </section>
             )}

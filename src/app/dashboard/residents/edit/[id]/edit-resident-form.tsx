@@ -32,7 +32,7 @@ const residentFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   dob: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de nacimiento inválida." }),
   idNumber: z.string().min(5, { message: "La cédula debe tener al menos 5 caracteres." }),
-  gender: z.enum(["Femenino", "Masculino", "Otro"]),
+  gender: z.enum(["Femenino", "Masculino", "Otro"]).optional().or(z.literal("")),
   status: z.enum(["Activo", "Inactivo"]),
   
   // Medical Info
@@ -62,7 +62,7 @@ const residentFormSchema = z.object({
   
   // Admin Info
   admissionDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de ingreso inválida." }),
-  roomType: z.enum(["Habitación compartida", "Habitación individual"]),
+  roomType: z.enum(["Habitación compartida", "Habitación individual"]).optional().or(z.literal("")),
   roomNumber: z.string().optional(),
   documents: z.array(z.object({
     type: z.string(),
@@ -88,7 +88,7 @@ export default function EditResidentForm({ residentId }: { residentId: string })
       name: "",
       dob: "",
       idNumber: "",
-      gender: "Femenino",
+      gender: "",
       status: "Activo",
       bloodType: "",
       fallRisk: "Bajo",
@@ -100,7 +100,7 @@ export default function EditResidentForm({ residentId }: { residentId: string })
       dependency: "Dependiente",
       familyContacts: [],
       admissionDate: "",
-      roomType: "Habitación compartida",
+      roomType: "",
       roomNumber: "",
       documents: [],
     }
@@ -116,7 +116,7 @@ export default function EditResidentForm({ residentId }: { residentId: string })
             name: resident.name || "",
             dob: resident.dob || "",
             idNumber: resident.idNumber || "",
-            gender: resident.gender || "Femenino",
+            gender: resident.gender || "",
             status: resident.status || "Activo",
             bloodType: resident.bloodType || "",
             fallRisk: resident.fallRisk || "Bajo",
@@ -128,7 +128,7 @@ export default function EditResidentForm({ residentId }: { residentId: string })
             dependency: resident.dependency || "Dependiente",
             familyContacts: resident.familyContacts || [],
             admissionDate: resident.admissionDate || "",
-            roomType: resident.roomType || "Habitación compartida",
+            roomType: resident.roomType || "",
             roomNumber: resident.roomNumber || "",
             documents: resident.documents || [],
         });
@@ -217,11 +217,11 @@ export default function EditResidentForm({ residentId }: { residentId: string })
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
            <Tabs defaultValue="general">
-              <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="general">Información General</TabsTrigger>
-                  <TabsTrigger value="medical">Perfil Médico</TabsTrigger>
-                  <TabsTrigger value="contacts">Contactos Familiares</TabsTrigger>
-                  <TabsTrigger value="documents">Documentos</TabsTrigger>
+              <TabsList className="flex flex-wrap w-full">
+                  <TabsTrigger value="general" className="flex-1 min-w-[120px] text-xs sm:text-sm">Información General</TabsTrigger>
+                  <TabsTrigger value="medical" className="flex-1 min-w-[120px] text-xs sm:text-sm">Perfil Médico</TabsTrigger>
+                  <TabsTrigger value="contacts" className="flex-1 min-w-[120px] text-xs sm:text-sm">Contactos Familiares</TabsTrigger>
+                  <TabsTrigger value="documents" className="flex-1 min-w-[120px] text-xs sm:text-sm">Documentos</TabsTrigger>
               </TabsList>
               
               <TabsContent value="general">
