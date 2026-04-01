@@ -30,6 +30,7 @@ import { useState, useRef } from "react"
 import { storage } from "@/lib/firebase"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { Loader2, UploadCloud, File as FileIcon, X } from "lucide-react"
+import RouteGuard from "@/components/route-guard"
 
 const staffFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -163,7 +164,8 @@ export default function NewStaffPage() {
 
 
   return (
-    <>
+    <RouteGuard permission="staff">
+      <>
       <h1 className="text-3xl font-bold font-headline mb-6">Agregar Nuevo Personal</h1>
       <Card>
         <CardHeader>
@@ -232,6 +234,7 @@ export default function NewStaffPage() {
             </Form>
         </CardContent>
       </Card>
-    </>
+      </>
+    </RouteGuard>
   )
 }

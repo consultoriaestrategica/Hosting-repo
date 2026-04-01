@@ -69,7 +69,7 @@ function ResidentsPageContent() {
   const { logs } = useLogs()
   const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
-  const { user, role } = useUser()
+  const { user, role, hasPermission } = useUser()
 
   const getLastLogDate = (residentId: string): string => {
     const residentLogs = logs.filter(l => l.residentId === residentId)
@@ -269,7 +269,7 @@ END:VCALENDAR`
             residentes.
           </p>
         </div>
-        {isAdminRole && (
+        {hasPermission("residents") && hasPermission("staff") && (
           <div className="flex w-full sm:w-auto justify-start sm:justify-end">
             <Button className="w-full sm:w-auto h-9 gap-1" asChild>
               <Link href="/dashboard/residents/new">

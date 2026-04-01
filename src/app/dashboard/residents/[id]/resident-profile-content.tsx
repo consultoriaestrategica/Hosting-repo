@@ -90,7 +90,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
   const { logs, isLoading: logsLoading } = useLogs();
   const { contracts: residentContracts, isLoading: contractsLoading } = useResidentContracts();
   const { toast } = useToast();
-  const { user, role } = useUser();
+  const { user, role, hasPermission } = useUser();
 
   // Memoizar el residente específico para evitar re-renders innecesarios
   const resident = React.useMemo(
@@ -275,7 +275,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {resident.status === 'Activo' && isAdminRole && (
+            {resident.status === 'Activo' && hasPermission("staff") && (
               <Button asChild variant="outline">
                 <Link href={`/dashboard/residents/edit/${resident.id}`}>
                   <Edit className="mr-2 h-4 w-4" />
@@ -302,7 +302,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                 </DialogContent>
               </Dialog>
             )}
-            {resident.status === 'Activo' && isAdminRole && (
+            {resident.status === 'Activo' && hasPermission("staff") && (
               <Dialog open={isDischargeDialogOpen} onOpenChange={setIsDischargeDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="destructive">

@@ -64,6 +64,7 @@ import { authSecondary } from "@/lib/firebase-secondary"
 import { collection, addDoc } from "firebase/firestore"
 import { ROLE_PERMISSIONS, UserRole } from "@/types/user"
 import FamilyMembersManagement from "./components/family-management"
+import RouteGuard from "@/components/route-guard"
 
 export default function SettingsPage() {
   const { toast } = useToast()
@@ -322,7 +323,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <>
+    <RouteGuard permission="settings">
       <div className="flex items-center">
         <h1 className="text-3xl font-bold font-headline">Configuración</h1>
       </div>
@@ -832,6 +833,6 @@ export default function SettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </RouteGuard>
   )
 }

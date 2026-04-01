@@ -55,6 +55,7 @@ import { useEffect, useState, useMemo, Suspense } from "react"
 import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import NewStaffContractForm from "./[id]/new-staff-contract-form"
+import RouteGuard from "@/components/route-guard"
 
 function formatName(name: string): string {
   return name
@@ -554,8 +555,10 @@ function StaffPageContent() {
 
 export default function StaffPage() {
   return (
-    <Suspense fallback={<div>Cargando...</div>}>
-      <StaffPageContent />
-    </Suspense>
+    <RouteGuard permission="staff">
+      <Suspense fallback={<div>Cargando...</div>}>
+        <StaffPageContent />
+      </Suspense>
+    </RouteGuard>
   )
 }

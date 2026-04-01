@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 export default function DashboardHomePage() {
-  const { user } = useUser()
+  const { user, hasPermission } = useUser()
   const { residents } = useResidents()
   const { logs } = useLogs()
   const { staff } = useStaff()
@@ -41,8 +41,9 @@ export default function DashboardHomePage() {
             {user?.name ? `Hola, ${user.name}` : "Resumen general"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Desde aquí puedes gestionar residentes, personal, contratos y
-            registros diarios del hogar.
+            {user?.role === "Administrador"
+              ? "Gestiona residentes, personal, contratos y agenda en un solo lugar."
+              : "Consulta residentes, registros diarios y reportes del hogar."}
           </p>
         </section>
 
@@ -111,6 +112,7 @@ export default function DashboardHomePage() {
             </CardContent>
           </Card>
 
+          {hasPermission("staff") && (
           <Card className="flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <div>
@@ -129,6 +131,7 @@ export default function DashboardHomePage() {
               </Button>
             </CardContent>
           </Card>
+          )}
 
           <Card className="flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
