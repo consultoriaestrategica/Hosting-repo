@@ -193,6 +193,8 @@ export default function EditResidentForm({ residentId }: { residentId: string })
         surgicalHistory: data.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         allergies: data.allergies?.split(',').map(a => a.trim()).filter(Boolean),
         documents: documentsData,
+        gender: (data.gender || undefined) as "Femenino" | "Masculino" | "Otro" | undefined,
+        roomType: (data.roomType || undefined) as "Habitación compartida" | "Habitación individual" | undefined,
     };
     
     updateResident(resident.id, updatedData);
