@@ -60,7 +60,7 @@ export default function DashboardLayout({
                 Hogar San Juan
               </p>
               <p className="text-xs text-[#6B8F7B]">
-                {user?.role === "Administrador" ? "Panel de administración" : "Panel clínico"}
+                {user?.role === "Administrador" ? "Panel de administración" : user?.role === "Líder de Enfermería" ? "Panel de enfermería" : "Panel clínico"}
               </p>
             </div>
           </SidebarHeader>

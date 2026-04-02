@@ -12,6 +12,7 @@ export type Settings = {
   };
   vatEnabled: boolean;
   vatRate: number;
+  totalBeds: number;
 };
 
 const initialSettings: Settings = {
@@ -21,6 +22,7 @@ const initialSettings: Settings = {
     },
     vatEnabled: false,
     vatRate: 19,
+    totalBeds: 10,
 };
 
 const settingsDocRef = doc(db, 'settings', 'global');

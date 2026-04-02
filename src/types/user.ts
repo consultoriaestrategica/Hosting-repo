@@ -1,7 +1,8 @@
-export type UserRole = 
-  | "Administrador" 
-  | "Supervisor" 
-  | "Personal de Cuidado" 
+export type UserRole =
+  | "Administrador"
+  | "Supervisor"
+  | "Líder de Enfermería"
+  | "Personal de Cuidado"
   | "Acceso Familiar";
 
 export interface AppUser {
@@ -66,6 +67,17 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   "Supervisor": [
     "view_residents",
     "view_staff",
+    "view_reports",
+    "create_reports",
+    "edit_reports",
+    "view_agenda",
+    "manage_agenda",
+  ],
+  "Líder de Enfermería": [
+    "manage_residents",
+    "view_residents",
+    "view_staff",
+    "manage_family",
     "view_reports",
     "create_reports",
     "edit_reports",

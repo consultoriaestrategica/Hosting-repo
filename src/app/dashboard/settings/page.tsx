@@ -58,8 +58,8 @@ import {
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
-import { createUserWithEmailAndPassword } from "firebase/auth"
-import { db } from "@/lib/firebase"
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
+import { db, auth } from "@/lib/firebase"
 import { authSecondary } from "@/lib/firebase-secondary"
 import { collection, addDoc } from "firebase/firestore"
 import { ROLE_PERMISSIONS, UserRole } from "@/types/user"
@@ -120,6 +120,7 @@ export default function SettingsPage() {
   const mapRoleFromForm = (rawRole: string): UserRole => {
     const roleMap: Record<string, UserRole> = {
       Administrativo: "Administrador",
+      "Líder de Enfermería": "Líder de Enfermería",
       "Personal Asistencial": "Personal de Cuidado",
     }
     return roleMap[rawRole] ?? "Personal de Cuidado"
@@ -129,7 +130,8 @@ export default function SettingsPage() {
   const mapRoleToForm = (role: UserRole): string => {
     const reverseMap: Record<UserRole, string> = {
       Administrador: "Administrativo",
-      Supervisor: "Supervisor", // no lo usamos aún en el select
+      Supervisor: "Supervisor",
+      "Líder de Enfermería": "Líder de Enfermería",
       "Personal de Cuidado": "Personal Asistencial",
       "Acceso Familiar": "Acceso Familiar",
     }
@@ -183,6 +185,7 @@ export default function SettingsPage() {
       const role: UserRole = mapRoleFromForm(rawRole)
       const permissions = ROLE_PERMISSIONS[role] || []
       const isAdministrative = role === "Administrador"
+      const isNursingLead = role === "Líder de Enfermería"
 
       if (editingUser) {
         // ==========================
@@ -196,7 +199,7 @@ export default function SettingsPage() {
           isActive: userData.status === "Activo",
           permissions: permissions,
           position: rawRole,
-          department: isAdministrative ? "Administración" : "Cuidado",
+          department: isAdministrative ? "Administración" : isNursingLead ? "Enfermería" : "Cuidado",
           updatedAt: new Date(),
         }
 
@@ -247,7 +250,7 @@ export default function SettingsPage() {
           createdAt: new Date(),
           updatedAt: new Date(),
           permissions: permissions,
-          department: isAdministrative ? "Administración" : "Cuidado",
+          department: isAdministrative ? "Administración" : isNursingLead ? "Enfermería" : "Cuidado",
           uid: userCredential.user.uid,
         }
 
@@ -287,13 +290,49 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteUser = (userId: string) => {
-    console.warn("Deleting user is not implemented to prevent accidental data loss.")
-    toast({
-      variant: "destructive",
-      title: "Acción no implementada",
-      description: "La eliminación de usuarios está deshabilitada.",
-    })
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    try {
+      await updateStaffMember(userId, { isActive: false, updatedAt: new Date() })
+      toast({
+        title: "Usuario desactivado",
+        description: `El usuario ha sido desactivado del sistema. Sus datos se conservan por seguridad.`,
+      })
+    } catch (error) {
+      console.error("Error al desactivar usuario:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo desactivar el usuario.",
+      })
+    }
+  }
+
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
+
+  const handleResetPassword = async (userEmail: string) => {
+    setIsResettingPassword(true)
+    try {
+      await sendPasswordResetEmail(auth, userEmail)
+      toast({
+        title: "Correo enviado",
+        description: `Se ha enviado un enlace de recuperación de contraseña a ${userEmail}`,
+      })
+    } catch (error: any) {
+      console.error("Error al enviar reset de contraseña:", error)
+      let errorMessage = "No se pudo enviar el correo de recuperación."
+      if (error.code === "auth/user-not-found") {
+        errorMessage = "No se encontró una cuenta con este correo."
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "El correo electrónico no es válido."
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      })
+    } finally {
+      setIsResettingPassword(false)
+    }
   }
 
   const handleSyncCalendar = (user: Staff) => {
@@ -410,6 +449,24 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Capacidad del Hogar</h3>
+                <div className="grid gap-2 max-w-xs">
+                  <Label htmlFor="total-beds">Número Total de Camas</Label>
+                  <Input
+                    id="total-beds"
+                    type="number"
+                    min={1}
+                    value={settings.totalBeds}
+                    onChange={(e) => setSettings((prev) => ({ ...prev, totalBeds: Number(e.target.value) || 1 }))}
+                    placeholder="10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Este valor se usa para calcular el porcentaje de ocupación del hogar.
+                  </p>
+                </div>
+              </div>
             </CardContent>
             <CardFooter>
               <Button
@@ -480,16 +537,21 @@ export default function SettingsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenUserDialog(user)}
-                          >
+                          <DropdownMenuItem onClick={() => handleOpenUserDialog(user)}>
                             Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleResetPassword(user.email)}>
+                            Restablecer contraseña
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => {
+                              if (window.confirm(`¿Está seguro que desea desactivar a ${user.name}? Esta acción desactivará su acceso al sistema.`)) {
+                                handleDeleteUser(user.id, user.email)
+                              }
+                            }}
                           >
-                            Eliminar
+                            {user.isActive ? "Desactivar usuario" : "Usuario ya desactivado"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -548,16 +610,21 @@ export default function SettingsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() => handleOpenUserDialog(user)}
-                              >
+                              <DropdownMenuItem onClick={() => handleOpenUserDialog(user)}>
                                 Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleResetPassword(user.email)}>
+                                Restablecer contraseña
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => handleDeleteUser(user.id)}
+                                onClick={() => {
+                                  if (window.confirm(`¿Está seguro que desea desactivar a ${user.name}? Esta acción desactivará su acceso al sistema.`)) {
+                                    handleDeleteUser(user.id, user.email)
+                                  }
+                                }}
                               >
-                                Eliminar
+                                {user.isActive ? "Desactivar usuario" : "Usuario ya desactivado"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -717,6 +784,9 @@ export default function SettingsPage() {
                     <SelectContent>
                       <SelectItem value="Administrativo">
                         Administrativo
+                      </SelectItem>
+                      <SelectItem value="Líder de Enfermería">
+                        Líder de Enfermería
                       </SelectItem>
                       <SelectItem value="Personal Asistencial">
                         Personal Asistencial

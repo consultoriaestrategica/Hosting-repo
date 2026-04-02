@@ -9,6 +9,7 @@ import { useUser } from "@/hooks/use-user"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
 import { useStaff } from "@/hooks/use-staff"
+import { useSettings } from "@/hooks/use-settings"
 import {
   Card,
   CardHeader,
@@ -23,9 +24,9 @@ export default function DashboardHomePage() {
   const { residents } = useResidents()
   const { logs } = useLogs()
   const { staff } = useStaff()
+  const { settings } = useSettings()
 
   const activeResidents = residents.filter(r => r.status === "Activo").length
-  const totalResidents = residents.length
   const totalStaff = staff.length
   const todayLogs = logs.filter(l => {
     const logDate = new Date(l.endDate).toDateString()
@@ -56,7 +57,7 @@ export default function DashboardHomePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{activeResidents}</div>
-              <p className="text-xs text-muted-foreground">de {totalResidents} en total</p>
+              <p className="text-xs text-muted-foreground">de {settings.totalBeds} camas</p>
             </CardContent>
           </Card>
           <Card>
@@ -85,8 +86,8 @@ export default function DashboardHomePage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeResidents > 0 ? Math.round((activeResidents / Math.max(totalResidents, 1)) * 100) : 0}%</div>
-              <p className="text-xs text-muted-foreground">residentes activos</p>
+              <div className="text-2xl font-bold">{activeResidents > 0 ? Math.round((activeResidents / Math.max(settings.totalBeds, 1)) * 100) : 0}%</div>
+              <p className="text-xs text-muted-foreground">{activeResidents} de {settings.totalBeds} camas</p>
             </CardContent>
           </Card>
         </section>

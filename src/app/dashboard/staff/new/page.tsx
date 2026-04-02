@@ -35,7 +35,7 @@ import RouteGuard from "@/components/route-guard"
 const staffFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   idNumber: z.string().min(5, { message: "La cédula debe tener al menos 5 caracteres." }),
-  role: z.enum(['Enfermera', 'Médico', 'Fisioterapeuta', 'Administrativo', 'Otro']),
+  role: z.enum(['Enfermera', 'Médico', 'Fisioterapeuta', 'Administrativo', 'Líder de Enfermería', 'Otro']),
   phone: z.string().min(7, { message: "El teléfono debe ser válido." }),
   email: z.string().email({ message: "Correo electrónico inválido." }),
   address: z.string().min(5, { message: "La dirección debe ser válida." }),
@@ -178,7 +178,7 @@ export default function NewStaffPage() {
                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej. Ana Pérez" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="idNumber" render={({ field }) => (<FormItem><FormLabel>Nº de Cédula</FormLabel><FormControl><Input placeholder="Ej. 12345678" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                         <FormField control={form.control} name="role" render={({ field }) => (<FormItem><FormLabel>Cargo</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un cargo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Enfermera">Enfermera</SelectItem><SelectItem value="Médico">Médico</SelectItem><SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem><SelectItem value="Administrativo">Administrativo</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                         <FormField control={form.control} name="role" render={({ field }) => (<FormItem><FormLabel>Cargo</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un cargo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Enfermera">Enfermera</SelectItem><SelectItem value="Médico">Médico</SelectItem><SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem><SelectItem value="Administrativo">Administrativo</SelectItem><SelectItem value="Líder de Enfermería">Líder de Enfermería</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><Input placeholder="Ej. 3001234567" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input type="email" placeholder="ejemplo@email.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123" {...field} /></FormControl><FormMessage /></FormItem>)} />
