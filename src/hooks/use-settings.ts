@@ -50,7 +50,12 @@ export function useSettings() {
       setIsLoading(true);
       unsubSnapshot = onSnapshot(settingsDocRef, (doc) => {
         if (doc.exists()) {
-          setSettingsState(doc.data() as Settings);
+          const data = doc.data();
+          setSettingsState({
+            ...initialSettings,
+            ...data,
+            totalBeds: data.totalBeds ?? initialSettings.totalBeds,
+          } as Settings);
         } else {
           setDoc(settingsDocRef, initialSettings).catch(error => {
             console.error("Failed to initialize settings in Firestore", error);

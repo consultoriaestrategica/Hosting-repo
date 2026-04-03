@@ -57,7 +57,7 @@ export default function DashboardHomePage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{activeResidents}</div>
-              <p className="text-xs text-muted-foreground">de {settings.totalBeds} camas</p>
+              <p className="text-xs text-muted-foreground">de {settings.totalBeds || 10} camas</p>
             </CardContent>
           </Card>
           <Card>
@@ -86,8 +86,8 @@ export default function DashboardHomePage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeResidents > 0 ? Math.round((activeResidents / Math.max(settings.totalBeds, 1)) * 100) : 0}%</div>
-              <p className="text-xs text-muted-foreground">{activeResidents} de {settings.totalBeds} camas</p>
+              <div className="text-2xl font-bold">{activeResidents > 0 ? Math.round((activeResidents / Math.max(settings.totalBeds || 10, 1)) * 100) : 0}%</div>
+              <p className="text-xs text-muted-foreground">{activeResidents} de {settings.totalBeds || 10} camas</p>
             </CardContent>
           </Card>
         </section>
