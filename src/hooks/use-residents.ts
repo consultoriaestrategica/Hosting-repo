@@ -251,6 +251,19 @@ export function useResidents() {
     [updateResident]
   )
 
+  const deleteVisit = useCallback(
+    async (residentId: string, visitId: string) => {
+      const residentDoc = doc(db, "residents", residentId)
+      const residentSnap = await getDoc(residentDoc)
+      if (!residentSnap.exists()) return
+      const resident = residentSnap.data() as Resident
+
+      const updated = (resident.visits || []).filter((v: Visit) => v.id !== visitId)
+      await updateResident(residentId, { visits: updated })
+    },
+    [updateResident]
+  )
+
   return {
     residents,
     isLoading,
@@ -262,5 +275,6 @@ export function useResidents() {
     updateAgendaEvent,
     deleteAgendaEvent,
     addVisit,
+    deleteVisit,
   }
 }

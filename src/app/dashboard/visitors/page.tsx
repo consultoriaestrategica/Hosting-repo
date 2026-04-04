@@ -31,24 +31,24 @@ import {
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { useResidents, Visit } from "@/hooks/use-residents"
+import { useUser } from "@/hooks/use-user"
+import { useToast } from "@/hooks/use-toast"
 import { useState, useMemo, useEffect, Suspense } from "react"
 import NewVisitForm from "./new-visit-form"
-import { PlusCircle, FilterX, Calendar as CalendarIcon, User } from "lucide-react"
+import { PlusCircle, FilterX, Calendar as CalendarIcon, User, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 
-type EnrichedVisit = Visit & {
-    residentName: string;
-    residentId: string;
-};
-
 const ITEMS_PER_PAGE = 10
 
 function VisitorsPageContent() {
-  const { residents, isLoading } = useResidents()
+  const { residents, isLoading, deleteVisit } = useResidents()
+  const { user } = useUser()
+  const { toast } = useToast()
+  const isAdmin = user?.role === "Administrador"
   const [isClient, setIsClient] = useState(false)
   const [isVisitFormOpen, setIsVisitFormOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -112,6 +112,15 @@ function VisitorsPageContent() {
   const handleClearFilter = () => {
     setDateRange(undefined);
     setAppliedDateRange(undefined);
+  };
+
+  const handleDeleteVisit = async (residentId: string, visitId: string) => {
+    try {
+      await deleteVisit(residentId, visitId)
+      toast({ title: "Visita eliminada", description: "La visita ha sido eliminada permanentemente." })
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la visita." })
+    }
   };
 
   return (
@@ -208,8 +217,21 @@ function VisitorsPageContent() {
                                 </Link>
                             </Button>
                         </div>
-                        <div className="text-xs text-muted-foreground pt-1 border-t">
+                        <div className="flex items-center justify-between pt-1 border-t">
+                          <span className="text-xs text-muted-foreground">
                             {new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
+                          </span>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteVisit(visit.residentId, visit.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Eliminar</span>
+                            </Button>
+                          )}
                         </div>
                     </div>
                 ))
@@ -228,6 +250,7 @@ function VisitorsPageContent() {
                     <TableHead>Visitante</TableHead>
                     <TableHead>Parentesco</TableHead>
                     <TableHead>Residente Visitado</TableHead>
+                    {isAdmin && <TableHead className="w-[60px]">Acciones</TableHead>}
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -248,11 +271,24 @@ function VisitorsPageContent() {
                             </Link>
                         </Button>
                         </TableCell>
+                        {isAdmin && (
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteVisit(visit.residentId, visit.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Eliminar</span>
+                            </Button>
+                          </TableCell>
+                        )}
                     </TableRow>
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
                             No se encontraron visitas con los filtros actuales.
                         </TableCell>
                     </TableRow>
