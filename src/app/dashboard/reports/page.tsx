@@ -26,7 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useResidents } from "@/hooks/use-residents"
 import { useLogs } from "@/hooks/use-logs"
-import { generatePdfReport, ReportInput } from "@/ai/flows/report-flow"
+import { generateGeneralReport, generateIndividualReport, generateDateRangeReport, generateResidentLogsReport, generateAllLogsReport } from "@/lib/pdf-generator"
 import { cn } from "@/lib/utils"
 import { FileDown, Users, User, Calendar as CalendarIcon, Loader2 } from "lucide-react"
 import { format } from "date-fns"
@@ -52,135 +52,55 @@ export default function ReportsPage() {
   const [residentLogsRange, setResidentLogsRange] = useState<DateRange | undefined>()
   const [isGenerating, setIsGenerating] = useState(false)
 
-  const downloadPdf = (base64: string, fileName: string) => {
-    const linkSource = `data:application/pdf;base64,${base64}`
-    const downloadLink = document.createElement("a")
-    downloadLink.href = linkSource
-    downloadLink.download = fileName
-    downloadLink.click()
-  }
-
   const handleGenerateReport = async (reportType: ReportKind) => {
     setIsGenerating(true)
-    let reportInput: ReportInput | null = null
-
     try {
       switch (reportType) {
-        case "general": {
-          reportInput = { reportType: "general", data: { residents } }
+        case "general":
+          generateGeneralReport(residents as any)
           break
-        }
-
         case "individual": {
           const resident = residents.find((r) => r.id === selectedResidentId)
           if (!resident) {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Por favor seleccione un residente válido.",
-            })
+            toast({ variant: "destructive", title: "Error", description: "Seleccione un residente valido." })
             setIsGenerating(false)
             return
           }
-          reportInput = { reportType: "individual", data: { resident } }
+          generateIndividualReport(resident as any, logs as any)
           break
         }
-
         case "dateRange": {
           if (!dateRange?.from || !dateRange?.to) {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Por favor seleccione un rango de fechas válido.",
-            })
+            toast({ variant: "destructive", title: "Error", description: "Seleccione un rango de fechas valido." })
             setIsGenerating(false)
             return
           }
-          const filteredLogs = logs.filter((log) => {
-            const logDate = new Date(log.endDate)
-            return logDate >= dateRange.from! && logDate <= dateRange.to!
-          })
-          reportInput = {
-            reportType: "dateRange",
-            data: {
-              logs: filteredLogs,
-              range: {
-                from: dateRange.from.toISOString(),
-                to: dateRange.to.toISOString(),
-              },
-            },
-          }
+          generateDateRangeReport(logs as any, residents as any, dateRange.from, dateRange.to)
           break
         }
-
-        case "logsGeneral": {
-          reportInput = {
-            reportType: "logsGeneral",
-            data: { logs },
-          }
-          break
-        }
-
         case "residentLogs": {
           const resident = residents.find((r) => r.id === selectedResidentLogsId)
           if (!resident) {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Seleccione un residente para generar el reporte de registros.",
-            })
+            toast({ variant: "destructive", title: "Error", description: "Seleccione un residente." })
             setIsGenerating(false)
             return
           }
-
-          // Filtrar logs por residente y rango opcional
-          let filteredLogs = logs.filter((log) => log.residentId === resident.id)
-          let rangePayload: { from: string; to: string } | undefined = undefined
-
-          if (residentLogsRange?.from && residentLogsRange?.to) {
-            filteredLogs = filteredLogs.filter((log) => {
-              const d = new Date(log.endDate)
-              return d >= residentLogsRange.from! && d <= residentLogsRange.to!
-            })
-            rangePayload = {
-              from: residentLogsRange.from.toISOString(),
-              to: residentLogsRange.to.toISOString(),
-            }
-          }
-
-          reportInput = {
-            reportType: "residentLogs",
-            data: {
-              resident,
-              logs: filteredLogs,
-              range: rangePayload,
-            },
-          }
+          generateResidentLogsReport(
+            resident as any,
+            logs as any,
+            residentLogsRange?.from,
+            residentLogsRange?.to
+          )
           break
         }
+        case "logsGeneral":
+          generateAllLogsReport(logs as any, residents as any)
+          break
       }
-
-      if (!reportInput) return
-
-      toast({
-        title: "Generando reporte...",
-        description: "Esto puede tardar unos segundos. Por favor espere.",
-      })
-
-      const result = await generatePdfReport(reportInput)
-      downloadPdf(result.pdfBase64, result.fileName)
-
-      toast({
-        title: "Reporte generado",
-        description: "El PDF se ha descargado exitosamente.",
-      })
+      toast({ title: "Reporte generado", description: "El PDF se ha descargado exitosamente." })
     } catch (error) {
-      console.error("Failed to generate report:", error)
-      toast({
-        variant: "destructive",
-        title: "Error al generar reporte",
-        description: "No se pudo crear el PDF. Por favor, inténtelo de nuevo.",
-      })
+      console.error("Error generando reporte:", error)
+      toast({ variant: "destructive", title: "Error", description: "No se pudo generar el PDF." })
     } finally {
       setIsGenerating(false)
     }
