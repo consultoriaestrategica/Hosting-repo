@@ -24,6 +24,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 
@@ -36,6 +37,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const { user } = useUser()
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
+  useInactivityLogout()
 
   const handleLogout = async () => {
     try {
