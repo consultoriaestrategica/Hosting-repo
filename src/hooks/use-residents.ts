@@ -7,6 +7,7 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   getDoc,
 } from "firebase/firestore"
@@ -161,6 +162,14 @@ export function useResidents() {
     []
   )
 
+  const deleteResident = useCallback(
+    async (residentId: string) => {
+      const residentDoc = doc(db, "residents", residentId)
+      await deleteDoc(residentDoc)
+    },
+    []
+  )
+
   const dischargeResident = useCallback(
     async (residentId: string, dischargeDetails: DischargeDetails) => {
       await updateResident(residentId, {
@@ -247,6 +256,7 @@ export function useResidents() {
     isLoading,
     addResident,
     updateResident,
+    deleteResident,
     dischargeResident,
     addAgendaEvent,
     updateAgendaEvent,

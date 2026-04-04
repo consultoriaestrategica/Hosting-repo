@@ -65,7 +65,7 @@ function formatName(name: string): string {
 const ITEMS_PER_PAGE = 8
 
 function ResidentsPageContent() {
-  const { residents, addAgendaEvent, isLoading } = useResidents()
+  const { residents, addAgendaEvent, deleteResident, isLoading } = useResidents()
   const { logs } = useLogs()
   const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
@@ -131,6 +131,22 @@ function ResidentsPageContent() {
     const endIndex = startIndex + ITEMS_PER_PAGE
     return filteredResidents.slice(startIndex, endIndex)
   }, [filteredResidents, currentPage])
+
+  const handleDeleteResident = async (residentId: string, residentName: string) => {
+    try {
+      await deleteResident(residentId)
+      toast({
+        title: "Residente eliminado",
+        description: `${residentName} ha sido eliminado permanentemente.`,
+      })
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el residente.",
+      })
+    }
+  }
 
   const handleGenerateReport = (residentName: string) => {
     toast({
@@ -551,6 +567,18 @@ END:VCALENDAR`
                             >
                               <FileText className="mr-2 h-4 w-4" />
                               Generar reporte
+                            </DropdownMenuItem>
+                          )}
+                          {hasPermission("settings") && (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${resident.name}?\n\nSe eliminarán todos sus datos, registros y documentos. Esta acción NO se puede deshacer.`)) {
+                                  handleDeleteResident(resident.id, resident.name)
+                                }
+                              }}
+                            >
+                              Eliminar permanentemente
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>

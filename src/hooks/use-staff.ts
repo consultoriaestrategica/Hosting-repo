@@ -8,6 +8,7 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   Timestamp,
 } from "firebase/firestore"
@@ -133,12 +134,21 @@ export function useStaff() {
     []
   )
 
+  const deleteStaffMember = useCallback(
+    async (staffId: string) => {
+      const staffDocRef = doc(db, "staff", staffId)
+      await deleteDoc(staffDocRef)
+    },
+    []
+  )
+
   return {
     staff,
     isLoading,
     error,
     addStaffMember,
     updateStaffMember,
+    deleteStaffMember,
   }
 }
 

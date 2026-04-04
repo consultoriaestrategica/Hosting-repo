@@ -25,10 +25,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react"
+import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
+import { useUser } from "@/hooks/use-user"
 import LogDetailDialog from "../components/log-detail-dialog"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -51,8 +52,9 @@ function getLogPreview(log: Log): string {
 const ITEMS_PER_PAGE = 10
 
 function LogsPageContent() {
-  const { logs, isLoading: logsLoading } = useLogs()
+  const { logs, deleteLog, isLoading: logsLoading } = useLogs()
   const { residents, isLoading: residentsLoading } = useResidents()
+  const { hasPermission } = useUser()
   const [isNewLogDialogOpen, setIsNewLogDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<Log | null>(null)
@@ -256,6 +258,21 @@ function LogsPageContent() {
                       <Eye className="mr-1 h-4 w-4" />
                       Ver
                     </Button>
+                    {hasPermission("settings") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive px-3 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (window.confirm("⚠️ ¿Eliminar este registro permanentemente? Esta acción NO se puede deshacer.")) {
+                            deleteLog(log.id)
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
@@ -341,6 +358,20 @@ function LogsPageContent() {
                             <Eye className="mr-2 h-4 w-4" />
                             Ver detalle
                           </Button>
+                          {hasPermission("settings") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => {
+                                if (window.confirm("⚠️ ¿Eliminar este registro permanentemente? Esta acción NO se puede deshacer.")) {
+                                  deleteLog(log.id)
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

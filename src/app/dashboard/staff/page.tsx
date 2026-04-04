@@ -14,6 +14,7 @@ import {
   Calendar,
   FileText,
   HardHat,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -68,9 +69,9 @@ function formatName(name: string): string {
 const ITEMS_PER_PAGE = 10
 
 function StaffPageContent() {
-  const { staff, isLoading } = useStaff()
+  const { staff, deleteStaffMember, isLoading } = useStaff()
   const { contracts, isLoading: contractsLoading } = useStaffContracts()
-  const { role } = useUser()
+  const { role, hasPermission } = useUser()
   const [isClient, setIsClient] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -258,6 +259,18 @@ function StaffPageContent() {
                           <Edit className="mr-2 h-4 w-4" /> Editar
                         </Link>
                       </DropdownMenuItem>
+                      {hasPermission("settings") && (
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${member.name}?\n\nEsta acción NO se puede deshacer.`)) {
+                              deleteStaffMember(member.id)
+                            }
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar permanentemente
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -348,6 +361,18 @@ function StaffPageContent() {
                               <Edit className="mr-2 h-4 w-4" /> Editar
                             </Link>
                           </DropdownMenuItem>
+                          {hasPermission("settings") && (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${member.name}?\n\nEsta acción NO se puede deshacer.`)) {
+                                  deleteStaffMember(member.id)
+                                }
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar permanentemente
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

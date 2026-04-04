@@ -9,6 +9,7 @@ import {
   addDoc,
   doc,
   updateDoc,
+  deleteDoc,
   Timestamp,
   serverTimestamp,
   arrayUnion,
@@ -181,11 +182,20 @@ export function useLogs() {
     []
   )
 
+  const deleteLog = useCallback(
+    async (logId: string) => {
+      const logDoc = doc(db, "logs", logId)
+      await deleteDoc(logDoc)
+    },
+    []
+  )
+
   return {
     logs,
     isLoading,
     error,
     addLog,
     addEvolutionEntry,
+    deleteLog,
   }
 }

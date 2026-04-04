@@ -121,7 +121,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Campos requeridos",
-        description: "Por favor ingrese email y contraseña.",
+        description: "Por favor ingrese usuario y contraseña.",
       })
       return
     }
@@ -130,7 +130,9 @@ export default function LoginPage() {
     console.log("🔐 Iniciando login de staff:", staffEmail)
 
     try {
-      const cred = await signInWithEmailAndPassword(auth, staffEmail, staffPassword)
+      const usernameClean = staffEmail.trim().toLowerCase()
+      const loginEmail = usernameClean.includes("@") ? usernameClean : `${usernameClean}@hogarsanjuan.local`
+      const cred = await signInWithEmailAndPassword(auth, loginEmail, staffPassword)
       console.log("✅ Staff autenticado en Auth:", cred.user.uid)
 
       const roleCheck = await checkStaffRecord(
@@ -170,13 +172,13 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("❌ Error en login de staff:", error)
 
-      let errorMessage = "Correo o contraseña incorrectos"
+      let errorMessage = "Usuario o contraseña incorrectos"
 
       if (
         error.code === "auth/invalid-credential" ||
         error.code === "auth/invalid-email"
       ) {
-        errorMessage = "Credenciales inválidas. Verifique su correo y contraseña."
+        errorMessage = "Credenciales inválidas. Verifique su usuario y contraseña."
       } else if (error.code === "auth/user-not-found") {
         errorMessage = "Usuario no encontrado."
       } else if (error.code === "auth/wrong-password") {
@@ -297,16 +299,16 @@ export default function LoginPage() {
             <TabsContent value="staff">
               <form onSubmit={handleStaffLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="staff-email">Correo Electrónico</Label>
+                  <Label htmlFor="staff-email">Nombre de Usuario</Label>
                   <Input
                     id="staff-email"
-                    type="email"
-                    placeholder="correo@hogarsanjuan.com"
+                    type="text"
+                    placeholder="Nombre de usuario"
                     value={staffEmail}
                     onChange={(e) => setStaffEmail(e.target.value)}
                     required
                     disabled={staffLoading}
-                    autoComplete="email"
+                    autoComplete="username"
                   />
                 </div>
 

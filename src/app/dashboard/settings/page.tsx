@@ -72,6 +72,7 @@ export default function SettingsPage() {
   const {
     staff,
     updateStaffMember,
+    deleteStaffMember,
     isLoading: staffLoading,
   } = useStaff()
 
@@ -180,6 +181,9 @@ export default function SettingsPage() {
       const formData = new FormData(event.currentTarget)
       const userData = Object.fromEntries(formData.entries()) as any
 
+      const username = String(userData.username || "").trim().toLowerCase()
+      const constructedEmail = `${username}@hogarsanjuan.local`
+
       // 1️⃣ Normalizamos el rol que viene del formulario
       const rawRole = userData.role as string
       const role: UserRole = mapRoleFromForm(rawRole)
@@ -230,7 +234,7 @@ export default function SettingsPage() {
         // 1. Crear cuenta en Firebase Auth USANDO LA APP SECUNDARIA
         const userCredential = await createUserWithEmailAndPassword(
           authSecondary,
-          String(userData.email),
+          constructedEmail,
           String(userData.password)
         )
 
@@ -239,7 +243,8 @@ export default function SettingsPage() {
 
         const staffData = {
           name: userData.name,
-          email: userData.email,
+          email: constructedEmail,
+          username: username,
           phone: userData.phone,
           address: userData.address,
           role: role, // rol interno consistente
@@ -290,19 +295,19 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteUser = async (userId: string, userEmail: string) => {
+  const handleDeleteUser = async (userId: string, userName: string) => {
     try {
-      await updateStaffMember(userId, { isActive: false, updatedAt: new Date() })
+      await deleteStaffMember(userId)
       toast({
-        title: "Usuario desactivado",
-        description: `El usuario ha sido desactivado del sistema. Sus datos se conservan por seguridad.`,
+        title: "Usuario eliminado",
+        description: `${userName} ha sido eliminado permanentemente del sistema.`,
       })
     } catch (error) {
-      console.error("Error al desactivar usuario:", error)
+      console.error("Error al eliminar usuario:", error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo desactivar el usuario.",
+        description: "No se pudo eliminar el usuario.",
       })
     }
   }
@@ -546,12 +551,12 @@ export default function SettingsPage() {
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => {
-                              if (window.confirm(`¿Está seguro que desea desactivar a ${user.name}? Esta acción desactivará su acceso al sistema.`)) {
-                                handleDeleteUser(user.id, user.email)
+                              if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
+                                handleDeleteUser(user.id, user.name)
                               }
                             }}
                           >
-                            {user.isActive ? "Desactivar usuario" : "Usuario ya desactivado"}
+                            Eliminar permanentemente
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -619,12 +624,12 @@ export default function SettingsPage() {
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => {
-                                  if (window.confirm(`¿Está seguro que desea desactivar a ${user.name}? Esta acción desactivará su acceso al sistema.`)) {
-                                    handleDeleteUser(user.id, user.email)
+                                  if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
+                                    handleDeleteUser(user.id, user.name)
                                   }
                                 }}
                               >
-                                {user.isActive ? "Desactivar usuario" : "Usuario ya desactivado"}
+                                Eliminar permanentemente
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -717,15 +722,19 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="user-email">Correo Electrónico</Label>
+                  <Label htmlFor="user-username">Nombre de Usuario</Label>
                   <Input
-                    id="user-email"
-                    name="email"
-                    type="email"
-                    defaultValue={editingUser?.email || ""}
+                    id="user-username"
+                    name="username"
+                    type="text"
+                    placeholder="Ej: maria.garcia"
+                    defaultValue={editingUser ? (editingUser.email?.replace("@hogarsanjuan.local", "") || "") : ""}
                     required
                     disabled={!!editingUser}
+                    pattern="^[a-zA-Z0-9._-]+$"
+                    title="Solo letras, números, puntos, guiones y guiones bajos"
                   />
+                  <p className="text-xs text-muted-foreground">El usuario iniciará sesión con este nombre. Sin espacios ni caracteres especiales.</p>
                 </div>
               </div>
 
