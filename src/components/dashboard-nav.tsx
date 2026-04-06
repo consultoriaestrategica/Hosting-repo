@@ -7,12 +7,20 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  useSidebarContext,
 } from "@/components/ui/sidebar"
 import { useUser } from "@/hooks/use-user"
 
 function DashboardNav() {
   const pathname = usePathname()
   const { user, isLoading, hasPermission } = useUser()
+  const { setIsOpen, isMobile } = useSidebarContext()
+
+  const handleNavClick = () => {
+    if (isMobile) {
+      setIsOpen(false)
+    }
+  }
 
   const isActive = (path: string) => {
     return pathname === path || (path !== "/dashboard" && pathname.startsWith(path))
@@ -102,7 +110,7 @@ function DashboardNav() {
               tooltip={item.label}
               className={isActive(item.href) ? "text-white" : "text-[#9AB8A6] hover:text-[#c8e0d1]"}
             >
-              <Link href={item.href}>
+              <Link href={item.href} onClick={handleNavClick}>
                 {item.icon}
                 <span>{item.label}</span>
               </Link>
