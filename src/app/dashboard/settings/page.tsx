@@ -61,7 +61,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
 import { db, auth } from "@/lib/firebase"
 import { authSecondary } from "@/lib/firebase-secondary"
-import { collection, addDoc } from "firebase/firestore"
+import { collection, addDoc, deleteDoc, doc } from "firebase/firestore"
 import { ROLE_PERMISSIONS, UserRole } from "@/types/user"
 import FamilyMembersManagement from "./components/family-management"
 import RouteGuard from "@/components/route-guard"
@@ -199,6 +199,7 @@ export default function SettingsPage() {
           name: userData.name,
           phone: userData.phone,
           address: userData.address,
+          contactEmail: userData.contactEmail || "",
           role: role,
           isActive: userData.status === "Activo",
           permissions: permissions,
@@ -271,6 +272,7 @@ export default function SettingsPage() {
           username: username,
           phone: userData.phone,
           address: userData.address,
+          contactEmail: userData.contactEmail || "",
           role: role, // rol interno consistente
           position: rawRole, // texto mostrado (Administrativo / Personal Asistencial)
           documentNumber: userData.idNumber,
@@ -316,10 +318,17 @@ export default function SettingsPage() {
 
   const handleDeleteUser = async (userId: string, userName: string, _userEmail: string) => {
     try {
-      await deleteStaffMember(userId)
+      // Intentar eliminar de ambas colecciones (admins van a "users", resto a "staff")
+      const results = await Promise.allSettled([
+        deleteDoc(doc(db, "staff", userId)),
+        deleteDoc(doc(db, "users", userId)),
+      ])
+      const anyDeleted = results.some(r => r.status === "fulfilled")
+      if (!anyDeleted) throw new Error("No se encontró el documento en ninguna colección.")
+
       toast({
         title: "Usuario eliminado",
-        description: `${userName} ha sido eliminado de la base de datos. Nota: La cuenta de autenticación se mantiene desactivada en Firebase Auth.`,
+        description: `${userName} ha sido eliminado permanentemente del sistema.`,
       })
     } catch (error) {
       console.error("Error al eliminar usuario:", error)
@@ -533,7 +542,7 @@ export default function SettingsPage() {
                       <div className="space-y-2 flex-1">
                         <p className="font-semibold">{user.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {user.email}
+                          {(user as any).contactEmail || user.email}
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline">{user.role}</Badge>
@@ -594,7 +603,7 @@ export default function SettingsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Correo Electrónico</TableHead>
+                      <TableHead>Correo de Contacto</TableHead>
                       <TableHead>Rol</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>
@@ -608,7 +617,7 @@ export default function SettingsPage() {
                         <TableCell className="font-medium">
                           <div>{user.name}</div>
                         </TableCell>
-                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{(user as any).contactEmail || user.email}</TableCell>
                         <TableCell>{user.role}</TableCell>
                         <TableCell>
                           <Badge
@@ -755,6 +764,20 @@ export default function SettingsPage() {
                   />
                   <p className="text-xs text-muted-foreground">El usuario iniciará sesión con este nombre. Sin espacios ni caracteres especiales.</p>
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="user-contact-email">Correo Electrónico (informativo)</Label>
+                <Input
+                  id="user-contact-email"
+                  name="contactEmail"
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  defaultValue={(editingUser as any)?.contactEmail || ""}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Correo de contacto del usuario. No se usa para iniciar sesión.
+                </p>
               </div>
 
               {/* Contraseña SOLO al crear */}
