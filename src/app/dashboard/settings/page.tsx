@@ -182,7 +182,7 @@ export default function SettingsPage() {
       const userData = Object.fromEntries(formData.entries()) as any
 
       const username = String(userData.username || "").trim().toLowerCase()
-      const constructedEmail = `${username}@hogarsanjuan.local`
+      const constructedEmail = `${username}@hogarsanjuan.co`
 
       // 1️⃣ Normalizamos el rol que viene del formulario
       const rawRole = userData.role as string
@@ -756,7 +756,7 @@ export default function SettingsPage() {
                     name="username"
                     type="text"
                     placeholder="Ej: maria.garcia"
-                    defaultValue={editingUser ? (editingUser.email?.replace("@hogarsanjuan.local", "") || "") : ""}
+                    defaultValue={editingUser ? (editingUser.email?.replace("@hogarsanjuan.co", "") || "") : ""}
                     required
                     disabled={!!editingUser}
                     pattern="^[a-zA-Z0-9._-]+$"

@@ -131,7 +131,7 @@ export default function LoginPage() {
 
     try {
       const usernameClean = staffEmail.trim().toLowerCase()
-      const loginEmail = usernameClean.includes("@") ? usernameClean : `${usernameClean}@hogarsanjuan.local`
+      const loginEmail = usernameClean.includes("@") ? usernameClean : `${usernameClean}@hogarsanjuan.co`
       const cred = await signInWithEmailAndPassword(auth, loginEmail, staffPassword)
       console.log("✅ Staff autenticado en Auth:", cred.user.uid)
 
