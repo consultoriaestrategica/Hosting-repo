@@ -232,11 +232,35 @@ export default function SettingsPage() {
         }
 
         // 1. Crear cuenta en Firebase Auth USANDO LA APP SECUNDARIA
-        const userCredential = await createUserWithEmailAndPassword(
-          authSecondary,
-          constructedEmail,
-          String(userData.password)
-        )
+        let userCredential
+        try {
+          userCredential = await createUserWithEmailAndPassword(
+            authSecondary,
+            constructedEmail,
+            String(userData.password)
+          )
+        } catch (authError: unknown) {
+          const code = (authError as { code?: string }).code
+          if (code === "auth/email-already-in-use") {
+            // La cuenta existe en Auth (posiblemente de un borrado previo de Firestore).
+            // Intentar iniciar sesión con las credenciales indicadas para reutilizar el UID.
+            const { signInWithEmailAndPassword: signInSecondary } = await import("firebase/auth")
+            try {
+              userCredential = await signInSecondary(
+                authSecondary,
+                constructedEmail,
+                String(userData.password)
+              )
+            } catch {
+              throw new Error(
+                `El nombre de usuario "${username}" ya existe en el sistema de autenticación con una contraseña diferente. ` +
+                `Si desea reutilizarlo, use "Restablecer contraseña" primero o elija un nombre de usuario diferente.`
+              )
+            }
+          } else {
+            throw authError
+          }
+        }
 
         // 2. Definir colección según el rol interno
         const collectionName = isAdministrative ? "users" : "staff"
@@ -270,20 +294,15 @@ export default function SettingsPage() {
 
       setIsUserDialogOpen(false)
       setEditingUser(null)
-    } catch (error: any) {
-      console.error("Error creating/updating user:", error)
-
-      let errorMessage = "Error al procesar la solicitud."
-
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "Ya existe una cuenta con este correo electrónico."
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "La contraseña debe tener al menos 6 caracteres."
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "El correo electrónico no es válido."
-      } else if (error.message) {
-        errorMessage = error.message
-      }
+    } catch (error: unknown) {
+      console.error("Error en operación de usuario:", error)
+      const code = (error as { code?: string }).code
+      const errorMessage =
+        error instanceof Error ? error.message :
+        code === "auth/email-already-in-use" ? "Este nombre de usuario ya está registrado en el sistema." :
+        code === "auth/weak-password" ? "La contraseña es muy débil. Use al menos 6 caracteres." :
+        code === "auth/invalid-email" ? "El nombre de usuario genera un email inválido. Use solo letras, números, puntos y guiones." :
+        "No se pudo completar la operación."
 
       toast({
         variant: "destructive",
@@ -295,12 +314,12 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
+  const handleDeleteUser = async (userId: string, userName: string, _userEmail: string) => {
     try {
       await deleteStaffMember(userId)
       toast({
         title: "Usuario eliminado",
-        description: `${userName} ha sido eliminado permanentemente del sistema.`,
+        description: `${userName} ha sido eliminado de la base de datos. Nota: La cuenta de autenticación se mantiene desactivada en Firebase Auth.`,
       })
     } catch (error) {
       console.error("Error al eliminar usuario:", error)
@@ -552,7 +571,7 @@ export default function SettingsPage() {
                             className="text-destructive"
                             onClick={() => {
                               if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
-                                handleDeleteUser(user.id, user.name)
+                                handleDeleteUser(user.id, user.name, user.email)
                               }
                             }}
                           >
@@ -625,7 +644,7 @@ export default function SettingsPage() {
                                 className="text-destructive"
                                 onClick={() => {
                                   if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
-                                    handleDeleteUser(user.id, user.name)
+                                    handleDeleteUser(user.id, user.name, user.email)
                                   }
                                 }}
                               >
