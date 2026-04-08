@@ -181,8 +181,7 @@ export default function SettingsPage() {
       const formData = new FormData(event.currentTarget)
       const userData = Object.fromEntries(formData.entries()) as any
 
-      const username = String(userData.username || "").trim().toLowerCase()
-      const constructedEmail = `${username}@hogarsanjuan.co`
+      const userEmail = String(userData.email || "").trim().toLowerCase()
 
       // 1️⃣ Normalizamos el rol que viene del formulario
       const rawRole = userData.role as string
@@ -233,43 +232,18 @@ export default function SettingsPage() {
         }
 
         // 1. Crear cuenta en Firebase Auth USANDO LA APP SECUNDARIA
-        let userCredential
-        try {
-          userCredential = await createUserWithEmailAndPassword(
-            authSecondary,
-            constructedEmail,
-            String(userData.password)
-          )
-        } catch (authError: unknown) {
-          const code = (authError as { code?: string }).code
-          if (code === "auth/email-already-in-use") {
-            // La cuenta existe en Auth (posiblemente de un borrado previo de Firestore).
-            // Intentar iniciar sesión con las credenciales indicadas para reutilizar el UID.
-            const { signInWithEmailAndPassword: signInSecondary } = await import("firebase/auth")
-            try {
-              userCredential = await signInSecondary(
-                authSecondary,
-                constructedEmail,
-                String(userData.password)
-              )
-            } catch {
-              throw new Error(
-                `El nombre de usuario "${username}" ya existe en el sistema de autenticación con una contraseña diferente. ` +
-                `Si desea reutilizarlo, use "Restablecer contraseña" primero o elija un nombre de usuario diferente.`
-              )
-            }
-          } else {
-            throw authError
-          }
-        }
+        const userCredential = await createUserWithEmailAndPassword(
+          authSecondary,
+          userEmail,
+          String(userData.password)
+        )
 
         // 2. Definir colección según el rol interno
         const collectionName = "staff"
 
         const staffData = {
           name: userData.name,
-          email: constructedEmail,
-          username: username,
+          email: userEmail,
           phone: userData.phone,
           address: userData.address,
           contactEmail: userData.contactEmail || "",
@@ -301,9 +275,9 @@ export default function SettingsPage() {
       const code = (error as { code?: string }).code
       const errorMessage =
         error instanceof Error ? error.message :
-        code === "auth/email-already-in-use" ? "Este nombre de usuario ya está registrado en el sistema." :
+        code === "auth/email-already-in-use" ? "Este correo electrónico ya está registrado en el sistema." :
         code === "auth/weak-password" ? "La contraseña es muy débil. Use al menos 6 caracteres." :
-        code === "auth/invalid-email" ? "El nombre de usuario genera un email inválido. Use solo letras, números, puntos y guiones." :
+        code === "auth/invalid-email" ? "El correo electrónico no tiene un formato válido." :
         "No se pudo completar la operación."
 
       toast({
@@ -316,27 +290,29 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteUser = async (userId: string, userName: string, _userEmail: string) => {
+  const handleDeleteUser = async (userId: string, userName: string) => {
     try {
-      // Intentar eliminar de ambas colecciones (admins van a "users", resto a "staff")
-      const results = await Promise.allSettled([
-        deleteDoc(doc(db, "staff", userId)),
-        deleteDoc(doc(db, "users", userId)),
-      ])
-      const anyDeleted = results.some(r => r.status === "fulfilled")
-      if (!anyDeleted) throw new Error("No se encontró el documento en ninguna colección.")
-
+      await deleteDoc(doc(db, "staff", userId))
       toast({
         title: "Usuario eliminado",
         description: `${userName} ha sido eliminado permanentemente del sistema.`,
       })
     } catch (error) {
-      console.error("Error al eliminar usuario:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo eliminar el usuario.",
-      })
+      console.error("Error al eliminar de staff, intentando en users:", error)
+      try {
+        await deleteDoc(doc(db, "users", userId))
+        toast({
+          title: "Usuario eliminado",
+          description: `${userName} ha sido eliminado permanentemente del sistema.`,
+        })
+      } catch (error2) {
+        console.error("Error al eliminar de users también:", error2)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo eliminar el usuario. El documento puede no existir.",
+        })
+      }
     }
   }
 
@@ -542,7 +518,7 @@ export default function SettingsPage() {
                       <div className="space-y-2 flex-1">
                         <p className="font-semibold">{user.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {(user as any).contactEmail || user.email}
+                          {user.email}
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline">{user.role}</Badge>
@@ -580,7 +556,7 @@ export default function SettingsPage() {
                             className="text-destructive"
                             onClick={() => {
                               if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
-                                handleDeleteUser(user.id, user.name, user.email)
+                                handleDeleteUser(user.id, user.name)
                               }
                             }}
                           >
@@ -603,7 +579,7 @@ export default function SettingsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Correo de Contacto</TableHead>
+                      <TableHead>Correo Electrónico</TableHead>
                       <TableHead>Rol</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>
@@ -617,7 +593,7 @@ export default function SettingsPage() {
                         <TableCell className="font-medium">
                           <div>{user.name}</div>
                         </TableCell>
-                        <TableCell>{(user as any).contactEmail || user.email}</TableCell>
+                        <TableCell>{user.email}</TableCell>
                         <TableCell>{user.role}</TableCell>
                         <TableCell>
                           <Badge
@@ -653,7 +629,7 @@ export default function SettingsPage() {
                                 className="text-destructive"
                                 onClick={() => {
                                   if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
-                                    handleDeleteUser(user.id, user.name, user.email)
+                                    handleDeleteUser(user.id, user.name)
                                   }
                                 }}
                               >
@@ -750,25 +726,21 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="user-username">Nombre de Usuario</Label>
+                  <Label htmlFor="user-email">Correo Electrónico</Label>
                   <Input
-                    id="user-username"
-                    name="username"
-                    type="text"
-                    placeholder="Ej: maria.garcia"
-                    defaultValue={editingUser ? (editingUser.email?.replace("@hogarsanjuan.co", "") || "") : ""}
+                    id="user-email"
+                    name="email"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    defaultValue={editingUser?.email || ""}
                     required
                     disabled={!!editingUser}
-                    onChange={(e) => {
-                      e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "")
-                    }}
                   />
-                  <p className="text-xs text-muted-foreground">El usuario iniciará sesión con este nombre. Sin espacios ni caracteres especiales.</p>
                 </div>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="user-contact-email">Correo Electrónico (informativo)</Label>
+                <Label htmlFor="user-contact-email">Correo Alternativo (opcional)</Label>
                 <Input
                   id="user-contact-email"
                   name="contactEmail"
@@ -777,7 +749,7 @@ export default function SettingsPage() {
                   defaultValue={(editingUser as any)?.contactEmail || ""}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Correo de contacto del usuario. No se usa para iniciar sesión.
+                  Correo secundario de contacto.
                 </p>
               </div>
 

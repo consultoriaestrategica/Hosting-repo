@@ -121,7 +121,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Campos requeridos",
-        description: "Por favor ingrese usuario y contraseña.",
+        description: "Por favor ingrese correo y contraseña.",
       })
       return
     }
@@ -130,9 +130,7 @@ export default function LoginPage() {
     console.log("🔐 Iniciando login de staff:", staffEmail)
 
     try {
-      const usernameClean = staffEmail.trim().toLowerCase()
-      const loginEmail = usernameClean.includes("@") ? usernameClean : `${usernameClean}@hogarsanjuan.co`
-      const cred = await signInWithEmailAndPassword(auth, loginEmail, staffPassword)
+      const cred = await signInWithEmailAndPassword(auth, staffEmail.trim(), staffPassword)
       console.log("✅ Staff autenticado en Auth:", cred.user.uid)
 
       const roleCheck = await checkStaffRecord(
@@ -172,7 +170,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("❌ Error en login de staff:", error)
 
-      let errorMessage = "Usuario o contraseña incorrectos"
+      let errorMessage = "Correo o contraseña incorrectos"
 
       if (
         error.code === "auth/invalid-credential" ||
@@ -299,11 +297,11 @@ export default function LoginPage() {
             <TabsContent value="staff">
               <form onSubmit={handleStaffLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="staff-email">Nombre de Usuario</Label>
+                  <Label htmlFor="staff-email">Correo Electrónico</Label>
                   <Input
                     id="staff-email"
-                    type="text"
-                    placeholder="Nombre de usuario"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
                     value={staffEmail}
                     onChange={(e) => setStaffEmail(e.target.value)}
                     required
