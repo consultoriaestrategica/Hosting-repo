@@ -264,7 +264,7 @@ export default function SettingsPage() {
         }
 
         // 2. Definir colección según el rol interno
-        const collectionName = isAdministrative ? "users" : "staff"
+        const collectionName = "staff"
 
         const staffData = {
           name: userData.name,
@@ -759,8 +759,9 @@ export default function SettingsPage() {
                     defaultValue={editingUser ? (editingUser.email?.replace("@hogarsanjuan.co", "") || "") : ""}
                     required
                     disabled={!!editingUser}
-                    pattern="^[a-zA-Z0-9._-]+$"
-                    title="Solo letras, números, puntos, guiones y guiones bajos"
+                    onChange={(e) => {
+                      e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "")
+                    }}
                   />
                   <p className="text-xs text-muted-foreground">El usuario iniciará sesión con este nombre. Sin espacios ni caracteres especiales.</p>
                 </div>

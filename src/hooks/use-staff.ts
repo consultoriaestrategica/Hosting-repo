@@ -136,8 +136,16 @@ export function useStaff() {
 
   const deleteStaffMember = useCallback(
     async (staffId: string) => {
-      const staffDocRef = doc(db, "staff", staffId)
-      await deleteDoc(staffDocRef)
+      try {
+        await deleteDoc(doc(db, "staff", staffId))
+      } catch (error) {
+        console.error("Error eliminando de staff:", error)
+        try {
+          await deleteDoc(doc(db, "users", staffId))
+        } catch {
+          throw error
+        }
+      }
     },
     []
   )
