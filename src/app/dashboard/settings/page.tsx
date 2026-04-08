@@ -835,34 +835,39 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Campo de nueva contraseña SOLO visual, no implementado */}
               {editingUser && (
                 <div className="grid gap-2 mt-2">
-                  <Label htmlFor="user-new-password">
-                    Nueva Contraseña (No implementado)
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="user-new-password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Por ahora use recuperación de contraseña"
-                      minLength={6}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <Label>Restablecer Contraseña</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={!editingUser?.email}
+                    onClick={async () => {
+                      if (!editingUser?.email) return
+                      try {
+                        await sendPasswordResetEmail(auth, editingUser.email)
+                        toast({
+                          title: "Correo enviado",
+                          description: `Se envió un enlace de recuperación a ${editingUser.email}`,
+                        })
+                      } catch (error: unknown) {
+                        const code = (error as { code?: string }).code
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: code === "auth/user-not-found"
+                            ? "No se encontró cuenta con este correo."
+                            : "No se pudo enviar el correo de recuperación.",
+                        })
+                      }
+                    }}
+                  >
+                    Enviar enlace de recuperación por correo
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Se enviará un correo al usuario con un enlace para crear una nueva contraseña.
+                  </p>
                 </div>
               )}
             </div>
