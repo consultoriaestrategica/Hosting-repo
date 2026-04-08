@@ -291,26 +291,34 @@ export default function SettingsPage() {
   }
 
   const handleDeleteUser = async (userId: string, userName: string) => {
+    console.log("🗑️ INICIO eliminación:", { userId, userName })
+
     try {
-      await deleteDoc(doc(db, "staff", userId))
+      console.log("🗑️ Intentando deleteDoc en staff/" + userId)
+      const staffRef = doc(db, "staff", userId)
+      console.log("🗑️ Referencia creada:", staffRef.path)
+      await deleteDoc(staffRef)
+      console.log("🗑️ deleteDoc completado SIN ERROR para staff/" + userId)
       toast({
         title: "Usuario eliminado",
         description: `${userName} ha sido eliminado permanentemente del sistema.`,
       })
-    } catch (error) {
-      console.error("Error al eliminar de staff, intentando en users:", error)
+    } catch (error: any) {
+      console.error("🗑️ ERROR en deleteDoc staff:", error.code, error.message)
       try {
+        console.log("🗑️ Intentando fallback en users/" + userId)
         await deleteDoc(doc(db, "users", userId))
+        console.log("🗑️ deleteDoc completado en users/" + userId)
         toast({
           title: "Usuario eliminado",
           description: `${userName} ha sido eliminado permanentemente del sistema.`,
         })
-      } catch (error2) {
-        console.error("Error al eliminar de users también:", error2)
+      } catch (error2: any) {
+        console.error("🗑️ ERROR en deleteDoc users:", error2.code, error2.message)
         toast({
           variant: "destructive",
           title: "Error",
-          description: "No se pudo eliminar el usuario. El documento puede no existir.",
+          description: `No se pudo eliminar: ${error.code || error.message}`,
         })
       }
     }
@@ -555,6 +563,7 @@ export default function SettingsPage() {
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => {
+                              console.log("🗑️ Confirm dialog para:", user.id, user.name)
                               if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
                                 handleDeleteUser(user.id, user.name)
                               }
@@ -628,6 +637,7 @@ export default function SettingsPage() {
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => {
+                                  console.log("🗑️ Confirm dialog para:", user.id, user.name)
                                   if (window.confirm(`⚠️ ELIMINAR PERMANENTEMENTE a ${user.name}?\n\nEsta acción NO se puede deshacer. Se eliminarán todos los datos del usuario.`)) {
                                     handleDeleteUser(user.id, user.name)
                                   }
