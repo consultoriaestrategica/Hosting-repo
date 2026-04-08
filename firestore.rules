@@ -1,143 +1,63 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ============================================
-    // FUNCIONES HELPER
-    // ============================================
-    
+
     // Verifica si el usuario está autenticado
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // Verifica si el usuario es staff (existe en colección staff)
-    function isStaff() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/staff/$(request.auth.uid));
-    }
-    
-    // Verifica si el usuario es staff por email
-    function isStaffByEmail() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/staff/$(request.auth.token.email));
-    }
-    
-    // Verifica si el usuario es administrador
-    function isAdmin() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'Administrador';
-    }
-    
-    // Verifica si el usuario es un familiar
-    function isFamilyMember() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/family_members/$(request.auth.uid));
-    }
-    
-    // Obtiene el residentId del familiar autenticado
-    function getFamilyResidentId() {
-      return get(/databases/$(database)/documents/family_members/$(request.auth.uid)).data.residentId;
-    }
-    
-    // ============================================
+
     // COLECCIÓN: staff
-    // ============================================
     match /staff/{staffId} {
-      // Staff puede leer información de staff
       allow read: if isAuthenticated();
-      
-      // Solo administradores pueden crear/actualizar/eliminar staff
-      allow create, update, delete: if isAdmin() || isStaffByEmail();
+      allow create, update, delete: if isAuthenticated();
     }
-    
-    // ============================================
+
     // COLECCIÓN: family_members
-    // ============================================
     match /family_members/{familyId} {
-      // Administradores pueden leer todos los familiares
-      allow read: if isAdmin() || isStaffByEmail();
-      
-      // Un familiar puede leer solo su propia información
-      allow read: if isAuthenticated() && request.auth.uid == familyId;
-      
-      // Solo administradores pueden crear/actualizar/eliminar familiares
-      allow create, update, delete: if isAdmin() || isStaffByEmail();
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
     }
-    
-    // ============================================
+
     // COLECCIÓN: residents
-    // ============================================
     match /residents/{residentId} {
-      // Staff puede leer todos los residentes
       allow read: if isAuthenticated();
-      
-      // Familiares solo pueden leer el residente asociado a ellos
-      allow read: if isFamilyMember() && residentId == getFamilyResidentId();
-      
-      // Solo staff puede escribir
       allow write: if isAuthenticated();
     }
-    
-    // ============================================
-    // COLECCIÓN: logs
-    // ============================================
-    match /logs/{logId} {
-      // Staff puede leer y crear logs
-      allow read, create: if isAuthenticated();
-      
-      // Familiares solo pueden leer logs de su residente
-      allow read: if isFamilyMember() && 
-                     resource.data.residentId == getFamilyResidentId();
-      
-      // Solo staff puede actualizar/eliminar logs
-      allow update, delete: if isAuthenticated();
-    }
-    
-    // ============================================
-    // COLECCIÓN: resident_contracts
-    // ============================================
-    match /resident_contracts/{contractId} {
-      // Solo staff puede acceder a contratos
-      allow read: if isAuthenticated();
-      
-      // Solo administradores y staff pueden escribir contratos
-      allow write: if isAuthenticated();
-    }
-    
-    // ============================================
-    // COLECCIÓN: staff_contracts
-    // ============================================
-    match /staff_contracts/{contractId} {
-      // Solo staff puede acceder a contratos de staff
+
+    // COLECCIÓN: dailyLogs
+    match /dailyLogs/{logId} {
       allow read, write: if isAuthenticated();
     }
-    
-    // ============================================
+
+    // COLECCIÓN: logs (legacy)
+    match /logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // COLECCIÓN: resident_contracts
+    match /resident_contracts/{contractId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // COLECCIÓN: staff_contracts
+    match /staff_contracts/{contractId} {
+      allow read, write: if isAuthenticated();
+    }
+
     // COLECCIÓN: settings
-    // ============================================
     match /settings/{settingId} {
-      // Todos los usuarios autenticados pueden leer settings
       allow read: if isAuthenticated();
-      
-      // Solo staff puede modificar settings
       allow write: if isAuthenticated();
     }
-    
-    // ============================================
-    // COLECCIÓN: users (si existe)
-    // ============================================
+
+    // COLECCIÓN: users
     match /users/{userId} {
-      // Solo staff puede leer usuarios
       allow read: if isAuthenticated();
-      
-      // Solo administradores pueden crear/actualizar/eliminar
-      allow write: if isAdmin() || isStaffByEmail();
+      allow write: if isAuthenticated();
     }
-    
-    // ============================================
+
     // REGLA POR DEFECTO: DENEGAR TODO LO DEMÁS
-    // ============================================
     match /{document=**} {
       allow read, write: if false;
     }
