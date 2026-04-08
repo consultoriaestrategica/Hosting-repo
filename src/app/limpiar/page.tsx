@@ -59,6 +59,24 @@ export default function LimpiarPage() {
     }
   }
 
+  const handleEditEmail = async (collectionName: string, docId: string, currentName: string, currentEmail: string) => {
+    const newEmail = prompt(`Cambiar email de ${currentName}\n\nEmail actual: ${currentEmail}\n\nIngrese el nuevo email:`, currentEmail)
+    if (!newEmail || newEmail === currentEmail) {
+      addLog("Operación cancelada")
+      return
+    }
+    addLog(`Cambiando email de ${currentName}: ${currentEmail} → ${newEmail}`)
+    try {
+      const { updateDoc } = await import("firebase/firestore")
+      await updateDoc(doc(db, collectionName, docId), { email: newEmail, updatedAt: new Date() })
+      addLog(`✅ Email actualizado exitosamente`)
+      await loadData()
+    } catch (error: unknown) {
+      const e = error as any
+      addLog(`❌ ERROR: ${e.code || e.message}`)
+    }
+  }
+
   const handleDeleteAll = async (collectionName: string, docs: any[]) => {
     for (const d of docs) {
       await handleDelete(collectionName, d.id, d.name || "sin nombre")
@@ -93,6 +111,12 @@ export default function LimpiarPage() {
               <td style={{border: "1px solid #ddd", padding: "4px"}}>{d.email}</td>
               <td style={{border: "1px solid #ddd", padding: "4px"}}>{d.role}</td>
               <td style={{border: "1px solid #ddd", padding: "4px"}}>
+                <button
+                  onClick={() => handleEditEmail("staff", d.id, d.name, d.email)}
+                  style={{background: "#2563eb", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "10px", marginRight: "4px"}}
+                >
+                  EDITAR EMAIL
+                </button>
                 <button
                   onClick={() => handleDelete("staff", d.id, d.name)}
                   style={{background: "#dc2626", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "10px"}}
