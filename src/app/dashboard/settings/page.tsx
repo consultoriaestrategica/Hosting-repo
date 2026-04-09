@@ -385,10 +385,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="mt-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>
-          <TabsTrigger value="family">Usuarios Familiares</TabsTrigger>
+        <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
+          <TabsTrigger value="general" className="flex-1 min-w-[100px] text-xs sm:text-sm">General</TabsTrigger>
+          <TabsTrigger value="users" className="flex-1 min-w-[100px] text-xs sm:text-sm">Gestión de Usuarios</TabsTrigger>
+          <TabsTrigger value="family" className="flex-1 min-w-[100px] text-xs sm:text-sm">Usuarios Familiares</TabsTrigger>
         </TabsList>
 
         {/* ================= GENERAL ================= */}

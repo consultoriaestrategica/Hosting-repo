@@ -10,6 +10,7 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   Timestamp
 } from 'firebase/firestore';
@@ -163,6 +164,14 @@ export function useFamilyMembers() {
     []
   );
 
+  const deleteFamilyMember = useCallback(
+    async (familyMemberId: string) => {
+      const familyDoc = doc(db, "family_members", familyMemberId)
+      await deleteDoc(familyDoc)
+    },
+    []
+  );
+
   // Login de familiar (usa auth principal, que es correcto aquí)
   const signInFamilyMember = useCallback(
     async (email: string, password: string): Promise<FamilyMember | null> => {
@@ -234,6 +243,7 @@ export function useFamilyMembers() {
     error,
     addFamilyMember,
     updateFamilyMember,
+    deleteFamilyMember,
     signInFamilyMember,
   };
 }
