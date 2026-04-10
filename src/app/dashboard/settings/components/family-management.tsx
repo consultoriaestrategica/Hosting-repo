@@ -14,22 +14,33 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Trash2, UserCircle, Mail, Phone, Users } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
-/**
- * Gestión de usuarios familiares
- *
- * Permite:
- * - Listar familiares registrados
- * - Crear un nuevo usuario familiar asociado a un residente
- *
- * El alta utiliza useFamilyMembers.addFamilyMember, que:
- * - Crea el usuario en Firebase Auth
- * - Crea el documento en la colección family_members
- */
 export default function FamilyManagement() {
-  const { familyMembers, isLoading, addFamilyMember } = useFamilyMembers()
+  const { familyMembers, isLoading, addFamilyMember, deleteFamilyMember } = useFamilyMembers()
   const { residents } = useResidents()
+  const { toast } = useToast()
 
+  // Form state
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -39,6 +50,18 @@ export default function FamilyManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
+  const totalPages = Math.ceil(familyMembers.length / ITEMS_PER_PAGE)
+  const paginatedMembers = familyMembers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -58,7 +81,6 @@ export default function FamilyManagement() {
 
     try {
       setIsSubmitting(true)
-
       await addFamilyMember(
         {
           email,
@@ -71,115 +93,118 @@ export default function FamilyManagement() {
         },
         password
       )
-
-      setSuccess("Familiar creado correctamente. Podrá acceder desde el login en la pestaña 'Familiares'.")
+      setSuccess("Familiar creado correctamente.")
+      toast({ title: "Familiar creado", description: `${name} puede acceder al Portal Familiar.` })
       setName("")
       setEmail("")
       setPassword("")
       setRelationship("")
       setPhone("")
       setResidentId("")
-    } catch (err: any) {
-      setError(err.message || "No se pudo crear el familiar.")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "No se pudo crear el familiar."
+      setError(msg)
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await deleteFamilyMember(deleteTarget.id)
+      toast({
+        title: "Familiar eliminado",
+        description: `${deleteTarget.name} ha sido eliminado del sistema.`,
+      })
+    } catch (error) {
+      console.error("Error eliminando familiar:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el familiar.",
+      })
+    } finally {
+      setDeleteTarget(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Alta de nuevo familiar */}
+      {/* Formulario de alta */}
       <Card>
         <CardHeader>
-          <CardTitle>Crear usuario familiar</CardTitle>
+          <CardTitle className="text-lg">Crear usuario familiar</CardTitle>
           <CardDescription>
-            Registre un familiar y vincúlelo a un residente. Este usuario
-            podrá acceder al <strong>Portal Familiar</strong> usando correo y
-            contraseña en el login (pestaña &quot;Familiares&quot;).
+            Registre un familiar y vincúlelo a un residente. Podrá acceder al{" "}
+            <strong>Portal Familiar</strong> con su correo y contraseña.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="resident">Residente *</Label>
-                <select
-                  id="resident"
-                  className="border rounded-md px-3 py-2 text-sm w-full"
-                  value={residentId}
-                  onChange={(e) => setResidentId(e.target.value)}
-                >
-                  <option value="">Seleccione un residente</option>
-                  {residents.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
+                <Label>Residente *</Label>
+                <Select value={residentId} onValueChange={setResidentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione un residente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {residents
+                      .filter((r) => r.status === "Activo")
+                      .map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="name">Nombre del familiar *</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nombre completo"
-                />
+                <Label>Nombre del familiar *</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre completo" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Correo electrónico *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="correo@ejemplo.com"
-                />
+                <Label>Correo electrónico *</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Contraseña inicial *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                />
+                <Label>Contraseña inicial *</Label>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="relationship">Parentesco *</Label>
-                <Input
-                  id="relationship"
-                  value={relationship}
-                  onChange={(e) => setRelationship(e.target.value)}
-                  placeholder="Hijo/a, Esposo/a, Hermano/a, etc."
-                />
+                <Label>Parentesco *</Label>
+                <Select value={relationship} onValueChange={setRelationship}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione parentesco" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Hijo/a">Hijo/a</SelectItem>
+                    <SelectItem value="Esposo/a">Esposo/a</SelectItem>
+                    <SelectItem value="Hermano/a">Hermano/a</SelectItem>
+                    <SelectItem value="Nieto/a">Nieto/a</SelectItem>
+                    <SelectItem value="Sobrino/a">Sobrino/a</SelectItem>
+                    <SelectItem value="Cuñado/a">Cuñado/a</SelectItem>
+                    <SelectItem value="Otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono</Label>
-                <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Opcional"
-                />
+                <Label>Teléfono</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Opcional" />
               </div>
             </div>
 
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
-            {success && (
-              <p className="text-sm text-green-600">{success}</p>
-            )}
+            {error && <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>}
+            {success && <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">{success}</p>}
 
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creando familiar..." : "Crear familiar"}
+              {isSubmitting ? "Creando..." : "Crear familiar"}
             </Button>
           </form>
         </CardContent>
@@ -188,47 +213,129 @@ export default function FamilyManagement() {
       {/* Listado de familiares */}
       <Card>
         <CardHeader>
-          <CardTitle>Familiares registrados</CardTitle>
+          <CardTitle className="text-lg">Familiares registrados</CardTitle>
           <CardDescription>
-            Usuarios con acceso al Portal Familiar.
+            {familyMembers.length} usuario(s) con acceso al Portal Familiar.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">
-              Cargando familiares...
-            </p>
-          ) : familyMembers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No hay familiares registrados.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {familyMembers.map((f) => (
-                <div
-                  key={f.id}
-                  className="flex flex-col md:flex-row md:items-center md:justify-between border rounded-md px-3 py-2 text-sm"
-                >
-                  <div>
-                    <p className="font-semibold">{f.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {f.email} · {f.relationship}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Residente: {f.residentName}
-                    </p>
-                  </div>
-                  <div className="mt-2 md:mt-0 flex items-center gap-2">
-                    <Badge variant={f.isActive ? "default" : "outline"}>
-                      {f.isActive ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </div>
-                </div>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
               ))}
             </div>
+          ) : familyMembers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No hay familiares registrados.</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Use el formulario de arriba para crear el primero.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {paginatedMembers.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-start sm:items-center justify-between gap-3 border rounded-xl p-4 bg-card"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mt-0.5">
+                        <UserCircle className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <p className="font-semibold text-sm truncate">{f.name || "Sin nombre"}</p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {f.email}
+                          </span>
+                          {f.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {f.phone}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {f.relationship} de{" "}
+                          <Link
+                            href={`/dashboard/residents/${f.residentId}/`}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {f.residentName}
+                          </Link>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge
+                        variant={f.isActive ? "default" : "secondary"}
+                        className={f.isActive ? "bg-green-600 text-white" : ""}
+                      >
+                        {f.isActive ? "Activo" : "Inactivo"}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeleteTarget({ id: f.id, name: f.name })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Paginación */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, familyMembers.length)}-
+                    {Math.min(currentPage * ITEMS_PER_PAGE, familyMembers.length)} de{" "}
+                    {familyMembers.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                      Anterior
+                    </Button>
+                    <span className="text-sm text-muted-foreground">{currentPage} de {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmación de eliminación */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar familiar permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará a <strong>{deleteTarget?.name}</strong> del sistema.
+              Perderá su acceso al Portal Familiar. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
