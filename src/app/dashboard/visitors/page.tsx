@@ -35,7 +35,7 @@ import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
 import { useState, useMemo, useEffect, Suspense } from "react"
 import NewVisitForm from "./new-visit-form"
-import { PlusCircle, FilterX, Calendar as CalendarIcon, User, Trash2 } from "lucide-react"
+import { PlusCircle, FilterX, Calendar as CalendarIcon, User, Trash2, UserCheck } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
@@ -218,9 +218,15 @@ function VisitorsPageContent() {
                             </Button>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t">
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
-                          </span>
+                          <div>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(visit.visitDate).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
+                            </span>
+                            <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
+                              <UserCheck className="h-3 w-3 shrink-0" />
+                              {(visit as any).registeredBy?.displayName || "—"}
+                            </p>
+                          </div>
                           {isAdmin && (
                             <Button
                               variant="ghost"
@@ -250,6 +256,7 @@ function VisitorsPageContent() {
                     <TableHead>Visitante</TableHead>
                     <TableHead>Parentesco</TableHead>
                     <TableHead>Residente Visitado</TableHead>
+                    <TableHead>Registrado por</TableHead>
                     {isAdmin && <TableHead className="w-[60px]">Acciones</TableHead>}
                 </TableRow>
                 </TableHeader>
@@ -271,6 +278,9 @@ function VisitorsPageContent() {
                             </Link>
                         </Button>
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {(visit as any).registeredBy?.displayName || "—"}
+                        </TableCell>
                         {isAdmin && (
                           <TableCell>
                             <Button
@@ -288,7 +298,7 @@ function VisitorsPageContent() {
                     ))
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                        <TableCell colSpan={isAdmin ? 6 : 5} className="h-24 text-center">
                             No se encontraron visitas con los filtros actuales.
                         </TableCell>
                     </TableRow>

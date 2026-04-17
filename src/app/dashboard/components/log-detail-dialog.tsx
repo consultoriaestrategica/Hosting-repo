@@ -59,6 +59,7 @@ type LogWithExtras = Log & {
   pendingTasks?: string
   supplyNotes?: string
   notes?: string
+  createdBy?: { uid: string; displayName: string; email: string }
 }
 
 type EvolutionEntryUI = {
@@ -257,6 +258,12 @@ export default function LogDetailDialog({
                   </span>{" "}
                   del {formattedDate}, {formattedTime}.
                 </DialogDescription>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Registrado por:{" "}
+                  <span className="font-medium">
+                    {typedLog.createdBy?.displayName || "—"}
+                  </span>
+                </p>
               </div>
               <Badge
                 variant="outline"

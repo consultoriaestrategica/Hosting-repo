@@ -25,7 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
+import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList, ChevronLeft, ChevronRight, Trash2, UserCheck } from "lucide-react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
@@ -207,6 +207,10 @@ function LogsPageContent() {
                           timeStyle: "short",
                         })}
                       </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground flex items-center gap-1">
+                        <UserCheck className="h-3 w-3 shrink-0" />
+                        {(log as any).createdBy?.displayName || "—"}
+                      </p>
                     </div>
                     <Badge
                       variant="outline"
@@ -293,6 +297,7 @@ function LogsPageContent() {
                   <TableHead>Fecha</TableHead>
                   <TableHead>Residente</TableHead>
                   <TableHead>Tipo de Reporte</TableHead>
+                  <TableHead>Registrado por</TableHead>
                   <TableHead>Detalle Principal</TableHead>
                   <TableHead className="text-right">
                     <span className="sr-only">Acciones</span>
@@ -334,6 +339,9 @@ function LogsPageContent() {
                           )}
                           {log.reportType === "medico" ? "Médico" : "Suministro"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {(log as any).createdBy?.displayName || "—"}
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
                         {getLogPreview(log)}
@@ -378,7 +386,7 @@ function LogsPageContent() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={6}>
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-4" />
                         <h3 className="text-lg font-semibold text-muted-foreground">Sin registros</h3>

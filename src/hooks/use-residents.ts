@@ -46,6 +46,12 @@ export type AgendaEvent = {
   status: "Pendiente" | "Completado" | "Cancelado"
 }
 
+export type RegisteredByInfo = {
+  uid: string
+  displayName: string
+  email: string
+}
+
 export type Visit = {
   id: string
   visitorName: string
@@ -53,6 +59,7 @@ export type Visit = {
   kinship: string
   visitDate: string
   notes?: string
+  registeredBy?: RegisteredByInfo
 }
 
 export type Resident = {

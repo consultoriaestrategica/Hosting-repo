@@ -24,6 +24,8 @@ import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useLogs } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
+import { useUser } from "@/hooks/use-user"
+import { useAuth } from "@/hooks/use-auth"
 import React, { useState, useEffect, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { 
@@ -182,6 +184,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { toast } = useToast()
   const { addLog, isLoading } = useLogs()
   const { residents } = useResidents()
+  const { user: authUser } = useAuth()
+  const { user: staffUser } = useUser()
 
   const allowedImageTypes = {
     'image/jpeg': ['.jpg', '.jpeg'],
@@ -693,6 +697,14 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         temperature: data.temperature,
       };
 
+      const createdBy = authUser
+        ? {
+            uid: authUser.uid,
+            displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
+            email: authUser.email || "",
+          }
+        : undefined
+
       const medicalLogData = {
         ...baseLogData,
         notes: combinedEvolutionNotes.join("\n\n"),
@@ -706,11 +718,20 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         visitType: data.visitType,
         professionalName: data.professionalName,
         exitTime: currentTime,
+        createdBy,
       };
 
       addLog(medicalLogData);
       resetMedicalStates();
     } else {
+      const createdBy = authUser
+        ? {
+            uid: authUser.uid,
+            displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
+            email: authUser.email || "",
+          }
+        : undefined
+
       const supplyLogData = {
         ...baseLogData,
         notes: data.supplyNotes || "",
@@ -719,6 +740,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         supplyDescription: data.supplyDescription,
         supplyNotes: data.supplyNotes,
         supplyPhotoEvidence: data.supplyPhotoEvidence,
+        createdBy,
       };
       addLog(supplyLogData);
     }

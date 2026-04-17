@@ -24,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useResidents } from "@/hooks/use-residents"
+import { useUser } from "@/hooks/use-user"
+import { useAuth } from "@/hooks/use-auth"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 
 const visitFormSchema = z.object({
@@ -43,6 +45,8 @@ interface NewVisitFormProps {
 export default function NewVisitForm({ onFormSubmit }: NewVisitFormProps) {
   const { toast } = useToast()
   const { residents, addVisit } = useResidents()
+  const { user: authUser } = useAuth()
+  const { user: staffUser } = useUser()
 
   const form = useForm<VisitFormValues>({
     resolver: zodResolver(visitFormSchema),
@@ -56,11 +60,20 @@ export default function NewVisitForm({ onFormSubmit }: NewVisitFormProps) {
   })
 
   function onSubmit(data: VisitFormValues) {
+    const registeredBy = authUser
+      ? {
+          uid: authUser.uid,
+          displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
+          email: authUser.email || "",
+        }
+      : undefined
+
     addVisit(data.residentId, {
       visitorName: data.visitorName,
       visitorIdNumber: data.visitorIdNumber,
       kinship: data.kinship,
       notes: data.notes,
+      registeredBy,
     })
     
     const residentName = residents.find(r => r.id === data.residentId)?.name

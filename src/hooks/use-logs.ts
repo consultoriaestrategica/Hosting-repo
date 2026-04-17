@@ -37,6 +37,12 @@ export type EvolutionEntry = {
   temperature?: number
 }
 
+export type CreatedByInfo = {
+  uid: string
+  displayName: string
+  email: string
+}
+
 export type BaseLog = {
   id: string
   residentId: string
@@ -46,6 +52,7 @@ export type BaseLog = {
   notes?: string
   createdAt?: Date | null
   updatedAt?: Date | null
+  createdBy?: CreatedByInfo
 }
 
 export type MedicalLogFields = {
