@@ -39,7 +39,7 @@ const residentFormSchema = z.object({
   dob: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de nacimiento inválida." }),
   idNumber: z.string().min(5, { message: "La cédula debe tener al menos 5 caracteres." }),
   gender: z.enum(["Femenino", "Masculino", "Otro"]),
-  status: z.enum(["Activo", "Inactivo"]),
+  status: z.enum(["Activo", "Inactivo", "Borrador"]),
   
   // Medical Info
   bloodType: z.string().min(1, { message: "Campo requerido."}),
@@ -154,7 +154,42 @@ export default function NewResidentPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
- function onInvalid() {
+ async function handleSaveDraft() {
+    const name = form.getValues("name")
+    if (!name?.trim()) {
+      toast({ variant: "destructive", title: "El nombre es necesario incluso para un borrador." })
+      return
+    }
+    const values = form.getValues()
+    const age = values.dob && !isNaN(Date.parse(values.dob))
+      ? new Date().getFullYear() - new Date(values.dob).getFullYear()
+      : 0
+    const newId = await addResident({
+      name: values.name,
+      idNumber: values.idNumber || "",
+      dob: values.dob || "",
+      age,
+      gender: values.gender as "Femenino" | "Masculino" | "Otro" | undefined,
+      dependency: (values.dependency as "Dependiente" | "Independiente") || "Dependiente",
+      status: "Borrador",
+      admissionDate: values.admissionDate || new Date().toISOString().split('T')[0],
+      roomType: (values.roomType as "Habitación compartida" | "Habitación individual") || "Habitación compartida",
+      roomNumber: values.roomNumber || "",
+      bloodType: values.bloodType || "",
+      fallRisk: (values.fallRisk as "Bajo" | "Medio" | "Alto") || "Bajo",
+      medicalHistory: values.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
+      surgicalHistory: values.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
+      allergies: values.allergies?.split(',').map(a => a.trim()).filter(Boolean) || [],
+      medications: values.medications || [],
+      diet: values.diet || "",
+      familyContacts: values.familyContacts || [],
+      documents: [],
+    })
+    toast({ title: "Borrador guardado", description: "Puedes completar la información más tarde." })
+    router.push(`/dashboard/residents/${newId}`)
+  }
+
+  function onInvalid() {
     const errs = form.formState.errors
     const generalFields = ['name', 'dob', 'idNumber', 'gender', 'admissionDate', 'roomType', 'status']
     const medicalFields = ['bloodType', 'dependency', 'fallRisk']
@@ -373,9 +408,12 @@ export default function NewResidentPage() {
               </TabsContent>
            </Tabs>
           
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancelar
+            </Button>
+            <Button type="button" variant="outline" onClick={handleSaveDraft} disabled={isLoading}>
+              Guardar como borrador
             </Button>
             <Button type="submit" disabled={isLoading}>Guardar Residente</Button>
           </div>

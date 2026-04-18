@@ -26,7 +26,7 @@ export default function DashboardHomePage() {
   const { staff } = useStaff()
   const { settings } = useSettings()
 
-  const activeResidents = residents.filter(r => r.status === "Activo").length
+  const activeResidents = residents.filter(r => r.status === "Activo" || !r.status).length
   const totalStaff = staff.length
   const todayLogs = logs.filter(l => {
     const logDate = new Date(l.endDate).toDateString()

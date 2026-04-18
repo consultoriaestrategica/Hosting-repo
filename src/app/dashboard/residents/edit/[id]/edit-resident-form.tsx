@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useResidents } from "@/hooks/use-residents"
 import React, { useState, useEffect } from "react"
-import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2, Weight } from "lucide-react"
+import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2, Weight, AlertTriangle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const residentFormSchema = z.object({
@@ -33,7 +33,7 @@ const residentFormSchema = z.object({
   dob: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de nacimiento inválida." }),
   idNumber: z.string().min(5, { message: "La cédula debe tener al menos 5 caracteres." }),
   gender: z.enum(["Femenino", "Masculino", "Otro"]).optional().or(z.literal("")),
-  status: z.enum(["Activo", "Inactivo"]),
+  status: z.enum(["Activo", "Inactivo", "Borrador"]),
   
   // Medical Info
   bloodType: z.string().min(1, { message: "Campo requerido."}),
@@ -193,19 +193,54 @@ export default function EditResidentForm({ residentId }: { residentId: string })
     }, 150)
   }
 
+  async function handleSaveDraftEdit() {
+    if (!resident) return
+    const values = form.getValues()
+    if (!values.name?.trim()) {
+      toast({ variant: "destructive", title: "El nombre es necesario incluso para un borrador." })
+      return
+    }
+    const age = values.dob && !isNaN(Date.parse(values.dob))
+      ? new Date().getFullYear() - new Date(values.dob).getFullYear()
+      : resident.age
+    await updateResident(resident.id, {
+      name: values.name,
+      idNumber: values.idNumber || "",
+      dob: values.dob || "",
+      age,
+      gender: (values.gender || undefined) as "Femenino" | "Masculino" | "Otro" | undefined,
+      dependency: (values.dependency as "Dependiente" | "Independiente") || "Dependiente",
+      status: "Borrador",
+      admissionDate: values.admissionDate || "",
+      roomType: (values.roomType || undefined) as "Habitación compartida" | "Habitación individual" | undefined,
+      roomNumber: values.roomNumber || "",
+      bloodType: values.bloodType || "",
+      fallRisk: (values.fallRisk as "Bajo" | "Medio" | "Alto") || "Bajo",
+      medicalHistory: values.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
+      surgicalHistory: values.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
+      allergies: values.allergies?.split(',').map(a => a.trim()).filter(Boolean),
+      medications: values.medications || [],
+      diet: values.diet || "",
+      familyContacts: values.familyContacts || [],
+    })
+    toast({ title: "Borrador actualizado", description: "Aún faltan campos obligatorios para activar al residente." })
+  }
+
   function onSubmit(data: ResidentFormValues) {
     if (!resident) return;
+    const wasDraft = resident.status === "Borrador"
     const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
-    
+
     const documentsData = Object.entries(uploadedFiles).map(([type, fileInfo]) => ({
       type: type,
       name: fileInfo.name,
       size: fileInfo.size,
     }));
-    
+
     const updatedData = {
         ...data,
         age: age,
+        status: wasDraft ? "Activo" as const : data.status,
         medicalHistory: data.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         surgicalHistory: data.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         allergies: data.allergies?.split(',').map(a => a.trim()).filter(Boolean),
@@ -213,11 +248,13 @@ export default function EditResidentForm({ residentId }: { residentId: string })
         gender: (data.gender || undefined) as "Femenino" | "Masculino" | "Otro" | undefined,
         roomType: (data.roomType || undefined) as "Habitación compartida" | "Habitación individual" | undefined,
     };
-    
+
     updateResident(resident.id, updatedData);
     toast({
-      title: "Residente Actualizado",
-      description: `Los datos de ${data.name} han sido actualizados exitosamente.`,
+      title: wasDraft ? "Residente activado exitosamente" : "Residente Actualizado",
+      description: wasDraft
+        ? `${data.name} ahora está activo en el sistema.`
+        : `Los datos de ${data.name} han sido actualizados exitosamente.`,
     })
     router.push(`/dashboard/residents/${resident.id}`);
   }
@@ -238,6 +275,15 @@ export default function EditResidentForm({ residentId }: { residentId: string })
   return (
     <>
       <h1 className="text-3xl font-bold font-headline mb-6">Editar Perfil de {resident.name}</h1>
+      {resident.status === "Borrador" && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 mb-6">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Este residente está en borrador.</span>{" "}
+            Completa los campos obligatorios marcados con <span className="text-destructive font-bold">*</span> y haz clic en "Guardar y activar" para activarlo.
+          </p>
+        </div>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
            <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -384,11 +430,18 @@ export default function EditResidentForm({ residentId }: { residentId: string })
               </TabsContent>
            </Tabs>
           
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>Guardar Cambios</Button>
+            {resident.status === "Borrador" && (
+              <Button type="button" variant="outline" onClick={handleSaveDraftEdit} disabled={isLoading}>
+                Guardar borrador
+              </Button>
+            )}
+            <Button type="submit" disabled={isLoading}>
+              {resident.status === "Borrador" ? "Guardar y activar" : "Guardar Cambios"}
+            </Button>
           </div>
         </form>
       </Form>

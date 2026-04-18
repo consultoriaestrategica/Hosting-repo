@@ -73,7 +73,7 @@ export type Resident = {
   surgicalHistory?: string[]
   allergies?: string[]
   dependency: "Dependiente" | "Independiente"
-  status: "Activo" | "Inactivo"
+  status: "Activo" | "Inactivo" | "Borrador"
   admissionDate: string
   roomType: "Habitación compartida" | "Habitación individual"
   roomNumber?: string
@@ -154,9 +154,10 @@ export function useResidents() {
   // ==============================
 
   const addResident = useCallback(
-    async (newResident: Omit<Resident, "id">) => {
+    async (newResident: Omit<Resident, "id">): Promise<string> => {
       const colRef = collection(db, "residents")
-      await addDoc(colRef, newResident)
+      const docRef = await addDoc(colRef, newResident)
+      return docRef.id
     },
     []
   )

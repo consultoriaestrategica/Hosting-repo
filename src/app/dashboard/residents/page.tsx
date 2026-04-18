@@ -85,7 +85,7 @@ function ResidentsPageContent() {
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [dateFilter, setDateFilter] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | "Activo" | "Inactivo">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "Activo" | "Inactivo" | "Borrador">("all")
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
@@ -118,7 +118,7 @@ function ResidentsPageContent() {
   }, [residents, searchTerm, dateFilter, statusFilter])
 
   const totalActiveResidents = useMemo(() => {
-    return residents.filter((r) => r.status === "Activo").length
+    return residents.filter((r) => r.status === "Activo" || (!r.status)).length
   }, [residents])
 
   const totalPages = Math.max(
@@ -355,12 +355,15 @@ END:VCALENDAR`
               onChange={(e) => setDateFilter(e.target.value)}
             />
           </div>
-          <div className="flex gap-2 mt-3">
+          <div className="flex flex-wrap gap-2 mt-3">
             <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("all")}>
               Todos ({residents.length})
             </Button>
             <Button variant={statusFilter === "Activo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Activo")}>
-              Activos ({residents.filter(r => r.status === "Activo").length})
+              Activos ({residents.filter(r => r.status === "Activo" || !r.status).length})
+            </Button>
+            <Button variant={statusFilter === "Borrador" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Borrador")} className={statusFilter === "Borrador" ? "bg-amber-500 border-amber-500" : "border-amber-300 text-amber-700 hover:bg-amber-50"}>
+              Borradores ({residents.filter(r => r.status === "Borrador").length})
             </Button>
             <Button variant={statusFilter === "Inactivo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Inactivo")}>
               Inactivos ({residents.filter(r => r.status === "Inactivo").length})
@@ -387,9 +390,13 @@ END:VCALENDAR`
                         {resident.roomType} {resident.roomNumber ? `#${resident.roomNumber}` : ""}
                       </p>
                     </div>
-                    <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>
-                      {resident.status}
-                    </Badge>
+                    {resident.status === "Borrador" ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">Borrador</span>
+                    ) : (
+                      <Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>
+                        {resident.status}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
                     <span>Ingreso: {new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
@@ -469,18 +476,16 @@ END:VCALENDAR`
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          resident.status === "Activo" ? "default" : "secondary"
-                        }
-                        className={
-                          resident.status === "Activo"
-                            ? "bg-green-500 text-white"
-                            : ""
-                        }
-                      >
-                        {resident.status}
-                      </Badge>
+                      {resident.status === "Borrador" ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300">Borrador</span>
+                      ) : (
+                        <Badge
+                          variant={resident.status === "Activo" ? "default" : "secondary"}
+                          className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}
+                        >
+                          {resident.status}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}
