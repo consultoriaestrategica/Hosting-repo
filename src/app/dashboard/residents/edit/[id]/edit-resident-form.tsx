@@ -79,6 +79,7 @@ export default function EditResidentForm({ residentId }: { residentId: string })
   const router = useRouter()
   const { residents, updateResident, isLoading } = useResidents()
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, { name: string; size: number }>>({})
+  const [activeTab, setActiveTab] = useState("general")
   
   const resident = residents.find(r => r.id === residentId);
   
@@ -176,6 +177,22 @@ export default function EditResidentForm({ residentId }: { residentId: string })
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
   
+  function onInvalid() {
+    const errs = form.formState.errors
+    const generalFields = ['name', 'dob', 'idNumber', 'admissionDate']
+    const medicalFields = ['bloodType', 'dependency', 'fallRisk']
+    const hasGeneralError = generalFields.some(f => !!(errs as any)[f])
+    const hasMedicalError = medicalFields.some(f => !!(errs as any)[f])
+    const hasContactsError = !!errs.familyContacts
+    if (hasGeneralError) setActiveTab("general")
+    else if (hasMedicalError) setActiveTab("medical")
+    else if (hasContactsError) setActiveTab("contacts")
+    toast({ variant: "destructive", title: "Hay campos obligatorios sin completar", description: "Revisa los campos marcados en rojo." })
+    setTimeout(() => {
+      document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 150)
+  }
+
   function onSubmit(data: ResidentFormValues) {
     if (!resident) return;
     const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
@@ -212,17 +229,31 @@ export default function EditResidentForm({ residentId }: { residentId: string })
   if (!resident) {
     return <div>Residente no encontrado.</div>
   }
-  
+
+  const formErrors = form.formState.errors
+  const generalErrorCount = (['name', 'dob', 'idNumber', 'admissionDate'] as const).filter(f => !!formErrors[f]).length
+  const medicalErrorCount = (['bloodType', 'dependency', 'fallRisk'] as const).filter(f => !!formErrors[f]).length
+  const contactsErrorCount = formErrors.familyContacts ? 1 : 0
+
   return (
     <>
       <h1 className="text-3xl font-bold font-headline mb-6">Editar Perfil de {resident.name}</h1>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-           <Tabs defaultValue="general">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+           <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="flex flex-wrap w-full">
-                  <TabsTrigger value="general" className="flex-1 min-w-[120px] text-xs sm:text-sm">Información General</TabsTrigger>
-                  <TabsTrigger value="medical" className="flex-1 min-w-[120px] text-xs sm:text-sm">Perfil Médico</TabsTrigger>
-                  <TabsTrigger value="contacts" className="flex-1 min-w-[120px] text-xs sm:text-sm">Contactos Familiares</TabsTrigger>
+                  <TabsTrigger value="general" className="flex-1 min-w-[120px] text-xs sm:text-sm gap-1.5">
+                    Información General
+                    {generalErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{generalErrorCount}</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="medical" className="flex-1 min-w-[120px] text-xs sm:text-sm gap-1.5">
+                    Perfil Médico
+                    {medicalErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{medicalErrorCount}</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="contacts" className="flex-1 min-w-[120px] text-xs sm:text-sm gap-1.5">
+                    Contactos Familiares
+                    {contactsErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{contactsErrorCount}</span>}
+                  </TabsTrigger>
                   <TabsTrigger value="documents" className="flex-1 min-w-[120px] text-xs sm:text-sm">Documentos</TabsTrigger>
               </TabsList>
               
@@ -234,9 +265,9 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                     </CardHeader>
                     <CardContent className="space-y-4 pt-6">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Fecha de Nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="idNumber" render={({ field }) => (<FormItem><FormLabel>Nº de Cédula</FormLabel><FormControl><Input placeholder="Ej. 12345678" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Completo <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Fecha de Nacimiento <span className="text-destructive">*</span></FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="idNumber" render={({ field }) => (<FormItem><FormLabel>Nº de Cédula <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. 12345678" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Género</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un género" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Femenino">Femenino</SelectItem><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="admissionDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
@@ -255,7 +286,7 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <FormField control={form.control} name="bloodType" render={({ field }) => (<FormItem><FormLabel>Tipo de Sangre</FormLabel><FormControl><Input placeholder="Ej. O+" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="bloodType" render={({ field }) => (<FormItem><FormLabel>Tipo de Sangre <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. O+" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="dependency" render={({ field }) => (<FormItem><FormLabel>Nivel de Dependencia</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un nivel" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Dependiente">Dependiente</SelectItem><SelectItem value="Independiente">Independiente</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="fallRisk" render={({ field }) => (<FormItem><FormLabel>Riesgo de Caída</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un riesgo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Bajo">Bajo</SelectItem><SelectItem value="Medio">Medio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
@@ -377,14 +408,14 @@ function FamilyContactFields({ form, contactIndex, removeContact }: { form: any,
                 <Trash2 className="h-4 w-4" />
             </Button>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField control={form.control} name={`familyContacts.${contactIndex}.name`} render={({ field }) => (<FormItem><FormLabel>Nombre del Contacto</FormLabel><FormControl><Input placeholder="Ej. Juan Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name={`familyContacts.${contactIndex}.kinship`} render={({ field }) => (<FormItem><FormLabel>Parentesco</FormLabel><FormControl><Input placeholder="Ej. Hijo" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name={`familyContacts.${contactIndex}.email`} render={({ field }) => (<FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input placeholder="Ej. juan.r@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`familyContacts.${contactIndex}.name`} render={({ field }) => (<FormItem><FormLabel>Nombre del Contacto <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Juan Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`familyContacts.${contactIndex}.kinship`} render={({ field }) => (<FormItem><FormLabel>Parentesco <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Hijo" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`familyContacts.${contactIndex}.email`} render={({ field }) => (<FormItem><FormLabel>Correo Electrónico <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. juan.r@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
-            <FormField control={form.control} name={`familyContacts.${contactIndex}.address`} render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123, Ciudad" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name={`familyContacts.${contactIndex}.address`} render={({ field }) => (<FormItem><FormLabel>Dirección <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123, Ciudad" {...field} /></FormControl><FormMessage /></FormItem>)} />
             
             <div>
-                <FormLabel>Números de Teléfono</FormLabel>
+                <FormLabel>Números de Teléfono <span className="text-destructive">*</span></FormLabel>
                 <div className="space-y-2 mt-2">
                     {phoneFields.map((field, phoneIndex) => (
                         <div key={field.id} className="flex items-center gap-2">
