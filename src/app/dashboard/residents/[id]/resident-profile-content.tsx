@@ -2,7 +2,7 @@
 import * as React from "react";
 import { useResidents, Resident, DischargeDetails, AgendaEvent } from "@/hooks/use-residents";
 import { useLogs, Log } from "@/hooks/use-logs";
-import { useContracts as useResidentContracts } from "@/hooks/use-contracts";
+import ContractAttachment from "../../components/contract-attachment";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +88,6 @@ function InfoRow({ label, value }: { label: string; value: string | React.ReactN
 export default function ResidentProfilePageContent({ id: residentId }: { id: string }) {
   const { residents, dischargeResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, isLoading: residentsLoading } = useResidents();
   const { logs, isLoading: logsLoading } = useLogs();
-  const { contracts: residentContracts, isLoading: contractsLoading } = useResidentContracts();
   const { toast } = useToast();
   const { user, role, hasPermission } = useUser();
 
@@ -129,12 +128,6 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [isDetailDialogOpen, isDischargeDialogOpen, isAlertDialogOpen, isNewLogDialogOpen, isAgendaFormOpen, isPartialEvolutionDialogOpen]);
-
-  const filteredContracts = useMemo(() => {
-    return residentContracts
-      .filter(c => c.residentId === residentId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [residentContracts, residentId]);
 
   const residentLogs = useMemo(() => {
     if (!resident) return [];
@@ -220,7 +213,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
     toast({ variant: 'destructive', title: 'Evento Eliminado', description: 'El evento ha sido eliminado de la agenda.' });
   };
 
-  const isLoading = residentsLoading || logsLoading || contractsLoading;
+  const isLoading = residentsLoading || logsLoading;
 
   if (!isClient || isLoading) {
     return (
@@ -340,8 +333,8 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="contracts">
-                  Contratos {filteredContracts.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{filteredContracts.length}</Badge>
+                  Contrato {(resident as any).contract && (
+                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">1</Badge>
                   )}
                 </TabsTrigger>
               </>
@@ -580,46 +573,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
               </TabsContent>
 
               <TabsContent value="contracts" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><BookUser />Historial de Contratos</CardTitle>
-                    <CardDescription>Todos los contratos de servicios para {resident.name}.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fecha Creación</TableHead>
-                          <TableHead>Tipo de Contrato</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead><span className="sr-only">Acciones</span></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredContracts.length > 0 ? (
-                          filteredContracts.map(c => (
-                            <TableRow key={c.id}>
-                              <TableCell>{new Date(c.createdAt).toLocaleDateString('es-ES')}</TableCell>
-                              <TableCell>Servicios ({c.contractType})</TableCell>
-                              <TableCell><Badge variant={getStatusVariant(c.status)}>{c.status}</Badge></TableCell>
-                              <TableCell className="text-right">
-                                <Button asChild variant="outline" size="sm">
-                                  <Link href={`/dashboard/contracts/${c.id}?type=resident`}>
-                                    <Eye className="mr-2 h-4 w-4" /> Ver Detalle
-                                  </Link>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">No se encontraron contratos.</TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                <ContractAttachment residentId={residentId} residentName={resident.name} />
               </TabsContent>
             </>
           )}
