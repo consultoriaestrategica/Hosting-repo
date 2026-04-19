@@ -285,7 +285,7 @@ export default function EditResidentForm({ residentId }: { residentId: string })
         </div>
       )}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8 pb-28 sm:pb-0">
            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="flex flex-wrap w-full">
                   <TabsTrigger value="general" className="flex-1 min-w-[120px] text-xs sm:text-sm gap-1.5">
@@ -430,16 +430,16 @@ export default function EditResidentForm({ residentId }: { residentId: string })
               </TabsContent>
            </Tabs>
           
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+          <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t p-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:static sm:bg-transparent sm:border-0 sm:p-0">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
               Cancelar
             </Button>
             {resident.status === "Borrador" && (
-              <Button type="button" variant="outline" onClick={handleSaveDraftEdit} disabled={isLoading}>
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={handleSaveDraftEdit} disabled={isLoading}>
                 Guardar borrador
               </Button>
             )}
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
               {resident.status === "Borrador" ? "Guardar y activar" : "Guardar Cambios"}
             </Button>
           </div>

@@ -238,7 +238,7 @@ export default function LogDetailDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] sm:max-w-3xl w-full h-[90dvh] flex flex-col p-0">
         {/* ZONA EXPORTABLE A PDF */}
         <div ref={pdfRef} className="flex-1 flex flex-col bg-white overflow-hidden">
           {/* HEADER */}

@@ -318,7 +318,8 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
         </div>
 
         <Tabs defaultValue="general">
-          <TabsList className="flex flex-wrap h-auto justify-start">
+          <div className="overflow-x-auto -mx-4 px-4 pb-1">
+          <TabsList className="inline-flex h-auto w-auto min-w-full flex-nowrap justify-start">
             <TabsTrigger value="general">Perfil General</TabsTrigger>
             {isAdminRole && (
               <>
@@ -350,6 +351,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
               )}
             </TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="general" className="mt-4">
             <div className="grid gap-6 lg:grid-cols-2">
@@ -580,81 +582,100 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
 
           <TabsContent value="agenda" className="mt-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <div>
                   <CardTitle className="flex items-center gap-2"><Calendar />Agenda de Eventos</CardTitle>
                   <CardDescription>Citas, recordatorios y gestiones para {resident.name}.</CardDescription>
                 </div>
-                <Button size="sm" onClick={() => handleOpenAgendaDialog()}>
+                <Button size="sm" className="shrink-0" onClick={() => handleOpenAgendaDialog()}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Agendar Evento
+                  <span className="hidden sm:inline">Agendar Evento</span>
+                  <span className="sm:hidden">Agendar</span>
                 </Button>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha y Hora</TableHead>
-                      <TableHead>Evento</TableHead>
-                      <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                      <TableHead className="hidden md:table-cell">Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                {/* Mobile */}
+                <div className="md:hidden space-y-3">
+                  {sortedAgendaEvents.length > 0 ? sortedAgendaEvents.map((event) => (
+                    <div key={event.id} className="border rounded-lg p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{event.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(event.date).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })}
+                          </p>
+                        </div>
+                        <Badge variant={getAgendaStatusVariant(event.status)} className="shrink-0 text-[10px]">
+                          {event.status}
+                        </Badge>
+                      </div>
+                      {event.description && (
+                        <p className="text-xs text-muted-foreground">{event.description}</p>
+                      )}
+                      <div className="flex items-center justify-between pt-1 border-t">
+                        <span className="text-xs text-muted-foreground">{event.type}</span>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenAgendaDialog(event)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEvent(event.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-center text-muted-foreground py-8">No hay eventos en la agenda.</p>
+                  )}
+                </div>
 
-                  <TableBody>
-                    {sortedAgendaEvents.length > 0 ? (
-                      sortedAgendaEvents.map((event) => (
-                        <TableRow key={event.id}>
-                          <TableCell>
-                            {new Date(event.date).toLocaleString("es-ES", {
-                              dateStyle: "long",
-                              timeStyle: "short",
-                            })}
-                          </TableCell>
-                          <TableCell>
-                            <p className="font-semibold">{event.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {event.description}
-                            </p>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {event.type}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <Badge variant={getAgendaStatusVariant(event.status)}>
-                              {event.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleOpenAgendaDialog(event)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => handleDeleteEvent(event.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                {/* Desktop */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha y Hora</TableHead>
+                        <TableHead>Evento</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedAgendaEvents.length > 0 ? (
+                        sortedAgendaEvents.map((event) => (
+                          <TableRow key={event.id}>
+                            <TableCell>
+                              {new Date(event.date).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })}
+                            </TableCell>
+                            <TableCell>
+                              <p className="font-semibold">{event.title}</p>
+                              <p className="text-xs text-muted-foreground">{event.description}</p>
+                            </TableCell>
+                            <TableCell>{event.type}</TableCell>
+                            <TableCell>
+                              <Badge variant={getAgendaStatusVariant(event.status)}>{event.status}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenAgendaDialog(event)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEvent(event.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground">
+                            No hay eventos en la agenda.
                           </TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          No hay eventos en la agenda.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -673,7 +694,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                       Agregar Registro
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-4xl">
+                  <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Agregar Registro para {resident.name}</DialogTitle>
                       <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>

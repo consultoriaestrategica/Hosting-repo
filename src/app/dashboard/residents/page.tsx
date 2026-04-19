@@ -355,19 +355,21 @@ END:VCALENDAR`
               onChange={(e) => setDateFilter(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("all")}>
-              Todos ({residents.length})
-            </Button>
-            <Button variant={statusFilter === "Activo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Activo")}>
-              Activos ({residents.filter(r => r.status === "Activo" || !r.status).length})
-            </Button>
-            <Button variant={statusFilter === "Borrador" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Borrador")} className={statusFilter === "Borrador" ? "bg-amber-500 border-amber-500" : "border-amber-300 text-amber-700 hover:bg-amber-50"}>
-              Borradores ({residents.filter(r => r.status === "Borrador").length})
-            </Button>
-            <Button variant={statusFilter === "Inactivo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Inactivo")}>
-              Inactivos ({residents.filter(r => r.status === "Inactivo").length})
-            </Button>
+          <div className="overflow-x-auto -mx-4 px-4 mt-3 pb-1">
+            <div className="inline-flex gap-2 min-w-max">
+              <Button variant={statusFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("all")}>
+                Todos ({residents.length})
+              </Button>
+              <Button variant={statusFilter === "Activo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Activo")}>
+                Activos ({residents.filter(r => r.status === "Activo" || !r.status).length})
+              </Button>
+              <Button variant={statusFilter === "Borrador" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Borrador")} className={statusFilter === "Borrador" ? "bg-amber-500 border-amber-500" : "border-amber-300 text-amber-700 hover:bg-amber-50"}>
+                Borradores ({residents.filter(r => r.status === "Borrador").length})
+              </Button>
+              <Button variant={statusFilter === "Inactivo" ? "default" : "outline"} size="sm" onClick={() => setStatusFilter("Inactivo")}>
+                Inactivos ({residents.filter(r => r.status === "Inactivo").length})
+              </Button>
+            </div>
           </div>
           {(searchTerm || statusFilter !== "all") && (
             <p className="text-sm text-muted-foreground mt-2">

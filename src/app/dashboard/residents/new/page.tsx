@@ -257,7 +257,7 @@ export default function NewResidentPage() {
     <>
       <h1 className="text-3xl font-bold font-headline mb-6">Agregar Nuevo Residente</h1>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8 pb-28 sm:pb-0">
            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="inline-flex h-auto w-full md:grid md:grid-cols-4 overflow-x-auto !p-1 !justify-start">
                   <TabsTrigger value="general" className="flex-shrink-0 whitespace-nowrap text-xs md:text-sm px-4 py-2.5 gap-1.5">
@@ -408,14 +408,14 @@ export default function NewResidentPage() {
               </TabsContent>
            </Tabs>
           
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+          <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t p-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:static sm:bg-transparent sm:border-0 sm:p-0">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="button" variant="outline" onClick={handleSaveDraft} disabled={isLoading}>
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={handleSaveDraft} disabled={isLoading}>
               Guardar como borrador
             </Button>
-            <Button type="submit" disabled={isLoading}>Guardar Residente</Button>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>Guardar Residente</Button>
           </div>
         </form>
       </Form>

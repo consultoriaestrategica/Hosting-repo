@@ -687,7 +687,7 @@ export default function SettingsPage() {
           setIsUserDialogOpen(isOpen)
         }}
       >
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingUser ? "Editar Usuario" : "Añadir Nuevo Usuario"}
