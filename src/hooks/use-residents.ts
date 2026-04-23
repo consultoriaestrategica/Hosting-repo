@@ -12,6 +12,7 @@ import {
   getDoc,
 } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
+import { sanitizeForFirestore } from "@/lib/firestore-utils"
 
 // ==============================
 // TIPOS (sin cambios)
@@ -156,7 +157,7 @@ export function useResidents() {
   const addResident = useCallback(
     async (newResident: Omit<Resident, "id">): Promise<string> => {
       const colRef = collection(db, "residents")
-      const docRef = await addDoc(colRef, newResident)
+      const docRef = await addDoc(colRef, sanitizeForFirestore(newResident as Record<string, unknown>) as Omit<Resident, "id">)
       return docRef.id
     },
     []
@@ -165,7 +166,8 @@ export function useResidents() {
   const updateResident = useCallback(
     async (residentId: string, updated: Partial<Omit<Resident, "id">>) => {
       const residentDoc = doc(db, "residents", residentId)
-      await updateDoc(residentDoc, updated)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateDoc(residentDoc, sanitizeForFirestore(updated as Record<string, unknown>) as any)
     },
     []
   )

@@ -4,8 +4,7 @@ import { useResidents, Resident, DischargeDetails, AgendaEvent, ResidentDocument
 import { useLogs, Log } from "@/hooks/use-logs";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
-import { db, storage } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { storage } from "@/lib/firebase";
 import {
   ref as storageRef,
   uploadBytesResumable,
