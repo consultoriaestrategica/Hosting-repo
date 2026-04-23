@@ -1,10 +1,17 @@
 "use client";
 import * as React from "react";
-import { useResidents, Resident, DischargeDetails, AgendaEvent } from "@/hooks/use-residents";
+import { useResidents, Resident, DischargeDetails, AgendaEvent, ResidentDocument } from "@/hooks/use-residents";
 import { useLogs, Log } from "@/hooks/use-logs";
-import ContractAttachment from "../../components/contract-attachment";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
+import { db, storage } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+import {
+  ref as storageRef,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -13,16 +20,9 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableRow,
-  TableCell,
-  TableHeader,
-  TableHead,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -32,12 +32,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableHeader,
+  TableHead,
+} from "@/components/ui/table";
 import {
   FileText,
   User,
@@ -51,7 +69,6 @@ import {
   Pill,
   AlertTriangle,
   CheckCircle2,
-  BookUser,
   Calendar,
   Eye,
   Utensils,
@@ -62,8 +79,10 @@ import {
   Trash2,
   Download,
   MoreHorizontal,
+  Upload,
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+
+import { useState, useMemo, useEffect, useRef } from "react";
 import LogDetailDialog from "../../components/log-detail-dialog";
 import DischargeForm from "./discharge-form";
 import Link from "next/link";
@@ -77,21 +96,42 @@ const ITEMS_PER_PAGE = 10;
 function InfoRow({ label, value }: { label: string; value: string | React.ReactNode }) {
   if (!value && value !== 0) return null;
   return (
-    <TableRow>
-      <TableCell className="font-medium w-1/3">{label}</TableCell>
-      <TableCell>{value}</TableCell>
-    </TableRow>
+    <div className="flex flex-col sm:flex-row sm:items-start py-3 border-b last:border-b-0 gap-0.5 sm:gap-2">
+      <span className="text-sm font-medium text-muted-foreground sm:w-1/3 shrink-0">
+        {label}
+      </span>
+      <span className="text-sm sm:w-2/3 break-words min-w-0">
+        {value}
+      </span>
+    </div>
   );
 }
 
-// ✅ Este es el componente principal que se exporta
+function formatFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+function getReadableName(doc: ResidentDocument): string {
+  const name = doc.name || "";
+  // If the name looks like a UUID-based filename, return the type or a generic label
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  if (uuidPattern.test(name)) {
+    const ext = name.split(".").pop()?.toUpperCase() || "ARCHIVO";
+    return doc.type ? `${doc.type} (${ext})` : `Documento ${ext}`;
+  }
+  return name;
+}
+
 export default function ResidentProfilePageContent({ id: residentId }: { id: string }) {
-  const { residents, dischargeResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, isLoading: residentsLoading } = useResidents();
+  const { residents, dischargeResident, addAgendaEvent, updateAgendaEvent, deleteAgendaEvent, updateResident, isLoading: residentsLoading } = useResidents();
   const { logs, isLoading: logsLoading } = useLogs();
   const { toast } = useToast();
   const { user, role, hasPermission } = useUser();
 
-  // Memoizar el residente específico para evitar re-renders innecesarios
   const resident = React.useMemo(
     () => residents.find(r => r.id === residentId),
     [residents, residentId]
@@ -108,6 +148,15 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
   const [currentPage, setCurrentPage] = useState(1);
   const [isPartialEvolutionDialogOpen, setIsPartialEvolutionDialogOpen] = useState(false);
   const [logForPartialEvolution, setLogForPartialEvolution] = useState<Log | null>(null);
+
+  // Document state
+  const [docToDelete, setDocToDelete] = useState<{ doc: ResidentDocument; index: number } | null>(null);
+  const [isDeleteDocDialogOpen, setIsDeleteDocDialogOpen] = useState(false);
+  const [isDeletingDoc, setIsDeletingDoc] = useState(false);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadDocProgress, setUploadDocProgress] = useState(0);
+  const [uploadDocType, setUploadDocType] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -169,35 +218,23 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
     const details = encodeURIComponent(event.description || '');
     const text = encodeURIComponent(event.title);
     const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startTime}/${endTime}&details=${details}`;
-
-    if (userEmail) {
-      return `${calendarUrl}&add=${encodeURIComponent(userEmail)}`;
-    }
+    if (userEmail) return `${calendarUrl}&add=${encodeURIComponent(userEmail)}`;
     return calendarUrl;
   };
 
   const handleAgendaFormSubmit = (residentId: string, data: Omit<AgendaEvent, 'id'>, syncWithCalendar: boolean) => {
     if (!resident) return;
-
     if (selectedEvent) {
       updateAgendaEvent(resident.id, selectedEvent.id, data);
-      toast({
-        title: "Evento Actualizado",
-        description: `El evento "${data.title}" ha sido actualizado.`,
-      });
+      toast({ title: "Evento Actualizado", description: `El evento "${data.title}" ha sido actualizado.` });
     } else {
       addAgendaEvent(resident.id, data);
-      toast({
-        title: "Evento Agendado",
-        description: `Se ha añadido un nuevo evento para ${resident.name}.`,
-      });
+      toast({ title: "Evento Agendado", description: `Se ha añadido un nuevo evento para ${resident.name}.` });
     }
-
     if (syncWithCalendar) {
       const calendarLink = generateGoogleCalendarLink(data, user?.email);
       window.open(calendarLink, '_blank');
     }
-
     setIsAgendaFormOpen(false);
     setSelectedEvent(null);
   };
@@ -213,7 +250,115 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
     toast({ variant: 'destructive', title: 'Evento Eliminado', description: 'El evento ha sido eliminado de la agenda.' });
   };
 
+  // Document actions
+  const handleViewDoc = (doc: ResidentDocument) => {
+    if (doc.url) {
+      window.open(doc.url, '_blank');
+    } else {
+      toast({ variant: 'destructive', title: 'Sin URL disponible', description: 'Este documento no tiene un enlace de visualización.' });
+    }
+  };
+
+  const handleDownloadDoc = async (document: ResidentDocument) => {
+    const url = document.url;
+    const fileName = getReadableName(document);
+    if (!url) {
+      toast({ variant: 'destructive', title: 'Sin URL disponible', description: 'Este documento no puede descargarse.' });
+      return;
+    }
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = objectUrl;
+      a.download = fileName;
+      window.document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(objectUrl);
+      window.document.body.removeChild(a);
+    } catch {
+      window.open(url, '_blank');
+    }
+  };
+
+  const handleDeleteDocConfirm = async () => {
+    if (!resident || !docToDelete) return;
+    setIsDeletingDoc(true);
+    try {
+      const { doc: docData, index } = docToDelete;
+      if (docData.storagePath) {
+        try {
+          await deleteObject(storageRef(storage, docData.storagePath));
+        } catch {
+          // Already deleted or not in Storage — continue
+        }
+      }
+      const updatedDocs = [...(resident.documents || [])];
+      updatedDocs.splice(index, 1);
+      await updateResident(resident.id, { documents: updatedDocs });
+      toast({ title: 'Documento eliminado exitosamente' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error al eliminar', description: 'No se pudo eliminar el documento.' });
+    } finally {
+      setIsDeletingDoc(false);
+      setIsDeleteDocDialogOpen(false);
+      setDocToDelete(null);
+    }
+  };
+
+  const handleDocumentUpload = async (file: File) => {
+    if (!resident) return;
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ variant: 'destructive', title: 'Tipo no permitido', description: 'Solo se permiten PDF, JPG, PNG o DOCX.' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Archivo muy grande', description: 'El archivo no puede superar 10 MB.' });
+      return;
+    }
+
+    setIsUploadingDoc(true);
+    setUploadDocProgress(0);
+    setUploadDocType(file.name);
+
+    const timestamp = Date.now();
+    const path = `residents/${resident.id}/documents/${timestamp}_${file.name}`;
+    const fileRef = storageRef(storage, path);
+    const uploadTask = uploadBytesResumable(fileRef, file);
+
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        setUploadDocProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+      },
+      () => {
+        toast({ variant: 'destructive', title: 'Error al subir', description: 'Intenta nuevamente.' });
+        setIsUploadingDoc(false);
+      },
+      async () => {
+        const url = await getDownloadURL(uploadTask.snapshot.ref);
+        const ext = file.name.split('.').pop()?.toUpperCase() || 'ARCHIVO';
+        const newDoc: ResidentDocument = {
+          type: ext,
+          name: file.name,
+          size: file.size,
+          url,
+          storagePath: path,
+        };
+        const updatedDocs = [...(resident.documents || []), newDoc];
+        await updateResident(resident.id, { documents: updatedDocs });
+        toast({ title: 'Documento subido exitosamente' });
+        setIsUploadingDoc(false);
+        setUploadDocProgress(0);
+        setUploadDocType("");
+      }
+    );
+  };
+
   const isLoading = residentsLoading || logsLoading;
+  const canDeleteDoc = hasPermission("staff");
 
   if (!isClient || isLoading) {
     return (
@@ -234,15 +379,6 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
 
   const isAdminRole = role === 'Administrador';
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'Activo': return 'default';
-      case 'Finalizado': return 'secondary';
-      case 'Cancelado': return 'destructive';
-      default: return 'outline';
-    }
-  };
-
   const getAgendaStatusVariant = (status: string) => {
     switch (status) {
       case 'Pendiente': return 'default';
@@ -254,22 +390,23 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
 
   return (
     <>
-      <div className="p-4 md:p-6 space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <FileText className="h-8 w-8 text-primary mt-1" />
+      <div className="w-full overflow-x-hidden p-4 md:p-6 space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+          <div className="flex items-start gap-3">
+            <FileText className="h-7 w-7 text-primary mt-1 shrink-0" />
             <div>
-              <h1 className="text-3xl font-bold font-headline">
+              <h1 className="text-2xl sm:text-3xl font-bold font-headline leading-tight">
                 Perfil de {resident.name}
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Detalles completos e historial del residente.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             {resident.status === 'Activo' && hasPermission("staff") && (
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href={`/dashboard/residents/edit/${resident.id}`}>
                   <Edit className="mr-2 h-4 w-4" />
                   Editar Perfil
@@ -279,7 +416,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
             {resident.status === 'Activo' && (
               <Dialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700">
+                  <Button variant="outline" className="w-full sm:w-auto border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700">
                     <MessageSquareWarning className="mr-2 h-4 w-4" />
                     Enviar Alerta
                   </Button>
@@ -298,7 +435,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
             {resident.status === 'Activo' && hasPermission("staff") && (
               <Dialog open={isDischargeDialogOpen} onOpenChange={setIsDischargeDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="destructive">
+                  <Button variant="destructive" className="w-full sm:w-auto">
                     <LogOut className="mr-2 h-4 w-4" />
                     Dar de Baja
                   </Button>
@@ -318,87 +455,83 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
         </div>
 
         <Tabs defaultValue="general">
-          <div className="overflow-x-auto -mx-4 px-4 pb-1">
-          <TabsList className="inline-flex h-auto w-auto min-w-full flex-nowrap justify-start">
-            <TabsTrigger value="general">Perfil General</TabsTrigger>
-            {isAdminRole && (
-              <>
-                <TabsTrigger value="contacts">
-                  Contactos {resident.familyContacts && resident.familyContacts.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.familyContacts.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="documents">
-                  Documentos {resident.documents && resident.documents.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.documents.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="contracts">
-                  Contrato {(resident as any).contract && (
-                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">1</Badge>
-                  )}
-                </TabsTrigger>
-              </>
-            )}
-            <TabsTrigger value="agenda">
-              Agenda {resident.agendaEvents && resident.agendaEvents.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.agendaEvents.length}</Badge>
+          <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
+            <TabsList className="inline-flex h-auto w-auto min-w-max flex-nowrap justify-start">
+              <TabsTrigger value="general">Perfil General</TabsTrigger>
+              {isAdminRole && (
+                <>
+                  <TabsTrigger value="contacts">
+                    Contactos {resident.familyContacts && resident.familyContacts.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.familyContacts.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="documents">
+                    Documentos {resident.documents && resident.documents.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.documents.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                </>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="logs">
-              Registros {residentLogs.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{residentLogs.length}</Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+              <TabsTrigger value="agenda">
+                Agenda {resident.agendaEvents && resident.agendaEvents.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{resident.agendaEvents.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="logs">
+                Registros {residentLogs.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{residentLogs.length}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
           </div>
 
+          {/* TAB: PERFIL GENERAL */}
           <TabsContent value="general" className="mt-4">
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><User />Información Personal</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><User className="h-5 w-5" />Información Personal</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableBody>
-                      <InfoRow label="Nombre Completo" value={resident.name} />
-                      <InfoRow label="Fecha de Nacimiento" value={`${resident.dob} (${resident.age} años)`} />
-                      <InfoRow label="Cédula" value={resident.idNumber} />
-                      <InfoRow label="Tipo de Sangre" value={resident.bloodType ? <Badge variant="outline">{resident.bloodType}</Badge> : <span className="text-muted-foreground text-sm">No registrado</span>} />
-                    </TableBody>
-                  </Table>
+                <CardContent className="px-4 sm:px-6">
+                  <InfoRow label="Nombre Completo" value={resident.name} />
+                  <InfoRow label="Fecha de Nacimiento" value={`${resident.dob} (${resident.age} años)`} />
+                  <InfoRow label="Cédula" value={resident.idNumber} />
+                  <InfoRow
+                    label="Tipo de Sangre"
+                    value={resident.bloodType
+                      ? <Badge variant="outline">{resident.bloodType}</Badge>
+                      : <span className="text-muted-foreground text-sm">No registrado</span>}
+                  />
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Home />Detalles de Estadía</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><Home className="h-5 w-5" />Detalles de Estadía</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableBody>
-                      <InfoRow label="Estado" value={<Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>{resident.status}</Badge>} />
-                      <InfoRow label="Fecha de Ingreso" value={new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
-                      {resident.dischargeDetails && (
-                        <>
-                          <InfoRow label="Fecha de Salida" value={new Date(resident.dischargeDetails.dischargeDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
-                          <InfoRow label="Motivo de Salida" value={resident.dischargeDetails.reason} />
-                          <InfoRow label="Observaciones" value={resident.dischargeDetails.observations} />
-                        </>
-                      )}
-                      <InfoRow label="Habitación" value={<Badge variant="secondary">{`${resident.roomType} ${resident.roomNumber || ''}`.trim()}</Badge>} />
-                    </TableBody>
-                  </Table>
+                <CardContent className="px-4 sm:px-6">
+                  <InfoRow
+                    label="Estado"
+                    value={<Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>{resident.status}</Badge>}
+                  />
+                  <InfoRow label="Fecha de Ingreso" value={new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
+                  {resident.dischargeDetails && (
+                    <>
+                      <InfoRow label="Fecha de Salida" value={new Date(resident.dischargeDetails.dischargeDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
+                      <InfoRow label="Motivo de Salida" value={resident.dischargeDetails.reason} />
+                      <InfoRow label="Observaciones" value={resident.dischargeDetails.observations} />
+                    </>
+                  )}
+                  <InfoRow label="Habitación" value={<Badge variant="secondary">{`${resident.roomType} ${resident.roomNumber || ''}`.trim()}</Badge>} />
                 </CardContent>
               </Card>
 
               <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Heart />Información de Cuidado</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg"><Heart className="h-5 w-5" />Información de Cuidado</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 text-sm">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <CardContent className="space-y-4 text-sm px-4 sm:px-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <p className="font-semibold mb-1">Nivel de Dependencia</p>
                       <Badge variant={resident.dependency === "Dependiente" ? "destructive" : "outline"}>{resident.dependency}</Badge>
@@ -409,49 +542,78 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                     </div>
                     <div>
                       <p className="font-semibold mb-1">Alergias</p>
-                      <div className="flex flex-wrap gap-1">{resident.allergies?.length ? resident.allergies.map(a => <Badge key={a} variant="destructive">{a}</Badge>) : <p className="text-muted-foreground">Ninguna</p>}</div>
+                      <div className="flex flex-wrap gap-1">
+                        {resident.allergies?.length
+                          ? resident.allergies.map(a => <Badge key={a} variant="destructive">{a}</Badge>)
+                          : <p className="text-muted-foreground">Ninguna</p>}
+                      </div>
                     </div>
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-2 flex items-center gap-2"><Pill />Medicamentos</p>
+                    <p className="font-semibold mb-2 flex items-center gap-2"><Pill className="h-4 w-4" />Medicamentos</p>
                     {resident.medications?.length ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Medicamento</TableHead>
-                            <TableHead>Dosis</TableHead>
-                            <TableHead>Frecuencia</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                      <>
+                        {/* Desktop */}
+                        <div className="hidden sm:block">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Medicamento</TableHead>
+                                <TableHead>Dosis</TableHead>
+                                <TableHead>Frecuencia</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {resident.medications.map((med, index) => (
+                                <TableRow key={index}>
+                                  <TableCell>{med.name}</TableCell>
+                                  <TableCell>{med.dose}</TableCell>
+                                  <TableCell>{med.frequency}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {/* Mobile */}
+                        <div className="sm:hidden space-y-3">
                           {resident.medications.map((med, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{med.name}</TableCell>
-                              <TableCell>{med.dose}</TableCell>
-                              <TableCell>{med.frequency}</TableCell>
-                            </TableRow>
+                            <div key={index} className="bg-muted/50 rounded-lg p-3">
+                              <p className="font-medium text-sm">{med.name}</p>
+                              <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                                <span>Dosis: {med.dose}</span>
+                                <span>{med.frequency}</span>
+                              </div>
+                            </div>
                           ))}
-                        </TableBody>
-                      </Table>
+                        </div>
+                      </>
                     ) : (
                       <p className="text-muted-foreground">No hay medicamentos recetados.</p>
                     )}
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-1 flex items-center gap-2"><Utensils />Plan de Alimentación</p>
+                    <p className="font-semibold mb-1 flex items-center gap-2"><Utensils className="h-4 w-4" />Plan de Alimentación</p>
                     <p className="text-muted-foreground">{resident.diet || "No especificado."}</p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <p className="font-semibold mb-1 flex items-center gap-2"><CheckCircle2 />Antecedentes Médicos</p>
-                      <div className="flex flex-wrap gap-1">{resident.medicalHistory?.length ? resident.medicalHistory.map(h => <Badge key={h} variant="outline">{h}</Badge>) : <p className="text-muted-foreground">Ninguno</p>}</div>
+                      <p className="font-semibold mb-1 flex items-center gap-2"><CheckCircle2 className="h-4 w-4" />Antecedentes Médicos</p>
+                      <div className="flex flex-wrap gap-1">
+                        {resident.medicalHistory?.length
+                          ? resident.medicalHistory.map(h => <Badge key={h} variant="outline">{h}</Badge>)
+                          : <p className="text-muted-foreground">Ninguno</p>}
+                      </div>
                     </div>
                     <div>
-                      <p className="font-semibold mb-1 flex items-center gap-2"><AlertTriangle />Antecedentes Quirúrgicos</p>
-                      <div className="flex flex-wrap gap-1">{resident.surgicalHistory?.length ? resident.surgicalHistory.map(h => <Badge key={h} variant="outline">{h}</Badge>) : <p className="text-muted-foreground">Ninguno</p>}</div>
+                      <p className="font-semibold mb-1 flex items-center gap-2"><AlertTriangle className="h-4 w-4" />Antecedentes Quirúrgicos</p>
+                      <div className="flex flex-wrap gap-1">
+                        {resident.surgicalHistory?.length
+                          ? resident.surgicalHistory.map(h => <Badge key={h} variant="outline">{h}</Badge>)
+                          : <p className="text-muted-foreground">Ninguno</p>}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -461,6 +623,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
 
           {isAdminRole && (
             <>
+              {/* TAB: CONTACTOS */}
               <TabsContent value="contacts" className="mt-4">
                 <Card>
                   <CardHeader>
@@ -470,11 +633,11 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                   <CardContent className="space-y-4">
                     {resident.familyContacts?.length ? resident.familyContacts.map((contact, index) => (
                       <div key={index} className="p-4 border rounded-lg">
-                        <div className="font-bold text-lg">{contact.name} <Badge variant="secondary">{contact.kinship}</Badge></div>
+                        <div className="font-bold text-base">{contact.name} <Badge variant="secondary">{contact.kinship}</Badge></div>
                         <div className="text-sm mt-2 space-y-2 text-muted-foreground">
-                          <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> {contact.email}</p>
-                          <p className="flex items-center gap-2"><Phone className="h-4 w-4" /> {contact.phones.map(p => p.number).join(', ')}</p>
-                          <p className="flex items-center gap-2"><Home className="h-4 w-4" /> {contact.address}</p>
+                          <p className="flex items-center gap-2 flex-wrap"><Mail className="h-4 w-4 shrink-0" /> {contact.email}</p>
+                          <p className="flex items-center gap-2 flex-wrap"><Phone className="h-4 w-4 shrink-0" /> {contact.phones.map(p => p.number).join(', ')}</p>
+                          <p className="flex items-center gap-2 flex-wrap"><Home className="h-4 w-4 shrink-0" /> {contact.address}</p>
                         </div>
                       </div>
                     )) : (
@@ -484,32 +647,80 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                 </Card>
               </TabsContent>
 
+              {/* TAB: DOCUMENTOS */}
               <TabsContent value="documents" className="mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><FileText />Documentos Adjuntos</CardTitle>
-                    <CardDescription>Archivos y documentos asociados a {resident.name}.</CardDescription>
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div>
+                        <CardTitle className="flex items-center gap-2"><FileText />Documentos Adjuntos</CardTitle>
+                        <CardDescription>Archivos y documentos asociados a {resident.name}.</CardDescription>
+                      </div>
+                      <div className="shrink-0">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.docx"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleDocumentUpload(file);
+                            e.target.value = "";
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingDoc}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Subir documento
+                        </Button>
+                      </div>
+                    </div>
+                    {isUploadingDoc && (
+                      <div className="mt-3 space-y-1">
+                        <p className="text-xs text-muted-foreground">Subiendo: {uploadDocType}</p>
+                        <Progress value={uploadDocProgress} className="h-1.5" />
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent>
-                    {/* Mobile View */}
-                    <div className="space-y-4 md:hidden">
+                    {/* Mobile */}
+                    <div className="space-y-3 md:hidden">
                       {resident.documents && resident.documents.length > 0 ? (
                         resident.documents.map((doc, index) => (
-                          <div key={index} className="rounded-lg border p-4 flex items-start justify-between gap-4">
-                            <div className="flex-1 space-y-1">
-                              <p className="text-sm font-medium">{doc.type}</p>
-                              <p className="text-sm text-muted-foreground break-all">{doc.name}</p>
+                          <div key={index} className="rounded-lg border p-4 flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0 space-y-0.5">
+                              <p className="text-sm font-medium truncate">{doc.type}</p>
+                              <p className="text-xs text-muted-foreground truncate">{getReadableName(doc)}</p>
+                              <p className="text-xs text-muted-foreground">{formatFileSize(doc.size)}</p>
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => toast({ title: "Función no implementada" })}>Ver</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => toast({ title: "Función no implementada" })}>Descargar</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">Eliminar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleViewDoc(doc)} disabled={!doc.url}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownloadDoc(doc)} disabled={!doc.url}>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Descargar
+                                </DropdownMenuItem>
+                                {canDeleteDoc && (
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => { setDocToDelete({ doc, index }); setIsDeleteDocDialogOpen(true); }}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -519,13 +730,14 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                       )}
                     </div>
 
-                    {/* Desktop View */}
+                    {/* Desktop */}
                     <div className="hidden md:block">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Tipo de Documento</TableHead>
+                            <TableHead>Tipo</TableHead>
                             <TableHead>Nombre del Archivo</TableHead>
+                            <TableHead>Tamaño</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -534,29 +746,35 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                             resident.documents.map((doc, index) => (
                               <TableRow key={index}>
                                 <TableCell className="font-medium">{doc.type}</TableCell>
-                                <TableCell className="max-w-xs truncate">{doc.name}</TableCell>
+                                <TableCell className="max-w-xs truncate">{getReadableName(doc)}</TableCell>
+                                <TableCell className="text-muted-foreground">{formatFileSize(doc.size)}</TableCell>
                                 <TableCell className="text-right">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
                                         <MoreHorizontal className="h-4 w-4" />
                                         <span className="sr-only">Abrir menú</span>
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                       <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                      <DropdownMenuItem onClick={() => toast({ title: "Función no implementada" })}>
+                                      <DropdownMenuItem onClick={() => handleViewDoc(doc)} disabled={!doc.url}>
                                         <Eye className="mr-2 h-4 w-4" />
                                         Ver
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => toast({ title: "Función no implementada" })}>
+                                      <DropdownMenuItem onClick={() => handleDownloadDoc(doc)} disabled={!doc.url}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Descargar
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem className="text-destructive" onClick={() => toast({ title: "Función no implementada" })}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Eliminar
-                                      </DropdownMenuItem>
+                                      {canDeleteDoc && (
+                                        <DropdownMenuItem
+                                          className="text-destructive focus:text-destructive"
+                                          onClick={() => { setDocToDelete({ doc, index }); setIsDeleteDocDialogOpen(true); }}
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Eliminar
+                                        </DropdownMenuItem>
+                                      )}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
@@ -564,7 +782,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={3} className="h-24 text-center">No se han adjuntado documentos.</TableCell>
+                              <TableCell colSpan={4} className="h-24 text-center">No se han adjuntado documentos.</TableCell>
                             </TableRow>
                           )}
                         </TableBody>
@@ -573,13 +791,10 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              <TabsContent value="contracts" className="mt-4">
-                <ContractAttachment residentId={residentId} residentName={resident.name} />
-              </TabsContent>
             </>
           )}
 
+          {/* TAB: AGENDA */}
           <TabsContent value="agenda" className="mt-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-3">
@@ -680,6 +895,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
             </Card>
           </TabsContent>
 
+          {/* TAB: REGISTROS */}
           <TabsContent value="logs" className="mt-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -691,7 +907,8 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                   <DialogTrigger asChild>
                     <Button size="sm">
                       <PlusCircle className="mr-2 h-4 w-4" />
-                      Agregar Registro
+                      <span className="hidden sm:inline">Agregar Registro</span>
+                      <span className="sm:hidden">Agregar</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90dvh] overflow-y-auto">
@@ -704,7 +921,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                 </Dialog>
               </CardHeader>
               <CardContent>
-                {/* Mobile View */}
+                {/* Mobile */}
                 <div className="md:hidden space-y-4">
                   {paginatedLogs.length > 0 ? (
                     paginatedLogs.map((log) => (
@@ -727,12 +944,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setLogForPartialEvolution(log);
-                                      setIsPartialEvolutionDialogOpen(true);
-                                    }}
-                                  >
+                                  <DropdownMenuItem onClick={() => { setLogForPartialEvolution(log); setIsPartialEvolutionDialogOpen(true); }}>
                                     <PlusCircle className="mr-2 h-4 w-4" />
                                     Agregar Evolución
                                   </DropdownMenuItem>
@@ -746,18 +958,18 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                           </div>
                         </div>
                         <p className="text-sm font-medium text-muted-foreground truncate cursor-pointer" onClick={() => handleLogClick(log)}>
-                          {log.reportType === 'medico' ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución') : log.supplyDescription}
+                          {log.reportType === 'medico'
+                            ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución')
+                            : log.supplyDescription}
                         </p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No se han encontrado registros para este residente.
-                    </p>
+                    <p className="text-center text-muted-foreground py-8">No se han encontrado registros para este residente.</p>
                   )}
                 </div>
 
-                {/* Desktop View */}
+                {/* Desktop */}
                 <div className="hidden md:block">
                   <Table>
                     <TableHeader>
@@ -782,7 +994,9 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                               </Badge>
                             </TableCell>
                             <TableCell className="max-w-xs truncate cursor-pointer" onClick={() => handleLogClick(log)}>
-                              {log.reportType === 'medico' ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución') : log.supplyDescription}
+                              {log.reportType === 'medico'
+                                ? (Array.isArray(log.evolutionNotes) && log.evolutionNotes.length > 0 ? log.evolutionNotes[0] : 'Sin notas de evolución')
+                                : log.supplyDescription}
                             </TableCell>
                             <TableCell className="text-right">
                               {log.reportType === 'medico' && (
@@ -794,12 +1008,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setLogForPartialEvolution(log);
-                                        setIsPartialEvolutionDialogOpen(true);
-                                      }}
-                                    >
+                                    <DropdownMenuItem onClick={() => { setLogForPartialEvolution(log); setIsPartialEvolutionDialogOpen(true); }}>
                                       <PlusCircle className="mr-2 h-4 w-4" />
                                       Agregar Evolución
                                     </DropdownMenuItem>
@@ -815,9 +1024,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={4} className="h-24 text-center">
-                            No se han encontrado registros para este residente.
-                          </TableCell>
+                          <TableCell colSpan={4} className="h-24 text-center">No se han encontrado registros para este residente.</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
@@ -826,24 +1033,12 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
 
                 {totalPages > 1 && (
                   <div className="flex justify-between items-center w-full pt-4">
-                    <div className="text-xs text-muted-foreground">
-                      Página {currentPage} de {totalPages}
-                    </div>
+                    <div className="text-xs text-muted-foreground">Página {currentPage} de {totalPages}</div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
                         Anterior
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
                         Siguiente
                       </Button>
                     </div>
@@ -855,22 +1050,18 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
         </Tabs>
       </div>
 
+      {/* Dialogs */}
       <Dialog open={isAgendaFormOpen} onOpenChange={setIsAgendaFormOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedEvent ? 'Editar Evento' : 'Agendar Nuevo Evento'}</DialogTitle>
-            <DialogDescription>
-              Complete los detalles del evento para {resident.name}.
-            </DialogDescription>
+            <DialogDescription>Complete los detalles del evento para {resident.name}.</DialogDescription>
           </DialogHeader>
           <AgendaForm
             residentId={resident.id}
             event={selectedEvent}
             onSubmit={handleAgendaFormSubmit}
-            onCancel={() => {
-              setIsAgendaFormOpen(false);
-              setSelectedEvent(null);
-            }}
+            onCancel={() => { setIsAgendaFormOpen(false); setSelectedEvent(null); }}
           />
         </DialogContent>
       </Dialog>
@@ -884,7 +1075,6 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
         />
       )}
 
-      {/* Diálogo para agregar evolución parcial */}
       {logForPartialEvolution && (
         <Dialog open={isPartialEvolutionDialogOpen} onOpenChange={setIsPartialEvolutionDialogOpen}>
           <DialogContent className="sm:max-w-2xl">
@@ -896,14 +1086,35 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
             </DialogHeader>
             <PartialEvolutionForm
               log={logForPartialEvolution}
-              onSaved={() => {
-                setIsPartialEvolutionDialogOpen(false);
-                setLogForPartialEvolution(null);
-              }}
+              onSaved={() => { setIsPartialEvolutionDialogOpen(false); setLogForPartialEvolution(null); }}
             />
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Confirmación eliminar documento */}
+      <AlertDialog open={isDeleteDocDialogOpen} onOpenChange={setIsDeleteDocDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente{' '}
+              <span className="font-medium">"{docToDelete ? getReadableName(docToDelete.doc) : ''}"</span>{' '}
+              y no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingDoc}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteDocConfirm}
+              disabled={isDeletingDoc}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingDoc ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

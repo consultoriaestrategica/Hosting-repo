@@ -29,7 +29,7 @@ type FamilyContact = {
 
 type Medication = { name: string; dose: string; frequency: string }
 
-type ResidentDocument = { type: string; name: string; size: number }
+export type ResidentDocument = { type: string; name: string; size: number; url?: string; storagePath?: string }
 
 export type DischargeDetails = {
   dischargeDate: string

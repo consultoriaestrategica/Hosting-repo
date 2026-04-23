@@ -1,3 +1,6 @@
+// DEPRECATED: Este componente fue reemplazado por la gestión de documentos
+// en la pestaña "Documentos" del perfil de residente.
+// Se mantiene por referencia. No se usa activamente.
 "use client"
 
 import { useState, useEffect, useRef } from "react"
