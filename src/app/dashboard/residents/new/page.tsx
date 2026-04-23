@@ -35,15 +35,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 const documentTypes = ["Contrato", "Consentimiento Informado", "Cédula de Paciente", "Historia Clínica"]
 
 const residentFormSchema = z.object({
+  // Obligatorios: solo nombre e identificación
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
-  dob: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de nacimiento inválida." }),
-  idNumber: z.string().min(5, { message: "La cédula debe tener al menos 5 caracteres." }),
-  gender: z.enum(["Femenino", "Masculino", "Otro"]),
+  idNumber: z.string().min(1, { message: "La cédula es obligatoria." }),
+
+  // Opcionales
+  dob: z.string().optional().or(z.literal("")),
+  gender: z.enum(["Femenino", "Masculino", "Otro"]).optional().or(z.literal("")),
   status: z.enum(["Activo", "Inactivo", "Borrador"]),
-  
-  // Medical Info
-  bloodType: z.string().min(1, { message: "Campo requerido."}),
-  fallRisk: z.enum(["Bajo", "Medio", "Alto"]),
+
+  // Medical Info — todos opcionales
+  bloodType: z.string().optional().or(z.literal("")),
+  fallRisk: z.enum(["Bajo", "Medio", "Alto"]).optional().or(z.literal("")),
   medicalHistory: z.string().optional(),
   surgicalHistory: z.string().optional(),
   allergies: z.string().optional(),
@@ -53,9 +56,9 @@ const residentFormSchema = z.object({
     frequency: z.string().min(1, "La frecuencia no puede estar vacía."),
   })).optional(),
   diet: z.string().optional(),
-  dependency: z.enum(["Dependiente", "Independiente"]),
-  
-  // Family Contacts
+  dependency: z.enum(["Dependiente", "Independiente"]).optional().or(z.literal("")),
+
+  // Family Contacts — opcional (se valida si se agregan)
   familyContacts: z.array(z.object({
       name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
       kinship: z.string().min(2, { message: "El parentesco debe tener al menos 2 caracteres." }),
@@ -64,11 +67,11 @@ const residentFormSchema = z.object({
           number: z.string().min(7, { message: "El teléfono debe ser válido." }),
       })).min(1, "Debe haber al menos un teléfono."),
       email: z.string().email({ message: "Correo electrónico inválido." }),
-  })),
+  })).optional(),
 
-  // Admin Info
-  admissionDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de ingreso inválida." }),
-  roomType: z.enum(["Habitación compartida", "Habitación individual"]),
+  // Admin Info — todos opcionales
+  admissionDate: z.string().optional().or(z.literal("")),
+  roomType: z.enum(["Habitación compartida", "Habitación individual"]).optional().or(z.literal("")),
   roomNumber: z.string().optional(),
   documents: z.array(z.object({
     type: z.string(),
@@ -167,21 +170,21 @@ export default function NewResidentPage() {
     const newId = await addResident({
       name: values.name,
       idNumber: values.idNumber || "",
-      dob: values.dob || "",
+      dob: values.dob || undefined,
       age,
-      gender: values.gender as "Femenino" | "Masculino" | "Otro" | undefined,
-      dependency: (values.dependency as "Dependiente" | "Independiente") || "Dependiente",
+      gender: (values.gender || undefined) as "Femenino" | "Masculino" | "Otro" | undefined,
+      dependency: (values.dependency || undefined) as "Dependiente" | "Independiente" | undefined,
       status: "Borrador",
-      admissionDate: values.admissionDate || new Date().toISOString().split('T')[0],
-      roomType: (values.roomType as "Habitación compartida" | "Habitación individual") || "Habitación compartida",
-      roomNumber: values.roomNumber || "",
-      bloodType: values.bloodType || "",
-      fallRisk: (values.fallRisk as "Bajo" | "Medio" | "Alto") || "Bajo",
+      admissionDate: values.admissionDate || undefined,
+      roomType: (values.roomType || undefined) as "Habitación compartida" | "Habitación individual" | undefined,
+      roomNumber: values.roomNumber || undefined,
+      bloodType: values.bloodType || undefined,
+      fallRisk: (values.fallRisk || undefined) as "Bajo" | "Medio" | "Alto" | undefined,
       medicalHistory: values.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
       surgicalHistory: values.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
       allergies: values.allergies?.split(',').map(a => a.trim()).filter(Boolean) || [],
       medications: values.medications || [],
-      diet: values.diet || "",
+      diet: values.diet || undefined,
       familyContacts: values.familyContacts || [],
       documents: [],
     })
@@ -191,13 +194,9 @@ export default function NewResidentPage() {
 
   function onInvalid() {
     const errs = form.formState.errors
-    const generalFields = ['name', 'dob', 'idNumber', 'gender', 'admissionDate', 'roomType', 'status']
-    const medicalFields = ['bloodType', 'dependency', 'fallRisk']
-    const hasGeneralError = generalFields.some(f => !!(errs as any)[f])
-    const hasMedicalError = medicalFields.some(f => !!(errs as any)[f])
+    const hasGeneralError = !!(errs.name || errs.idNumber)
     const hasContactsError = !!errs.familyContacts
     if (hasGeneralError) setActiveTab("general")
-    else if (hasMedicalError) setActiveTab("medical")
     else if (hasContactsError) setActiveTab("contacts")
     toast({ variant: "destructive", title: "Hay campos obligatorios sin completar", description: "Revisa los campos marcados en rojo." })
     setTimeout(() => {
@@ -206,8 +205,10 @@ export default function NewResidentPage() {
   }
 
   function onSubmit(data: ResidentFormValues) {
-    const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
-    
+    const age = data.dob && !isNaN(Date.parse(data.dob))
+      ? new Date().getFullYear() - new Date(data.dob).getFullYear()
+      : 0;
+
     const documentsData = Object.keys(uploadedFiles).map(type => ({
       type: type,
       name: uploadedFiles[type].file.name,
@@ -217,21 +218,21 @@ export default function NewResidentPage() {
     const newResident = {
         name: data.name,
         idNumber: data.idNumber,
-        dob: data.dob,
-        age: age,
-        gender: data.gender,
-        dependency: data.dependency,
+        dob: data.dob || undefined,
+        age,
+        gender: (data.gender || undefined) as "Femenino" | "Masculino" | "Otro" | undefined,
+        dependency: (data.dependency || undefined) as "Dependiente" | "Independiente" | undefined,
         status: data.status,
-        admissionDate: data.admissionDate,
-        roomType: data.roomType,
-        roomNumber: data.roomNumber,
-        bloodType: data.bloodType,
-        fallRisk: data.fallRisk,
+        admissionDate: data.admissionDate || undefined,
+        roomType: (data.roomType || undefined) as "Habitación compartida" | "Habitación individual" | undefined,
+        roomNumber: data.roomNumber || undefined,
+        bloodType: data.bloodType || undefined,
+        fallRisk: (data.fallRisk || undefined) as "Bajo" | "Medio" | "Alto" | undefined,
         medicalHistory: data.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         surgicalHistory: data.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         allergies: data.allergies?.split(',').map(a => a.trim()).filter(Boolean),
         medications: data.medications,
-        diet: data.diet,
+        diet: data.diet || undefined,
         familyContacts: data.familyContacts,
         documents: documentsData,
     };
@@ -249,8 +250,7 @@ export default function NewResidentPage() {
   }
 
   const formErrors = form.formState.errors
-  const generalErrorCount = (['name', 'dob', 'idNumber', 'gender', 'admissionDate', 'roomType'] as const).filter(f => !!formErrors[f]).length
-  const medicalErrorCount = (['bloodType', 'dependency', 'fallRisk'] as const).filter(f => !!formErrors[f]).length
+  const generalErrorCount = (['name', 'idNumber'] as const).filter(f => !!formErrors[f]).length
   const contactsErrorCount = formErrors.familyContacts ? 1 : 0
 
   return (
@@ -259,21 +259,22 @@ export default function NewResidentPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8 pb-28 sm:pb-0">
            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="inline-flex h-auto w-full md:grid md:grid-cols-4 overflow-x-auto !p-1 !justify-start">
-                  <TabsTrigger value="general" className="flex-shrink-0 whitespace-nowrap text-xs md:text-sm px-4 py-2.5 gap-1.5">
+              <div className="w-full overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
+              <TabsList className="inline-flex w-auto min-w-max h-auto p-1 gap-0.5">
+                  <TabsTrigger value="general" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm gap-1.5">
                     Información General
                     {generalErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{generalErrorCount}</span>}
                   </TabsTrigger>
-                  <TabsTrigger value="medical" className="flex-shrink-0 whitespace-nowrap text-xs md:text-sm px-4 py-2.5 gap-1.5">
+                  <TabsTrigger value="medical" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm">
                     Perfil Médico
-                    {medicalErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{medicalErrorCount}</span>}
                   </TabsTrigger>
-                  <TabsTrigger value="contacts" className="flex-shrink-0 whitespace-nowrap text-xs md:text-sm px-4 py-2.5 gap-1.5">
+                  <TabsTrigger value="contacts" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm gap-1.5">
                     Contactos Familiares
                     {contactsErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{contactsErrorCount}</span>}
                   </TabsTrigger>
-                  <TabsTrigger value="documents" className="flex-shrink-0 whitespace-nowrap text-xs md:text-sm px-4 py-2.5">Documentos</TabsTrigger>
+                  <TabsTrigger value="documents" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm">Documentos</TabsTrigger>
               </TabsList>
+              </div>
 
               <TabsContent value="general">
                  <Card>
@@ -284,11 +285,11 @@ export default function NewResidentPage() {
                     <CardContent className="space-y-4 pt-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             <FormField control={form.control} name="name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Nombre Completo <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Fecha de Nacimiento <span className="text-destructive">*</span></FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Fecha de Nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="idNumber" render={({ field }) => (<FormItem><FormLabel>Nº de Cédula <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. 12345678" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Género <span className="text-destructive">*</span></FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un género" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Femenino">Femenino</SelectItem><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Género</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un género" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Femenino">Femenino</SelectItem><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="admissionDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem className="sm:col-span-2 lg:col-span-1"><FormLabel>Tipo de Habitación <span className="text-destructive">*</span></FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem className="sm:col-span-2 lg:col-span-1"><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="roomNumber" render={({ field }) => (<FormItem><FormLabel>Número de Habitación</FormLabel><FormControl><Input placeholder="Ej. 101A" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Estado</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione el estado" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Activo">Activo</SelectItem><SelectItem value="Inactivo">Inactivo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
@@ -304,9 +305,9 @@ export default function NewResidentPage() {
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <FormField control={form.control} name="bloodType" render={({ field }) => (<FormItem><FormLabel>Tipo de Sangre <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. O+" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="dependency" render={({ field }) => (<FormItem><FormLabel>Nivel de Dependencia <span className="text-destructive">*</span></FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un nivel" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Dependiente">Dependiente</SelectItem><SelectItem value="Independiente">Independiente</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="fallRisk" render={({ field }) => (<FormItem><FormLabel>Riesgo de Caída <span className="text-destructive">*</span></FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un riesgo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Bajo">Bajo</SelectItem><SelectItem value="Medio">Medio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="bloodType" render={({ field }) => (<FormItem><FormLabel>Tipo de Sangre</FormLabel><FormControl><Input placeholder="Ej. O+" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="dependency" render={({ field }) => (<FormItem><FormLabel>Nivel de Dependencia</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un nivel" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Dependiente">Dependiente</SelectItem><SelectItem value="Independiente">Independiente</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="fallRisk" render={({ field }) => (<FormItem><FormLabel>Riesgo de Caída</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un riesgo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Bajo">Bajo</SelectItem><SelectItem value="Medio">Medio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
                         <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-6">
                             <FormField control={form.control} name="medicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Médicos</FormLabel><FormControl><Textarea placeholder="Ej. Alzheimer, Hipertensión (separados por comas)" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />

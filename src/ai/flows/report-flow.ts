@@ -177,7 +177,7 @@ function getGeneralReportHtml(residents: Resident[]): string {
                 <td>${r.bloodType}</td>
                 <td>${r.dependency}</td>
                 <td>${r.contractType || 'No especificado'}</td>
-                <td>${new Date(r.admissionDate).toLocaleDateString('es-ES')}</td>
+                <td>${r.admissionDate ? new Date(r.admissionDate).toLocaleDateString('es-ES') : '—'}</td>
               </tr>
             `,
               )

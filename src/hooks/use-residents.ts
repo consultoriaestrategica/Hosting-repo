@@ -67,16 +67,16 @@ export type Resident = {
   id: string
   name: string
   age: number
-  dob: string
+  dob?: string
   idNumber: string
   gender?: "Femenino" | "Masculino" | "Otro"
   medicalHistory?: string[]
   surgicalHistory?: string[]
   allergies?: string[]
-  dependency: "Dependiente" | "Independiente"
+  dependency?: "Dependiente" | "Independiente"
   status: "Activo" | "Inactivo" | "Borrador"
-  admissionDate: string
-  roomType: "Habitación compartida" | "Habitación individual"
+  admissionDate?: string
+  roomType?: "Habitación compartida" | "Habitación individual"
   roomNumber?: string
   bloodType?: string
   fallRisk?: "Bajo" | "Medio" | "Alto"

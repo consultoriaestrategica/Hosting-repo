@@ -493,7 +493,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
                   <InfoRow label="Nombre Completo" value={resident.name} />
-                  <InfoRow label="Fecha de Nacimiento" value={`${resident.dob} (${resident.age} años)`} />
+                  {resident.dob && <InfoRow label="Fecha de Nacimiento" value={`${resident.dob} (${resident.age} años)`} />}
                   <InfoRow label="Cédula" value={resident.idNumber} />
                   <InfoRow
                     label="Tipo de Sangre"
@@ -513,7 +513,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                     label="Estado"
                     value={<Badge variant={resident.status === "Activo" ? "default" : "secondary"} className={resident.status === "Activo" ? "bg-green-500 text-white" : ""}>{resident.status}</Badge>}
                   />
-                  <InfoRow label="Fecha de Ingreso" value={new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
+                  {resident.admissionDate && <InfoRow label="Fecha de Ingreso" value={new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />}
                   {resident.dischargeDetails && (
                     <>
                       <InfoRow label="Fecha de Salida" value={new Date(resident.dischargeDetails.dischargeDate).toLocaleDateString('es-ES', { dateStyle: 'long' })} />
@@ -521,7 +521,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                       <InfoRow label="Observaciones" value={resident.dischargeDetails.observations} />
                     </>
                   )}
-                  <InfoRow label="Habitación" value={<Badge variant="secondary">{`${resident.roomType} ${resident.roomNumber || ''}`.trim()}</Badge>} />
+                  {resident.roomType && <InfoRow label="Habitación" value={<Badge variant="secondary">{`${resident.roomType} ${resident.roomNumber || ''}`.trim()}</Badge>} />}
                 </CardContent>
               </Card>
 
@@ -533,7 +533,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <p className="font-semibold mb-1">Nivel de Dependencia</p>
-                      <Badge variant={resident.dependency === "Dependiente" ? "destructive" : "outline"}>{resident.dependency}</Badge>
+                      <Badge variant={resident.dependency === "Dependiente" ? "destructive" : "outline"}>{resident.dependency || "No registrado"}</Badge>
                     </div>
                     <div>
                       <p className="font-semibold mb-1">Riesgo de Caída</p>

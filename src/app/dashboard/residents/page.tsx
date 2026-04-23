@@ -401,7 +401,7 @@ END:VCALENDAR`
                     )}
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                    <span>Ingreso: {new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}</span>
+                    <span>Ingreso: {resident.admissionDate ? new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' }) : 'No registrado'}</span>
                     <Badge variant="outline">{resident.dependency}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -490,7 +490,7 @@ END:VCALENDAR`
                       )}
                     </TableCell>
                     <TableCell>
-                      {new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' })}
+                      {resident.admissionDate ? new Date(resident.admissionDate).toLocaleDateString('es-ES', { dateStyle: 'long' }) : '—'}
                     </TableCell>
                     <TableCell>
                       <Badge
