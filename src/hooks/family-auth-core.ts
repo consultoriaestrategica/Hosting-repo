@@ -3,103 +3,117 @@
 
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { doc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import type { FamilyMember } from '@/types/user';
+import type { MyRole } from './use-my-role';
 
 /**
  * Función core para obtener datos del familiar autenticado
  * NO es un hook, es una función que retorna callbacks
+ *
+ * Resuelve primero user_roles/{uid} (el único documento que las
+ * Firestore Rules garantizan que el usuario puede leer siempre) para
+ * obtener el familyDocId, y recién ahí suscribe al documento real de
+ * family_members — ya NO se puede hacer un query por email como antes
+ * porque las rules exigen ya ser "family" para leer esa colección.
  */
 export function createFamilyAuthListener(
   onFamilyMemberChange: (member: FamilyMember | null) => void,
   onLoadingChange: (loading: boolean) => void
 ): Unsubscribe {
-  console.log("👨‍👩‍👧 familyAuthCore: Creando listener");
-  
   onLoadingChange(true);
 
-  // Variable para guardar el unsubscribe de Firestore
-  let unsubscribeFirestore: Unsubscribe | null = null;
+  // Variable para guardar el unsubscribe de Firestore (family_members)
+  let unsubscribeFamilyDoc: Unsubscribe | null = null;
+  // Variable para guardar el unsubscribe de user_roles
+  let unsubscribeRole: Unsubscribe | null = null;
+
+  const clearNestedListeners = () => {
+    if (unsubscribeFamilyDoc) {
+      unsubscribeFamilyDoc();
+      unsubscribeFamilyDoc = null;
+    }
+    if (unsubscribeRole) {
+      unsubscribeRole();
+      unsubscribeRole = null;
+    }
+  };
 
   // Listener de Firebase Auth
   const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
-    console.log("🔐 familyAuthCore: Auth cambió", { email: authUser?.email });
+    clearNestedListeners();
 
-    // Limpiar listener anterior de Firestore si existe
-    if (unsubscribeFirestore) {
-      unsubscribeFirestore();
-      unsubscribeFirestore = null;
-    }
-
-    if (!authUser?.email) {
-      console.log("⚠️ familyAuthCore: No hay usuario");
+    if (!authUser) {
       onFamilyMemberChange(null);
       onLoadingChange(false);
       return;
     }
 
-    console.log("🔍 familyAuthCore: Buscando familiar:", authUser.email);
+    // Listener de user_roles/{uid}
+    unsubscribeRole = onSnapshot(
+      doc(db, "user_roles", authUser.uid),
+      (roleSnap) => {
+        if (unsubscribeFamilyDoc) {
+          unsubscribeFamilyDoc();
+          unsubscribeFamilyDoc = null;
+        }
 
-    // Query a Firestore
-    const q = query(
-      collection(db, "family_members"),
-      where("email", "==", authUser.email)
-    );
-
-    // Listener de Firestore
-    unsubscribeFirestore = onSnapshot(
-      q,
-      (snapshot) => {
-        console.log("📡 familyAuthCore: Snapshot recibido, docs:", snapshot.size);
-
-        if (!snapshot.empty) {
-          const doc = snapshot.docs[0];
-          const data = doc.data();
-
-          console.log("✅ familyAuthCore: Familiar encontrado:", {
-            id: doc.id,
-            name: data.name,
-            residentId: data.residentId
-          });
-
-          const member: FamilyMember = {
-            id: doc.id,
-            email: data.email,
-            name: data.name,
-            role: "Acceso Familiar",
-            residentId: data.residentId,
-            residentName: data.residentName,
-            relationship: data.relationship,
-            phone: data.phone,
-            isActive: data.isActive ?? true,
-            createdAt: data.createdAt?.toDate?.() || new Date(),
-            updatedAt: data.updatedAt?.toDate?.(),
-            emergencyContact: data.emergencyContact ?? false,
-            visitingHours: data.visitingHours,
-          };
-
-          onFamilyMemberChange(member);
-          onLoadingChange(false);
-        } else {
-          console.log("⚠️ familyAuthCore: No se encontró familiar");
+        if (!roleSnap.exists() || (roleSnap.data() as MyRole).kind !== "family") {
           onFamilyMemberChange(null);
           onLoadingChange(false);
+          return;
         }
+
+        const role = roleSnap.data() as Extract<MyRole, { kind: "family" }>;
+
+        // Listener del documento real de family_members
+        unsubscribeFamilyDoc = onSnapshot(
+          doc(db, "family_members", role.familyDocId),
+          (docSnap) => {
+            if (!docSnap.exists()) {
+              onFamilyMemberChange(null);
+              onLoadingChange(false);
+              return;
+            }
+
+            const data = docSnap.data();
+            const member: FamilyMember = {
+              id: docSnap.id,
+              email: data.email,
+              name: data.name,
+              role: "Acceso Familiar",
+              residentId: data.residentId,
+              residentName: data.residentName,
+              relationship: data.relationship,
+              phone: data.phone,
+              isActive: data.isActive ?? true,
+              createdAt: data.createdAt?.toDate?.() || new Date(),
+              updatedAt: data.updatedAt?.toDate?.(),
+              emergencyContact: data.emergencyContact ?? false,
+              visitingHours: data.visitingHours,
+            };
+
+            onFamilyMemberChange(member);
+            onLoadingChange(false);
+          },
+          (error) => {
+            console.error("❌ familyAuthCore: Error leyendo family_members:", error);
+            onFamilyMemberChange(null);
+            onLoadingChange(false);
+          }
+        );
       },
       (error) => {
-        console.error("❌ familyAuthCore: Error en Firestore:", error);
+        console.error("❌ familyAuthCore: Error leyendo user_roles:", error);
         onFamilyMemberChange(null);
         onLoadingChange(false);
       }
     );
   });
 
-  // Retornar función de cleanup que limpia AMBOS listeners
+  // Retornar función de cleanup que limpia TODOS los listeners
   return () => {
-    console.log("🧹 familyAuthCore: Ejecutando cleanup");
-    if (unsubscribeFirestore) {
-      unsubscribeFirestore();
-    }
+    clearNestedListeners();
     unsubscribeAuth();
   };
 }

@@ -1,8 +1,65 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Mismo esquema de rol que firestore.rules, resuelto vía
+    // user_roles/{uid} (Storage Rules puede leer Firestore con
+    // firestore.get()/firestore.exists()).
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasRoleDoc() {
+      return isSignedIn() &&
+        firestore.exists(/databases/(default)/documents/user_roles/$(request.auth.uid));
+    }
+
+    function myRole() {
+      return firestore.get(/databases/(default)/documents/user_roles/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return hasRoleDoc() && myRole().kind == 'staff';
+    }
+
+    function isFamily() {
+      return hasRoleDoc() && myRole().kind == 'family';
+    }
+
+    function isFamilyOfResident(residentId) {
+      return isFamily() && residentId == myRole().residentId;
+    }
+
+    // Documentos del perfil del residente
+    // (src/app/dashboard/residents/[id]/resident-profile-content.tsx)
+    match /residents/{residentId}/documents/{allPaths=**} {
+      allow read: if isStaff() || isFamilyOfResident(residentId);
+      allow write: if isStaff();
+    }
+
+    // Contrato de residente, ruta actual
+    // (src/app/dashboard/contracts/new/page.tsx)
+    match /contracts/residents/{residentId}/{fileName} {
+      allow read: if isStaff() || isFamilyOfResident(residentId);
+      allow write: if isStaff();
+    }
+
+    // Contrato de residente, ruta antigua del componente deprecado
+    // ContractAttachment (src/app/dashboard/components/contract-attachment.tsx).
+    // Se mantiene para no perder acceso a archivos ya subidos con ese path.
+    match /contracts/{residentId}/{fileName} {
+      allow read: if isStaff() || isFamilyOfResident(residentId);
+      allow write: if isStaff();
+    }
+
+    // Contrato de personal — nunca visible para familiares.
+    match /contracts/staff/{staffId}/{fileName} {
+      allow read, write: if isStaff();
+    }
+
+    // Cualquier otra ruta: denegada por defecto.
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
