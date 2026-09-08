@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "guardian-angel-nrxl7"
-  }
+    "default": "guardian-angel-nrxl7",
+    "Hogar san juan": "guardian-angel-nrxl7"
+  },
+  "targets": {},
+  "etags": {}
 }

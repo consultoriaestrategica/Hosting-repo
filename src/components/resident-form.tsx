@@ -1,4 +1,5 @@
 "use client"
+
 import {
   Form,
   FormControl,
@@ -20,171 +21,184 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { useResidents } from "@/hooks/use-residents"
+import { useResidents, type Resident } from "@/hooks/use-residents"
 import React, { useState, useEffect } from "react"
-import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2, Weight, AlertTriangle } from "lucide-react"
+import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2, CalendarDays, Weight, AlertTriangle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { residentFormSchema, documentTypes, type ResidentFormValues } from "@/lib/schemas/resident"
 
-const residentFormSchema = z.object({
-  // Obligatorios: solo nombre e identificación
-  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
-  idNumber: z.string().min(1, { message: "La cédula es obligatoria." }),
+type UploadedFile = {
+  name: string
+  size: number
+  file?: File
+  uploadDate?: Date
+}
 
-  // Opcionales
-  dob: z.string().optional().or(z.literal("")),
-  gender: z.enum(["Femenino", "Masculino", "Otro"]).optional().or(z.literal("")),
-  status: z.enum(["Activo", "Inactivo", "Borrador"]),
+const emptyDefaults: ResidentFormValues = {
+  name: "",
+  dob: "",
+  idNumber: "",
+  gender: undefined,
+  status: "Activo",
+  bloodType: "",
+  fallRisk: undefined,
+  medicalHistory: "",
+  surgicalHistory: "",
+  allergies: "",
+  medications: [{ name: "", dose: "", frequency: "" }],
+  diet: "",
+  dependency: undefined,
+  familyContacts: [{ name: "", kinship: "", address: "", phones: [{ number: "" }], email: "" }],
+  admissionDate: new Date().toISOString().split('T')[0],
+  roomType: undefined,
+  roomNumber: "",
+  documents: [],
+}
 
-  // Medical Info — todos opcionales
-  bloodType: z.string().optional().or(z.literal("")),
-  fallRisk: z.enum(["Bajo", "Medio", "Alto"]).optional().or(z.literal("")),
-  medicalHistory: z.string().optional(),
-  surgicalHistory: z.string().optional(),
-  allergies: z.string().optional(),
-  medications: z.array(z.object({
-    name: z.string().min(1, "El nombre no puede estar vacío."),
-    dose: z.string().min(1, "La dosis no puede estar vacía."),
-    frequency: z.string().min(1, "La frecuencia no puede estar vacía."),
-  })).optional(),
-  diet: z.string().optional(),
-  dependency: z.enum(["Dependiente", "Independiente"]).optional().or(z.literal("")),
+function computeAge(dob: string | undefined, fallbackAge: number): number {
+  return dob && !isNaN(Date.parse(dob))
+    ? new Date().getFullYear() - new Date(dob).getFullYear()
+    : fallbackAge
+}
 
-  // Family Contacts — opcional (se valida si se agregan)
-  familyContacts: z.array(z.object({
-      name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
-      kinship: z.string().min(2, { message: "El parentesco debe tener al menos 2 caracteres." }),
-      address: z.string().min(5, { message: "La dirección debe ser válida." }),
-      phones: z.array(z.object({
-          number: z.string().min(7, { message: "El teléfono debe ser válido." }),
-      })).min(1, "Debe haber al menos un teléfono."),
-      email: z.string().email({ message: "Correo electrónico inválido." }),
-  })).optional(),
-
-  // Admin Info — todos opcionales
-  admissionDate: z.string().optional().or(z.literal("")),
-  roomType: z.enum(["Habitación compartida", "Habitación individual"]).optional().or(z.literal("")),
-  roomNumber: z.string().optional(),
-  documents: z.array(z.object({
-    type: z.string(),
-    name: z.string(),
-    size: z.number(),
-  })).optional(),
-})
-
-type ResidentFormValues = z.infer<typeof residentFormSchema>
-
-// ✅ Componente principal exportado
-export default function EditResidentForm({ residentId }: { residentId: string }) {
+export default function ResidentForm({ mode, residentId }: { mode: "create" | "edit"; residentId?: string }) {
   const { toast } = useToast()
   const router = useRouter()
-  const { residents, updateResident, isLoading } = useResidents()
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, { name: string; size: number }>>({})
+  const { residents, addResident, updateResident, isLoading } = useResidents()
+  const [isClient, setIsClient] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({})
   const [activeTab, setActiveTab] = useState("general")
-  
-  const resident = residents.find(r => r.id === residentId);
-  
-  const form = useForm<ResidentFormValues>({
-    resolver: zodResolver(residentFormSchema),
-    defaultValues: {
-      name: "",
-      dob: "",
-      idNumber: "",
-      gender: "",
-      status: "Activo",
-      bloodType: "",
-      fallRisk: "Bajo",
-      medicalHistory: "",
-      surgicalHistory: "",
-      allergies: "",
-      medications: [],
-      diet: "",
-      dependency: "Dependiente",
-      familyContacts: [],
-      admissionDate: "",
-      roomType: "",
-      roomNumber: "",
-      documents: [],
-    }
-  });
-  
-  // Usar useRef para evitar resets continuos cuando Firestore actualiza
-  const hasInitialized = React.useRef(false);
+  const hasInitialized = React.useRef(false)
 
   useEffect(() => {
-    // Solo inicializar una vez cuando el residente se carga por primera vez
-    if (resident && !hasInitialized.current) {
-        form.reset({
-            name: resident.name || "",
-            dob: resident.dob || "",
-            idNumber: resident.idNumber || "",
-            gender: resident.gender || "",
-            status: resident.status || "Activo",
-            bloodType: resident.bloodType || "",
-            fallRisk: resident.fallRisk || "Bajo",
-            medicalHistory: resident.medicalHistory?.join(', ') || "",
-            surgicalHistory: resident.surgicalHistory?.join(', ') || "",
-            allergies: resident.allergies?.join(', ') || "",
-            medications: resident.medications || [],
-            diet: resident.diet || "",
-            dependency: resident.dependency || "Dependiente",
-            familyContacts: resident.familyContacts || [],
-            admissionDate: resident.admissionDate || "",
-            roomType: resident.roomType || "",
-            roomNumber: resident.roomNumber || "",
-            documents: resident.documents || [],
-        });
+    setIsClient(true)
+  }, [])
 
-        const initialDocs = resident.documents?.reduce((acc, doc) => {
-            acc[doc.type] = { name: doc.name, size: doc.size };
-            return acc;
-        }, {} as Record<string, { name: string, size: number }>) || {};
-        setUploadedFiles(initialDocs);
+  const resident = mode === "edit" ? residents.find(r => r.id === residentId) : undefined
 
-        hasInitialized.current = true;
-    }
-  }, [resident]);
-  
+  const form = useForm<ResidentFormValues>({
+    resolver: zodResolver(residentFormSchema),
+    defaultValues: emptyDefaults,
+  })
+
+  // Solo inicializa una vez cuando el residente se carga por primera vez;
+  // evita resets continuos cada vez que Firestore emite una actualización.
+  useEffect(() => {
+    if (mode !== "edit" || hasInitialized.current || !resident) return
+
+    form.reset({
+      name: resident.name || "",
+      dob: resident.dob || "",
+      idNumber: resident.idNumber || "",
+      gender: resident.gender || "",
+      status: resident.status || "Activo",
+      bloodType: resident.bloodType || "",
+      fallRisk: resident.fallRisk || "Bajo",
+      medicalHistory: resident.medicalHistory?.join(', ') || "",
+      surgicalHistory: resident.surgicalHistory?.join(', ') || "",
+      allergies: resident.allergies?.join(', ') || "",
+      medications: resident.medications || [],
+      diet: resident.diet || "",
+      dependency: resident.dependency || "Dependiente",
+      familyContacts: resident.familyContacts || [],
+      admissionDate: resident.admissionDate || "",
+      roomType: resident.roomType || "",
+      roomNumber: resident.roomNumber || "",
+      documents: resident.documents || [],
+    })
+
+    const initialDocs = resident.documents?.reduce((acc, doc) => {
+      acc[doc.type] = { name: doc.name, size: doc.size }
+      return acc
+    }, {} as Record<string, UploadedFile>) || {}
+    setUploadedFiles(initialDocs)
+
+    hasInitialized.current = true
+  }, [mode, resident, form])
+
   const { fields: familyContactFields, append: appendFamilyContact, remove: removeFamilyContact } = useFieldArray({
     control: form.control,
     name: "familyContacts",
-  });
-  
+  })
+
   const { fields: medicationFields, append: appendMedication, remove: removeMedication } = useFieldArray({
     control: form.control,
     name: "medications",
-  });
-  
+  })
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setUploadedFiles(prev => ({...prev, [type]: { name: file.name, size: file.size } }));
+      const file = event.target.files[0]
+      setUploadedFiles(prev => ({ ...prev, [type]: { name: file.name, size: file.size, file, uploadDate: new Date() } }))
     }
   }
-  
+
   const removeFile = (type: string) => {
     setUploadedFiles(prev => {
-        const newState = {...prev};
-        delete newState[type];
-        return newState;
-    });
+      const newState = { ...prev }
+      delete newState[type]
+      return newState
+    })
   }
-  
+
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
-  
+
+  async function handleSaveDraft() {
+    const name = form.getValues("name")
+    if (!name?.trim()) {
+      toast({ variant: "destructive", title: "El nombre es necesario incluso para un borrador." })
+      return
+    }
+    const values = form.getValues()
+    const age = computeAge(values.dob, mode === "edit" ? (resident?.age || 0) : 0)
+
+    const payload = {
+      name: values.name,
+      idNumber: values.idNumber || "",
+      dob: values.dob || undefined,
+      age,
+      gender: (values.gender || undefined) as Resident["gender"],
+      dependency: (values.dependency || undefined) as Resident["dependency"],
+      status: "Borrador" as const,
+      admissionDate: values.admissionDate || undefined,
+      roomType: (values.roomType || undefined) as Resident["roomType"],
+      roomNumber: values.roomNumber || (mode === "create" ? undefined : ""),
+      bloodType: values.bloodType || undefined,
+      fallRisk: (values.fallRisk || undefined) as Resident["fallRisk"],
+      medicalHistory: values.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
+      surgicalHistory: values.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
+      allergies: values.allergies?.split(',').map(a => a.trim()).filter(Boolean) || [],
+      medications: values.medications || [],
+      diet: values.diet || (mode === "create" ? undefined : ""),
+      familyContacts: values.familyContacts || [],
+    }
+
+    if (mode === "create") {
+      const newId = await addResident({ ...payload, documents: [] })
+      toast({ title: "Borrador guardado", description: "Puedes completar la información más tarde." })
+      router.push(`/dashboard/residents/${newId}`)
+    } else {
+      if (!resident) return
+      await updateResident(resident.id, payload)
+      toast({ title: "Borrador actualizado", description: "Aún faltan campos obligatorios para activar al residente." })
+    }
+  }
+
   function onInvalid() {
     const errs = form.formState.errors
     const hasGeneralError = !!(errs.name || errs.idNumber)
+    const hasMedicalError = !!errs.medications
     const hasContactsError = !!errs.familyContacts
     if (hasGeneralError) setActiveTab("general")
+    else if (hasMedicalError) setActiveTab("medical")
     else if (hasContactsError) setActiveTab("contacts")
     toast({ variant: "destructive", title: "Hay campos obligatorios sin completar", description: "Revisa los campos marcados en rojo." })
     setTimeout(() => {
@@ -192,96 +206,95 @@ export default function EditResidentForm({ residentId }: { residentId: string })
     }, 150)
   }
 
-  async function handleSaveDraftEdit() {
-    if (!resident) return
-    const values = form.getValues()
-    if (!values.name?.trim()) {
-      toast({ variant: "destructive", title: "El nombre es necesario incluso para un borrador." })
-      return
-    }
-    const age = values.dob && !isNaN(Date.parse(values.dob))
-      ? new Date().getFullYear() - new Date(values.dob).getFullYear()
-      : resident.age
-    await updateResident(resident.id, {
-      name: values.name,
-      idNumber: values.idNumber || "",
-      dob: values.dob || undefined,
-      age,
-      gender: (values.gender || undefined) as "Femenino" | "Masculino" | "Otro" | undefined,
-      dependency: (values.dependency || undefined) as "Dependiente" | "Independiente" | undefined,
-      status: "Borrador",
-      admissionDate: values.admissionDate || undefined,
-      roomType: (values.roomType || undefined) as "Habitación compartida" | "Habitación individual" | undefined,
-      roomNumber: values.roomNumber || "",
-      bloodType: values.bloodType || undefined,
-      fallRisk: (values.fallRisk || undefined) as "Bajo" | "Medio" | "Alto" | undefined,
-      medicalHistory: values.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
-      surgicalHistory: values.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
-      allergies: values.allergies?.split(',').map(a => a.trim()).filter(Boolean),
-      medications: values.medications || [],
-      diet: values.diet || "",
-      familyContacts: values.familyContacts || [],
-    })
-    toast({ title: "Borrador actualizado", description: "Aún faltan campos obligatorios para activar al residente." })
-  }
-
   function onSubmit(data: ResidentFormValues) {
-    if (!resident) return;
-    const wasDraft = resident.status === "Borrador"
-    const age = data.dob && !isNaN(Date.parse(data.dob))
-      ? new Date().getFullYear() - new Date(data.dob).getFullYear()
-      : (resident?.age || 0);
+    const documentsData = Object.keys(uploadedFiles).map(type => ({
+      type,
+      name: uploadedFiles[type].name,
+      size: uploadedFiles[type].size,
+    }))
 
-    const documentsData = Object.entries(uploadedFiles).map(([type, fileInfo]) => ({
-      type: type,
-      name: fileInfo.name,
-      size: fileInfo.size,
-    }));
-
-    const updatedData = {
-        ...data,
-        age: age,
-        status: wasDraft ? "Activo" as const : data.status,
+    if (mode === "create") {
+      const age = computeAge(data.dob, 0)
+      const newResident = {
+        name: data.name,
+        idNumber: data.idNumber,
+        dob: data.dob || undefined,
+        age,
+        gender: (data.gender || undefined) as Resident["gender"],
+        dependency: (data.dependency || undefined) as Resident["dependency"],
+        status: data.status,
+        admissionDate: data.admissionDate || undefined,
+        roomType: (data.roomType || undefined) as Resident["roomType"],
+        roomNumber: data.roomNumber || undefined,
+        bloodType: data.bloodType || undefined,
+        fallRisk: (data.fallRisk || undefined) as Resident["fallRisk"],
         medicalHistory: data.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         surgicalHistory: data.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         allergies: data.allergies?.split(',').map(a => a.trim()).filter(Boolean),
+        medications: data.medications,
+        diet: data.diet || undefined,
+        familyContacts: data.familyContacts,
         documents: documentsData,
-        // Convertir "" → undefined para campos opcionales (sanitizeForFirestore los omitirá)
-        gender: (data.gender || undefined) as "Femenino" | "Masculino" | "Otro" | undefined,
-        roomType: (data.roomType || undefined) as "Habitación compartida" | "Habitación individual" | undefined,
-        dependency: (data.dependency || undefined) as "Dependiente" | "Independiente" | undefined,
-        fallRisk: (data.fallRisk || undefined) as "Bajo" | "Medio" | "Alto" | undefined,
-        bloodType: data.bloodType || undefined,
-        dob: data.dob || undefined,
-        admissionDate: data.admissionDate || undefined,
-    };
+      }
+      addResident(newResident)
+      toast({
+        title: "Residente Registrado",
+        description: `${data.name} ha sido agregado exitosamente.`,
+      })
+      router.push("/dashboard/residents")
+      return
+    }
 
-    updateResident(resident.id, updatedData);
+    if (!resident) return
+    const wasDraft = resident.status === "Borrador"
+    const age = computeAge(data.dob, resident.age || 0)
+
+    const updatedData = {
+      ...data,
+      age,
+      status: wasDraft ? "Activo" as const : data.status,
+      medicalHistory: data.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
+      surgicalHistory: data.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
+      allergies: data.allergies?.split(',').map(a => a.trim()).filter(Boolean),
+      documents: documentsData,
+      gender: (data.gender || undefined) as Resident["gender"],
+      roomType: (data.roomType || undefined) as Resident["roomType"],
+      dependency: (data.dependency || undefined) as Resident["dependency"],
+      fallRisk: (data.fallRisk || undefined) as Resident["fallRisk"],
+      bloodType: data.bloodType || undefined,
+      dob: data.dob || undefined,
+      admissionDate: data.admissionDate || undefined,
+    }
+
+    updateResident(resident.id, updatedData)
     toast({
       title: wasDraft ? "Residente activado exitosamente" : "Residente Actualizado",
       description: wasDraft
         ? `${data.name} ahora está activo en el sistema.`
         : `Los datos de ${data.name} han sido actualizados exitosamente.`,
     })
-    router.push(`/dashboard/residents/${resident.id}`);
+    router.push(`/dashboard/residents/${resident.id}`)
   }
-  
-  if (isLoading) {
+
+  if (!isClient || isLoading) {
     return <div>Cargando...</div>
   }
-  
-  if (!resident) {
+
+  if (mode === "edit" && !resident) {
     return <div>Residente no encontrado.</div>
   }
 
   const formErrors = form.formState.errors
   const generalErrorCount = (['name', 'idNumber'] as const).filter(f => !!formErrors[f]).length
+  const medicalErrorCount = formErrors.medications ? 1 : 0
   const contactsErrorCount = formErrors.familyContacts ? 1 : 0
 
   return (
     <>
-      <h1 className="text-3xl font-bold font-headline mb-6">Editar Perfil de {resident.name}</h1>
-      {resident.status === "Borrador" && (
+      <h1 className="text-3xl font-bold font-headline mb-6">
+        {mode === "create" ? "Agregar Nuevo Residente" : `Editar Perfil de ${resident?.name}`}
+      </h1>
+      {mode === "edit" && resident?.status === "Borrador" && (
         <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 mb-6">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800">
@@ -299,8 +312,9 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                     Información General
                     {generalErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{generalErrorCount}</span>}
                   </TabsTrigger>
-                  <TabsTrigger value="medical" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm">
+                  <TabsTrigger value="medical" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm gap-1.5">
                     Perfil Médico
+                    {medicalErrorCount > 0 && <span className="inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold min-w-[16px] h-4 px-1">{medicalErrorCount}</span>}
                   </TabsTrigger>
                   <TabsTrigger value="contacts" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm gap-1.5">
                     Contactos Familiares
@@ -309,33 +323,33 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                   <TabsTrigger value="documents" className="whitespace-nowrap px-3 py-2 text-xs sm:text-sm">Documentos</TabsTrigger>
               </TabsList>
               </div>
-              
+
               <TabsContent value="general">
                  <Card>
                     <CardHeader>
                         <CardTitle>Información del Residente</CardTitle>
-                        <CardDescription>Actualice los datos demográficos y administrativos.</CardDescription>
+                        <CardDescription>{mode === "create" ? "Complete los datos demográficos y administrativos." : "Actualice los datos demográficos y administrativos."}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-6">
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre Completo <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <FormField control={form.control} name="name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Nombre Completo <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Maria Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Fecha de Nacimiento</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="idNumber" render={({ field }) => (<FormItem><FormLabel>Nº de Cédula <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. 12345678" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Género</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un género" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Femenino">Femenino</SelectItem><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Otro">Otro</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="admissionDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Ingreso</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="roomNumber" render={({ field }) => (<FormItem><FormLabel>Número de Habitación</FormLabel><FormControl><Input placeholder="Ej. 101A" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="roomType" render={({ field }) => (<FormItem className="sm:col-span-2 lg:col-span-1"><FormLabel>Tipo de Habitación</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione una habitación" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Habitación compartida">Habitación Compartida</SelectItem><SelectItem value="Habitación individual">Habitación Individual</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="roomNumber" render={({ field }) => (<FormItem><FormLabel>Número de Habitación</FormLabel><FormControl><Input placeholder="Ej. 101A" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Estado</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione el estado" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Activo">Activo</SelectItem><SelectItem value="Inactivo">Inactivo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
                     </CardContent>
                  </Card>
               </TabsContent>
-              
+
               <TabsContent value="medical">
                  <Card>
                     <CardHeader>
                         <CardTitle>Información Médica y de Cuidado</CardTitle>
-                         <CardDescription>Actualice las condiciones médicas, medicamentos y necesidades del residente.</CardDescription>
+                         <CardDescription>{mode === "create" ? "Detalle las condiciones médicas, medicamentos y necesidades del residente." : "Actualice las condiciones médicas, medicamentos y necesidades del residente."}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -344,19 +358,21 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                             <FormField control={form.control} name="fallRisk" render={({ field }) => (<FormItem><FormLabel>Riesgo de Caída</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un riesgo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Bajo">Bajo</SelectItem><SelectItem value="Medio">Medio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                         </div>
                         <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-6">
-                            <FormField control={form.control} name="medicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Médicos</FormLabel><FormControl><Textarea placeholder="Ej. Alzheimer, Hipertensión (separados por comas)" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="surgicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Quirúrgicos</FormLabel><FormControl><Textarea placeholder="Ej. Reemplazo de cadera (separados por comas)" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="allergies" render={({ field }) => (<FormItem><FormLabel>Alergias Conocidas</FormLabel><FormControl><Textarea placeholder="Ej. Penicilina, Mariscos (separadas por comas)" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="medicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Médicos</FormLabel><FormControl><Textarea placeholder="Ej. Alzheimer, Hipertensión (separados por comas)" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="surgicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Quirúrgicos</FormLabel><FormControl><Textarea placeholder="Ej. Reemplazo de cadera (separados por comas)" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="allergies" render={({ field }) => (<FormItem><FormLabel>Alergias Conocidas</FormLabel><FormControl><Textarea placeholder="Ej. Penicilina, Mariscos (separadas por comas)" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
-                        <FormField control={form.control} name="diet" render={({ field }) => (<FormItem className="lg:col-span-2"><FormLabel>Plan de Alimentación</FormLabel><FormControl><Textarea placeholder="Ej. Baja en sodio, alimentos blandos" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="diet" render={({ field }) => (<FormItem className="lg:col-span-2"><FormLabel>Plan de Alimentación</FormLabel><FormControl><Textarea placeholder="Ej. Baja en sodio, alimentos blandos" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem>)} />
                         <div>
                             <FormLabel>Medicamentos Recetados</FormLabel>
                             {medicationFields.map((field, index) => (
-                                <div key={field.id} className="flex items-end gap-4 mt-2 p-4 border rounded-md relative">
-                                    <FormField control={form.control} name={`medications.${index}.name`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Medicamento</FormLabel><FormControl><Input placeholder="Ej. Lisinopril" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name={`medications.${index}.dose`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Dosis</FormLabel><FormControl><Input placeholder="Ej. 20mg" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name={`medications.${index}.frequency`} render={({ field }) => (<FormItem className="flex-1"><FormLabel>Frecuencia</FormLabel><FormControl><Input placeholder="Ej. Cada 12 horas" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <Button type="button" variant="destructive" size="icon" onClick={() => removeMedication(index)}><Trash2 className="h-4 w-4" /></Button>
+                                <div key={field.id} className="mt-2 p-4 border rounded-md relative">
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-10" onClick={() => removeMedication(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pr-10">
+                                        <FormField control={form.control} name={`medications.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Medicamento</FormLabel><FormControl><Input placeholder="Ej. Lisinopril" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name={`medications.${index}.dose`} render={({ field }) => (<FormItem><FormLabel>Dosis</FormLabel><FormControl><Input placeholder="Ej. 20mg" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name={`medications.${index}.frequency`} render={({ field }) => (<FormItem><FormLabel>Frecuencia</FormLabel><FormControl><Input placeholder="Ej. Cada 12 horas" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
                                 </div>
                             ))}
                             <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendMedication({ name: "", dose: "", frequency: "" })}>
@@ -366,12 +382,12 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                     </CardContent>
                  </Card>
               </TabsContent>
-              
+
               <TabsContent value="contacts">
                   <Card>
                         <CardHeader>
                             <CardTitle>Información de Contacto Familiar</CardTitle>
-                            <CardDescription>Actualice los contactos de emergencia para el residente.</CardDescription>
+                            <CardDescription>{mode === "create" ? "Agregue uno o más contactos de emergencia para el residente." : "Actualice los contactos de emergencia para el residente."}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-6">
                             {familyContactFields.map((field, index) => (
@@ -383,15 +399,15 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                         </CardContent>
                     </Card>
               </TabsContent>
-              
+
               <TabsContent value="documents">
                 <Card>
                     <CardHeader>
                         <CardTitle>Documentos Requeridos</CardTitle>
-                        <CardDescription>Actualice los documentos obligatorios del residente.</CardDescription>
+                        <CardDescription>{mode === "create" ? "Cargue los documentos obligatorios del residente." : "Actualice los documentos obligatorios del residente."}</CardDescription>
                     </CardHeader>
                     <CardContent className="grid sm:grid-cols-1 md:grid-cols-2 gap-6 pt-6">
-                        {["Contrato", "Consentimiento Informado", "Cédula de Paciente", "Historia Clínica"].map((type) => (
+                        {documentTypes.map((type) => (
                             <div key={type} className="space-y-2">
                                 <h4 className="font-semibold text-base">{type}</h4>
                                 {uploadedFiles[type] ? (
@@ -406,6 +422,12 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                                                             <Weight className="w-3.5 h-3.5" />
                                                             <span>{formatFileSize(uploadedFiles[type].size)}</span>
                                                         </div>
+                                                        {uploadedFiles[type].uploadDate && (
+                                                            <div className="flex items-center gap-1.5">
+                                                               <CalendarDays className="w-3.5 h-3.5" />
+                                                               <span>{uploadedFiles[type].uploadDate!.toLocaleDateString()}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -436,18 +458,18 @@ export default function EditResidentForm({ residentId }: { residentId: string })
                 </Card>
               </TabsContent>
            </Tabs>
-          
+
           <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t p-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:static sm:bg-transparent sm:border-0 sm:p-0">
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
               Cancelar
             </Button>
-            {resident.status === "Borrador" && (
-              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={handleSaveDraftEdit} disabled={isLoading}>
-                Guardar borrador
+            {(mode === "create" || resident?.status === "Borrador") && (
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={handleSaveDraft} disabled={isLoading}>
+                {mode === "create" ? "Guardar como borrador" : "Guardar borrador"}
               </Button>
             )}
             <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
-              {resident.status === "Borrador" ? "Guardar y activar" : "Guardar Cambios"}
+              {mode === "create" ? "Guardar Residente" : (resident?.status === "Borrador" ? "Guardar y activar" : "Guardar Cambios")}
             </Button>
           </div>
         </form>
@@ -456,29 +478,30 @@ export default function EditResidentForm({ residentId }: { residentId: string })
   )
 }
 
+// Sub-component for managing a single family contact's fields
 function FamilyContactFields({ form, contactIndex, removeContact }: { form: any, contactIndex: number, removeContact: (index: number) => void }) {
     const { fields: phoneFields, append: appendPhone, remove: removePhone } = useFieldArray({
         control: form.control,
         name: `familyContacts.${contactIndex}.phones`
     });
-    
+
     return (
         <div className="p-4 border rounded-md space-y-4 relative">
-            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => removeContact(contactIndex)}>
+            <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-10" onClick={() => removeContact(contactIndex)}>
                 <Trash2 className="h-4 w-4" />
             </Button>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pr-10 sm:pr-0">
                 <FormField control={form.control} name={`familyContacts.${contactIndex}.name`} render={({ field }) => (<FormItem><FormLabel>Nombre del Contacto <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Juan Rodriguez" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name={`familyContacts.${contactIndex}.kinship`} render={({ field }) => (<FormItem><FormLabel>Parentesco <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Hijo" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name={`familyContacts.${contactIndex}.email`} render={({ field }) => (<FormItem><FormLabel>Correo Electrónico <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. juan.r@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
             <FormField control={form.control} name={`familyContacts.${contactIndex}.address`} render={({ field }) => (<FormItem><FormLabel>Dirección <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123, Ciudad" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            
+
             <div>
                 <FormLabel>Números de Teléfono <span className="text-destructive">*</span></FormLabel>
                 <div className="space-y-2 mt-2">
                     {phoneFields.map((field, phoneIndex) => (
-                        <div key={field.id} className="flex items-center gap-2">
+                        <div key={field.id} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                            <FormField
                                 control={form.control}
                                 name={`familyContacts.${contactIndex}.phones.${phoneIndex}.number`}
@@ -491,13 +514,13 @@ function FamilyContactFields({ form, contactIndex, removeContact }: { form: any,
                                     </FormItem>
                                 )}
                             />
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removePhone(phoneIndex)}>
+                            <Button type="button" variant="ghost" size="icon" className="w-full sm:w-auto" onClick={() => removePhone(phoneIndex)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                         </div>
                     ))}
                 </div>
-                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendPhone({ number: "" })}>
+                 <Button type="button" variant="outline" size="sm" className="mt-2 w-full sm:w-auto" onClick={() => appendPhone({ number: "" })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Agregar Teléfono
                 </Button>
             </div>
