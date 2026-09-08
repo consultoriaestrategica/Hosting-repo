@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { CalendarDays, FileText, Users, UserCircle2, Calendar } from "lucide-react"
 
-import  AuthGuard  from "@/components/auth-guard"
 import AgendaDashboard from "./components/agenda-dashboard"
 import { useUser } from "@/hooks/use-user"
 import { useResidents } from "@/hooks/use-residents"
@@ -34,7 +33,6 @@ export default function DashboardHomePage() {
   }).length
 
   return (
-    <AuthGuard>
       <div className="space-y-6">
         {/* Bloque de bienvenida dentro del contenido (NO es header global) */}
         <section className="rounded-xl border bg-white p-4 sm:p-6 shadow-sm">
@@ -192,6 +190,5 @@ export default function DashboardHomePage() {
           </Card>
         </section>
       </div>
-    </AuthGuard>
   )
 }
