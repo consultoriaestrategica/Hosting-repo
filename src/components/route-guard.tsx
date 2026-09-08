@@ -10,15 +10,21 @@ interface RouteGuardProps {
   fallbackUrl?: string
 }
 
+/**
+ * Verifica un permiso puntual dentro de una página de /dashboard.
+ * La sesión y el rol staff ya están garantizados por DashboardGuard
+ * (app/dashboard/layout.tsx) antes de que esta página se renderice,
+ * así que este guard solo se preocupa por el `permission` específico.
+ */
 export default function RouteGuard({ children, permission, fallbackUrl = "/dashboard" }: RouteGuardProps) {
-  const { hasPermission, isLoading, user } = useUser()
+  const { hasPermission, isLoading } = useUser()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && user && !hasPermission(permission)) {
+    if (!isLoading && !hasPermission(permission)) {
       router.replace(fallbackUrl)
     }
-  }, [isLoading, user, permission, hasPermission, router, fallbackUrl])
+  }, [isLoading, permission, hasPermission, router, fallbackUrl])
 
   if (isLoading) {
     return (
@@ -31,7 +37,7 @@ export default function RouteGuard({ children, permission, fallbackUrl = "/dashb
     )
   }
 
-  if (!user || !hasPermission(permission)) {
+  if (!hasPermission(permission)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="rounded-full bg-destructive/10 p-4 mb-4">

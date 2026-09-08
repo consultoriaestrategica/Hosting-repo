@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { LogOut, ArrowLeft, Home } from "lucide-react"
 
+import DashboardGuard from "@/components/dashboard-guard"
 import { DashboardNav } from "@/components/dashboard-nav"
 import {
   SidebarProvider,
@@ -51,6 +52,7 @@ export default function DashboardLayout({
   const isDashboardHome = pathname === "/dashboard"
 
   return (
+    <DashboardGuard>
     <SidebarProvider>
       {/* Contenedor raíz: ocupa toda la pantalla y no permite scroll horizontal */}
       <div className="min-h-screen flex w-full bg-background text-foreground overflow-x-hidden">
@@ -187,5 +189,6 @@ export default function DashboardLayout({
         </DialogContent>
       </Dialog>
     </SidebarProvider>
+    </DashboardGuard>
   )
 }
