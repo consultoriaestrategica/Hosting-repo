@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { sanitizeForFirestore } from "@/lib/firestore-utils"
+import type { MyRole } from "./use-my-role"
 
 // ==============================
 // TIPOS (sin cambios)
@@ -100,19 +101,36 @@ export function useResidents() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    let unsubSnapshot: (() => void) | null = null
+    let unsubRole: (() => void) | null = null
+    let unsubResidents: (() => void) | null = null
+
+    const clearNested = () => {
+      if (unsubResidents) {
+        unsubResidents()
+        unsubResidents = null
+      }
+      if (unsubRole) {
+        unsubRole()
+        unsubRole = null
+      }
+    }
 
     // ========================================================
     // FIX: Esperar autenticación antes de suscribirse a
     // Firestore. Sin esto, el onSnapshot falla con permisos
     // insuficientes si se monta antes del login.
+    //
+    // FIX SEGURIDAD: antes este hook siempre suscribía a la
+    // colección `residents` COMPLETA, incluso para familiares del
+    // portal familiar — que solo debían ver a SU residente
+    // asignado. Ahora se resuelve primero user_roles/{uid}: si es
+    // staff, se mantiene el comportamiento actual (colección
+    // completa); si es familiar, se suscribe SOLO al documento de
+    // su residentId asignado (coincide con lo que ya permiten las
+    // Firestore Rules).
     // ========================================================
     const unsubAuth = onAuthStateChanged(auth, (user) => {
-      // Limpiar suscripción anterior
-      if (unsubSnapshot) {
-        unsubSnapshot()
-        unsubSnapshot = null
-      }
+      clearNested()
 
       if (!user) {
         setResidents([])
@@ -121,23 +139,65 @@ export function useResidents() {
       }
 
       setIsLoading(true)
-      const residentsColRef = collection(db, "residents")
 
-      unsubSnapshot = onSnapshot(
-        residentsColRef,
-        (snapshot) => {
-          const data = snapshot.docs.map(
-            (docSnap) =>
-              ({
-                id: docSnap.id,
-                ...docSnap.data(),
-              } as Resident)
-          )
-          setResidents(data)
-          setIsLoading(false)
+      unsubRole = onSnapshot(
+        doc(db, "user_roles", user.uid),
+        (roleSnap) => {
+          if (unsubResidents) {
+            unsubResidents()
+            unsubResidents = null
+          }
+
+          if (!roleSnap.exists()) {
+            // Cuenta sin rol asignado: no debe ver ningún residente.
+            setResidents([])
+            setIsLoading(false)
+            return
+          }
+
+          const role = roleSnap.data() as MyRole
+
+          if (role.kind === "staff") {
+            unsubResidents = onSnapshot(
+              collection(db, "residents"),
+              (snapshot) => {
+                const data = snapshot.docs.map(
+                  (docSnap) =>
+                    ({
+                      id: docSnap.id,
+                      ...docSnap.data(),
+                    } as Resident)
+                )
+                setResidents(data)
+                setIsLoading(false)
+              },
+              (error) => {
+                console.error("❌ useResidents: error al obtener residentes:", error)
+                setResidents([])
+                setIsLoading(false)
+              }
+            )
+          } else {
+            unsubResidents = onSnapshot(
+              doc(db, "residents", role.residentId),
+              (docSnap) => {
+                setResidents(
+                  docSnap.exists()
+                    ? [{ id: docSnap.id, ...docSnap.data() } as Resident]
+                    : []
+                )
+                setIsLoading(false)
+              },
+              (error) => {
+                console.error("❌ useResidents: error al obtener residente asignado:", error)
+                setResidents([])
+                setIsLoading(false)
+              }
+            )
+          }
         },
         (error) => {
-          console.error("❌ useResidents: error al obtener residentes:", error)
+          console.error("❌ useResidents: error leyendo user_roles:", error)
           setResidents([])
           setIsLoading(false)
         }
@@ -146,7 +206,7 @@ export function useResidents() {
 
     return () => {
       unsubAuth()
-      if (unsubSnapshot) unsubSnapshot()
+      clearNested()
     }
   }, [])
 

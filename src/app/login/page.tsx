@@ -19,7 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useFamilyMembers } from "@/hooks/use-family-members"
 import { Eye, EyeOff, Users, Heart, Loader2 } from "lucide-react"
-import { collection, getDocs, query, where } from "firebase/firestore"
+import { doc, getDoc } from "firebase/firestore"
+import type { MyRole } from "@/hooks/use-my-role"
 
 /**
  * Página de Login Dual
@@ -29,8 +30,8 @@ import { collection, getDocs, query, where } from "firebase/firestore"
  */
 
 type StaffCheckResult =
-  | { kind: "staff"; data: any }
-  | { kind: "family"; data: any }
+  | { kind: "staff" }
+  | { kind: "family" }
   | { kind: "unknown" }
 
 export default function LoginPage() {
@@ -54,64 +55,22 @@ export default function LoginPage() {
   const [familyShowPassword, setFamilyShowPassword] = useState(false)
   const [familyLoading, setFamilyLoading] = useState(false)
 
-  const findUserDocInCollection = async (
-    colName: string,
-    uid: string | null,
-    email: string | null
-  ) => {
-    if (uid) {
-      const qByUid = query(collection(db, colName), where("uid", "==", uid))
-      const snapUid = await getDocs(qByUid)
-      if (!snapUid.empty) {
-        return snapUid.docs[0].data()
-      }
+  // Determina el rol leyendo user_roles/{uid} — el único documento que
+  // las Firestore Security Rules garantizan que el usuario recién
+  // autenticado puede leer siempre, sea cual sea su rol (o si no tiene
+  // ninguno todavía). NO se puede volver a consultar "staff"/"family_
+  // members" por email aquí: las rules ya exigen tener un rol válido
+  // para leer esas colecciones, así que esta sería la única forma de
+  // determinarlo sin quedar en un círculo imposible de resolver.
+  const checkStaffRecord = async (uid: string): Promise<StaffCheckResult> => {
+    const roleSnap = await getDoc(doc(db, "user_roles", uid))
+
+    if (!roleSnap.exists()) {
+      return { kind: "unknown" }
     }
 
-    if (email) {
-      const qByEmail = query(collection(db, colName), where("email", "==", email))
-      const snapEmail = await getDocs(qByEmail)
-      if (!snapEmail.empty) {
-        return snapEmail.docs[0].data()
-      }
-    }
-
-    return null
-  }
-
-  const checkStaffRecord = async (
-    uid: string,
-    email: string | null
-  ): Promise<StaffCheckResult> => {
-    console.log("🔎 Verificando registro de staff/familiar para:", uid, email)
-
-    const normalizedEmail = email ?? null
-
-    const staffCollections = ["users", "staff"] as const
-    for (const colName of staffCollections) {
-      const staffDoc = await findUserDocInCollection(colName, uid, normalizedEmail)
-      if (staffDoc) {
-        console.log(
-          `✅ Usuario encontrado como staff/admin en colección "${colName}":`,
-          staffDoc
-        )
-        return { kind: "staff", data: staffDoc }
-      }
-    }
-
-    const familyDoc = await findUserDocInCollection(
-      "family_members",
-      uid,
-      normalizedEmail
-    )
-    if (familyDoc) {
-      console.log("👪 Usuario corresponde a un familiar:", familyDoc)
-      return { kind: "family", data: familyDoc }
-    }
-
-    console.warn(
-      "⚠️ Usuario autenticado sin registro en Firestore (staff/users/family_members)."
-    )
-    return { kind: "unknown" }
+    const role = roleSnap.data() as MyRole
+    return role.kind === "staff" ? { kind: "staff" } : { kind: "family" }
   }
 
   const handleStaffLogin = async (e: React.FormEvent) => {
@@ -131,23 +90,8 @@ export default function LoginPage() {
 
     try {
       const cred = await signInWithEmailAndPassword(auth, staffEmail.trim(), staffPassword)
-      console.log("✅ Staff autenticado en Auth:", cred.user.uid)
 
-      const roleCheck = await checkStaffRecord(
-        cred.user.uid,
-        cred.user.email ?? null
-      )
-
-      if (roleCheck.kind === "family") {
-        await signOut(auth)
-        toast({
-          variant: "destructive",
-          title: "Acceso no autorizado",
-          description:
-            "Esta cuenta está registrada como acceso familiar. Use la pestaña 'Familiares' para ingresar.",
-        })
-        return
-      }
+      const roleCheck = await checkStaffRecord(cred.user.uid)
 
       if (roleCheck.kind === "staff") {
         toast({
@@ -158,15 +102,27 @@ export default function LoginPage() {
         return
       }
 
-      console.warn(
-        "⚠️ Usuario sin registro explícito en Firestore. Se permite acceso por compatibilidad."
-      )
-      toast({
-        title: "Inicio de sesión exitoso",
-        description:
-          "Bienvenido. Esta cuenta no tiene registro de personal en Firestore, se asume rol administrativo heredado.",
-      })
-      router.push("/dashboard")
+      // "family" o "unknown": esta cuenta no tiene un rol de personal
+      // válido. Antes esto se dejaba pasar igual como "administrativo
+      // heredado" — eso era la vulnerabilidad de fail-open que se
+      // corrigió acá. Ahora se niega el acceso siempre.
+      await signOut(auth)
+
+      if (roleCheck.kind === "family") {
+        toast({
+          variant: "destructive",
+          title: "Acceso no autorizado",
+          description:
+            "Esta cuenta está registrada como acceso familiar. Use la pestaña 'Familiares' para ingresar.",
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Cuenta sin rol asignado",
+          description:
+            "Tu cuenta no tiene un rol asignado en el sistema. Contacta al administrador para que la habilite.",
+        })
+      }
     } catch (error: any) {
       console.error("❌ Error en login de staff:", error)
 

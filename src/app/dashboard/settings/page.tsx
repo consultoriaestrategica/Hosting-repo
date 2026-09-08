@@ -58,10 +58,10 @@ import {
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
-import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"
+import { createUserWithEmailAndPassword, sendPasswordResetEmail, signOut as firebaseSignOut } from "firebase/auth"
 import { db, auth } from "@/lib/firebase"
 import { authSecondary } from "@/lib/firebase-secondary"
-import { collection, addDoc, deleteDoc, doc } from "firebase/firestore"
+import { collection, addDoc, deleteDoc, doc, writeBatch, Timestamp } from "firebase/firestore"
 import { ROLE_PERMISSIONS, UserRole } from "@/types/user"
 import FamilyMembersManagement from "./components/family-management"
 import RouteGuard from "@/components/route-guard"
@@ -237,10 +237,16 @@ export default function SettingsPage() {
           userEmail,
           String(userData.password)
         )
+        const newUid = userCredential.user.uid
 
-        // 2. Definir colección según el rol interno
-        const collectionName = "staff"
-
+        // 2. Preparar los documentos de staff y user_roles. Se escriben
+        //    juntos en un solo writeBatch para que sean atómicos entre
+        //    sí: o se crean los dos, o no se crea ninguno. Así nunca
+        //    queda una cuenta de Auth con documento de staff pero sin
+        //    user_roles (las Firestore Rules resuelven el rol leyendo
+        //    ese documento por uid, igual que en addFamilyMember, ver
+        //    src/hooks/use-family-members.ts).
+        const staffDocRef = doc(collection(db, "staff"))
         const staffData = {
           name: userData.name,
           email: userEmail,
@@ -256,10 +262,36 @@ export default function SettingsPage() {
           updatedAt: new Date(),
           permissions: permissions,
           department: isAdministrative ? "Administración" : isNursingLead ? "Enfermería" : "Cuidado",
-          uid: userCredential.user.uid,
+          uid: newUid,
         }
 
-        await addDoc(collection(db, collectionName), staffData)
+        try {
+          const batch = writeBatch(db)
+          batch.set(staffDocRef, staffData)
+          batch.set(doc(db, "user_roles", newUid), {
+            kind: "staff",
+            role,
+            staffDocId: staffDocRef.id,
+            email: userEmail,
+            updatedAt: Timestamp.fromDate(new Date()),
+          })
+          await batch.commit()
+        } catch (firestoreError) {
+          // El batch no se aplicó (ninguno de los dos documentos se
+          // creó). No queremos dejar una cuenta de Auth huérfana sin
+          // ningún rol: la revertimos y dejamos que el catch de más
+          // abajo muestre el error normal al admin.
+          try {
+            await userCredential.user.delete()
+          } catch (cleanupError) {
+            console.error("No se pudo revertir la cuenta de Auth tras un error de Firestore:", cleanupError)
+          }
+          throw firestoreError
+        }
+
+        // 3. Cerrar sesión SOLO en la instancia secundaria (igual que
+        //    addFamilyMember) — no afecta la sesión del admin.
+        await firebaseSignOut(authSecondary)
 
         toast({
           title: "Usuario Creado",

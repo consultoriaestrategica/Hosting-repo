@@ -4,11 +4,18 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "./use-auth" // si este hook existe como cliente
 import { db } from "@/lib/firebase"
-import { collection, query, where, onSnapshot } from "firebase/firestore"
+import { doc, onSnapshot } from "firebase/firestore"
 import { FamilyMember } from "@/types/user"
+import type { MyRole } from "./use-my-role"
 
 /**
  * Hook de autenticación para familiares
+ *
+ * Resuelve primero user_roles/{uid} (lo único que las Firestore Rules
+ * garantizan que el usuario puede leer siempre) para obtener el
+ * familyDocId, y recién ahí suscribe al documento real de
+ * family_members — ya no se puede consultar por email como antes,
+ * porque las rules exigen ya ser "family" para leer esa colección.
  */
 export function useFamilyAuth() {
   const { user: authUser, isLoading: authLoading } = useAuth()
@@ -16,85 +23,83 @@ export function useFamilyAuth() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    console.log("👨‍👩‍👧 useFamilyAuth: Effect ejecutado", {
-      authUserEmail: authUser?.email,
-      authLoading,
-    })
-
     if (authLoading) {
-      console.log("⏳ useFamilyAuth: Esperando autenticación...")
       setIsLoading(true)
       return
     }
 
-    if (!authUser?.email) {
-      console.log("⚠️ useFamilyAuth: No hay usuario autenticado")
+    if (!authUser) {
       setFamilyMember(null)
       setIsLoading(false)
       return
     }
 
-    console.log("🔍 useFamilyAuth: Configurando listener para:", authUser.email)
     setIsLoading(true)
 
-    const q = query(
-      collection(db, "family_members"),
-      where("email", "==", authUser.email)
-    )
+    let unsubscribeFamilyDoc: (() => void) | null = null
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        console.log(
-          "📡 useFamilyAuth: Snapshot recibido, docs:",
-          snapshot.size
-        )
+    const unsubscribeRole = onSnapshot(
+      doc(db, "user_roles", authUser.uid),
+      (roleSnap) => {
+        if (unsubscribeFamilyDoc) {
+          unsubscribeFamilyDoc()
+          unsubscribeFamilyDoc = null
+        }
 
-        if (!snapshot.empty) {
-          const doc = snapshot.docs[0]
-          const data = doc.data()
-
-          console.log("✅ useFamilyAuth: Familiar encontrado:", {
-            id: doc.id,
-            email: data.email,
-            name: data.name,
-            residentId: data.residentId,
-          })
-
-          const member: FamilyMember = {
-            id: doc.id,
-            email: data.email,
-            name: data.name,
-            role: "Acceso Familiar",
-            residentId: data.residentId,
-            residentName: data.residentName,
-            relationship: data.relationship,
-            phone: data.phone,
-            isActive: data.isActive ?? true,
-            createdAt: data.createdAt?.toDate?.() || new Date(),
-            updatedAt: data.updatedAt?.toDate?.(),
-            emergencyContact: data.emergencyContact ?? false,
-            visitingHours: data.visitingHours,
-          }
-
-          setFamilyMember(member)
-          setIsLoading(false)
-        } else {
-          console.log("⚠️ useFamilyAuth: No se encontró en family_members")
+        if (!roleSnap.exists() || (roleSnap.data() as MyRole).kind !== "family") {
           setFamilyMember(null)
           setIsLoading(false)
+          return
         }
+
+        const role = roleSnap.data() as Extract<MyRole, { kind: "family" }>
+
+        unsubscribeFamilyDoc = onSnapshot(
+          doc(db, "family_members", role.familyDocId),
+          (docSnap) => {
+            if (!docSnap.exists()) {
+              setFamilyMember(null)
+              setIsLoading(false)
+              return
+            }
+
+            const data = docSnap.data()
+            const member: FamilyMember = {
+              id: docSnap.id,
+              email: data.email,
+              name: data.name,
+              role: "Acceso Familiar",
+              residentId: data.residentId,
+              residentName: data.residentName,
+              relationship: data.relationship,
+              phone: data.phone,
+              isActive: data.isActive ?? true,
+              createdAt: data.createdAt?.toDate?.() || new Date(),
+              updatedAt: data.updatedAt?.toDate?.(),
+              emergencyContact: data.emergencyContact ?? false,
+              visitingHours: data.visitingHours,
+            }
+
+            setFamilyMember(member)
+            setIsLoading(false)
+          },
+          (error) => {
+            console.error("❌ useFamilyAuth: Error leyendo family_members:", error)
+            setFamilyMember(null)
+            setIsLoading(false)
+          }
+        )
       },
       (error) => {
-        console.error("❌ useFamilyAuth: Error en snapshot:", error)
+        console.error("❌ useFamilyAuth: Error leyendo user_roles:", error)
         setFamilyMember(null)
         setIsLoading(false)
       }
     )
 
     return () => {
-      console.log("🧹 useFamilyAuth: Limpiando listener")
-      unsubscribe()
+      unsubscribeRole()
+      if (unsubscribeFamilyDoc) unsubscribeFamilyDoc()
     }
   }, [authUser, authLoading])
 

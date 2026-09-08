@@ -6,14 +6,16 @@ import { authSecondary } from '@/lib/firebase-secondary';
 import {
   collection,
   query,
-  where,
   onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
   doc,
+  getDoc,
+  setDoc,
   Timestamp
 } from 'firebase/firestore';
+import type { MyRole } from './use-my-role';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -109,11 +111,12 @@ export function useFamilyMembers() {
       try {
         // 1. Crear usuario en Firebase Auth usando la instancia SECUNDARIA
         //    Esto NO afecta la sesión del admin logueado en la app principal
-        await createUserWithEmailAndPassword(
+        const userCredential = await createUserWithEmailAndPassword(
           authSecondary,
           familyData.email,
           password
         );
+        const newUid = userCredential.user.uid;
 
         // 2. Guardar en Firestore
         const docRef = await addDoc(familyMembersCollection, {
@@ -123,7 +126,21 @@ export function useFamilyMembers() {
           updatedAt: Timestamp.fromDate(new Date()),
         });
 
-        // 3. Cerrar sesión SOLO en la instancia secundaria (no afecta al admin)
+        // 3. Vincular el uid recién creado a su rol en user_roles/{uid}.
+        //    Las Firestore Security Rules resuelven el rol de un usuario
+        //    leyendo este documento por su uid (no pueden hacer queries por
+        //    email como el resto de la app). El modelo actual soporta un
+        //    solo residente por cuenta familiar (igual que FamilyMember.
+        //    residentId); si eso cambia, esto y las rules deben rediseñarse.
+        await setDoc(doc(db, "user_roles", newUid), {
+          kind: "family",
+          residentId: familyData.residentId,
+          familyDocId: docRef.id,
+          email: familyData.email,
+          updatedAt: Timestamp.fromDate(new Date()),
+        });
+
+        // 4. Cerrar sesión SOLO en la instancia secundaria (no afecta al admin)
         await firebaseSignOut(authSecondary);
 
         return {
@@ -177,50 +194,51 @@ export function useFamilyMembers() {
     async (email: string, password: string): Promise<FamilyMember | null> => {
       try {
         // 1. Autenticar con Firebase Auth
-        await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
 
-        // 2. Buscar en la colección family_members
-        const q = query(familyMembersCollection, where("email", "==", email));
+        // 2. Resolver el rol vía user_roles/{uid}. Ya NO se puede
+        //    buscar por email en family_members: las Firestore Rules
+        //    exigen que el usuario ya sea "family" (o "staff") para
+        //    leer esa colección, así que la única consulta que
+        //    SIEMPRE se permite es la de su propio user_roles/{uid}.
+        const roleSnap = await getDoc(doc(db, "user_roles", cred.user.uid));
 
-        return new Promise((resolve, reject) => {
-          const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-              unsubscribe();
-              if (!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                const data = doc.data();
-                const familyMember: FamilyMember = {
-                  id: doc.id,
-                  email: data.email,
-                  name: data.name,
-                  residentId: data.residentId,
-                  residentName: data.residentName,
-                  relationship: data.relationship,
-                  phone: data.phone,
-                  isActive: data.isActive ?? true,
-                  createdAt: data.createdAt?.toDate?.() || new Date(),
-                  updatedAt: data.updatedAt?.toDate?.(),
-                };
+        if (!roleSnap.exists() || (roleSnap.data() as MyRole).kind !== "family") {
+          await firebaseSignOut(auth);
+          throw new Error("Usuario no encontrado como familiar");
+        }
 
-                if (!familyMember.isActive) {
-                  firebaseSignOut(auth);
-                  reject(new Error('Esta cuenta está desactivada'));
-                  return;
-                }
+        const role = roleSnap.data() as Extract<MyRole, { kind: "family" }>;
 
-                resolve(familyMember);
-              } else {
-                firebaseSignOut(auth);
-                reject(new Error('Usuario no encontrado como familiar'));
-              }
-            },
-            (error) => {
-              unsubscribe();
-              reject(error);
-            }
-          );
-        });
+        // 3. Leer el documento real de family_members por su ID
+        //    (permitido: isMyFamilyDoc(familyId) en las rules).
+        const familyDocSnap = await getDoc(doc(db, "family_members", role.familyDocId));
+
+        if (!familyDocSnap.exists()) {
+          await firebaseSignOut(auth);
+          throw new Error("Usuario no encontrado como familiar");
+        }
+
+        const data = familyDocSnap.data();
+        const familyMember: FamilyMember = {
+          id: familyDocSnap.id,
+          email: data.email,
+          name: data.name,
+          residentId: data.residentId,
+          residentName: data.residentName,
+          relationship: data.relationship,
+          phone: data.phone,
+          isActive: data.isActive ?? true,
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.(),
+        };
+
+        if (!familyMember.isActive) {
+          await firebaseSignOut(auth);
+          throw new Error("Esta cuenta está desactivada");
+        }
+
+        return familyMember;
       } catch (error: any) {
         console.error("Error signing in family member:", error);
 
