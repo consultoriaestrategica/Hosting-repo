@@ -404,7 +404,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
             </div>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            {resident.status === 'Activo' && hasPermission("staff") && (
+            {(resident.status === 'Activo' || resident.status === 'Borrador') && hasPermission("staff") && (
               <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href={`/dashboard/residents/edit/${resident.id}`}>
                   <Edit className="mr-2 h-4 w-4" />

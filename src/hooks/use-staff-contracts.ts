@@ -11,6 +11,10 @@ export type StaffContract = {
   salary: number;
   startDate: string;
   endDate: string;
+  // Opcional: los contratos creados antes de esta distinción no lo tienen.
+  // Donde se lee, la ausencia se trata como "Término fijo" (coherente con
+  // que esos contratos siempre tienen endDate).
+  contractType?: "Término fijo" | "Término indefinido";
   status: 'Activo' | 'Finalizado' | 'Cancelado';
   documentName: string;
   documentUrl: string;

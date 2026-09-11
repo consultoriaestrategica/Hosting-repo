@@ -17,6 +17,8 @@ export interface AppUser {
 
 export interface Staff extends AppUser {
   phone: string;
+  idNumber?: string;
+  address?: string;
   position?: string;
   department?: string;
   hireDate?: Date;
