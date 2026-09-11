@@ -70,6 +70,7 @@ export type Resident = {
   age: number
   dob?: string
   idNumber: string
+  createdAt?: string
   gender?: "Femenino" | "Masculino" | "Otro"
   medicalHistory?: string[]
   surgicalHistory?: string[]
@@ -88,6 +89,18 @@ export type Resident = {
   dischargeDetails?: DischargeDetails
   agendaEvents?: AgendaEvent[]
   visits?: Visit[]
+}
+
+// Orden estable y cronológico sin depender de un orderBy de Firestore
+// (que excluiría de la lista a cualquier residente sin el campo — hoy
+// ninguno lo tiene). Usa createdAt cuando existe y cae a admissionDate
+// como respaldo para los residentes creados antes de este campo.
+function sortResidentsChronologically(list: Resident[]): Resident[] {
+  return [...list].sort((a, b) => {
+    const aKey = a.createdAt ?? a.admissionDate ?? ""
+    const bKey = b.createdAt ?? b.admissionDate ?? ""
+    return aKey.localeCompare(bKey)
+  })
 }
 
 // ==============================
@@ -168,7 +181,7 @@ export function useResidents() {
                       ...docSnap.data(),
                     } as Resident)
                 )
-                setResidents(data)
+                setResidents(sortResidentsChronologically(data))
                 setIsLoading(false)
               },
               (error) => {
@@ -217,7 +230,8 @@ export function useResidents() {
   const addResident = useCallback(
     async (newResident: Omit<Resident, "id">): Promise<string> => {
       const colRef = collection(db, "residents")
-      const docRef = await addDoc(colRef, sanitizeForFirestore(newResident as Record<string, unknown>) as Omit<Resident, "id">)
+      const payload = { ...newResident, createdAt: new Date().toISOString() }
+      const docRef = await addDoc(colRef, sanitizeForFirestore(payload as Record<string, unknown>) as Omit<Resident, "id">)
       return docRef.id
     },
     []

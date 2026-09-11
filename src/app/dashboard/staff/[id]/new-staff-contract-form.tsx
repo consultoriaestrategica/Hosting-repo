@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
 // Define las propiedades que el componente recibirá de la página padre
@@ -25,34 +26,42 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
   
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [contractType, setContractType] = useState<"Término fijo" | "Término indefinido">("Término fijo");
   const [endDate, setEndDate] = useState('');
   const [salary, setSalary] = useState('');
-  
+
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveContract = async (event: React.FormEvent) => {
     event.preventDefault();
-    
-    if (!contractFile || !startDate || !endDate || !salary) {
+
+    if (!contractFile || !startDate || !salary) {
       toast({ variant: "destructive", title: "Campos Incompletos", description: "Por favor, complete todos los campos del contrato." });
       return;
     }
-    
-    if (new Date(endDate) <= new Date(startDate)) {
-        toast({ variant: "destructive", title: "Error de Fechas", description: "La fecha de fin debe ser posterior a la fecha de inicio." });
+
+    if (contractType === "Término fijo") {
+      if (!endDate) {
+        toast({ variant: "destructive", title: "Campos Incompletos", description: "Por favor, complete todos los campos del contrato." });
         return;
+      }
+      if (new Date(endDate) <= new Date(startDate)) {
+          toast({ variant: "destructive", title: "Error de Fechas", description: "La fecha de fin debe ser posterior a la fecha de inicio." });
+          return;
+      }
     }
 
     setIsSaving(true);
-    
+
     try {
         // En un escenario real, aquí se haría la subida del archivo a Firebase Storage
         // Para este ejemplo, simularemos la creación del contrato
-        
+
         const newContractData = {
             staffId: staffMember.id,
             startDate: startDate,
-            endDate: endDate,
+            endDate: contractType === "Término fijo" ? endDate : "",
+            contractType: contractType,
             salary: Number(salary),
             status: 'Activo' as const,
             documentName: contractFile.name,
@@ -87,15 +96,37 @@ export default function NewStaffContractForm({ staffMember, onFormSubmit }: NewS
                 />
             </div>
              <div className="space-y-2">
-                <Label htmlFor="end-date">Fecha de Fin</Label>
-                <Input
-                    id="end-date"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                />
+                <Label htmlFor="contract-type">Tipo de Contrato</Label>
+                <Select
+                    value={contractType}
+                    onValueChange={(value) => {
+                        setContractType(value as "Término fijo" | "Término indefinido");
+                        if (value === "Término indefinido") {
+                            setEndDate('');
+                        }
+                    }}
+                >
+                    <SelectTrigger id="contract-type">
+                        <SelectValue placeholder="Seleccione el tipo de contrato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Término fijo">Término fijo</SelectItem>
+                        <SelectItem value="Término indefinido">Término indefinido</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
+            {contractType === "Término fijo" && (
+                <div className="space-y-2">
+                    <Label htmlFor="end-date">Fecha de Fin</Label>
+                    <Input
+                        id="end-date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        required
+                    />
+                </div>
+            )}
         </div>
         <div className="space-y-2">
             <Label htmlFor="salary">Salario Mensual (COP)</Label>
