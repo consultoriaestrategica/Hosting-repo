@@ -61,6 +61,7 @@ export default function StaffForm({ mode, staffId }: { mode: "create" | "edit"; 
       email: "",
       address: "",
       hireDate: mode === "create" ? new Date().toISOString().split('T')[0] : "",
+      contractType: "Término fijo",
       endDate: "",
       role: undefined,
       salary: 0,
@@ -78,6 +79,7 @@ export default function StaffForm({ mode, staffId }: { mode: "create" | "edit"; 
       email: staffMember.email || "",
       address: staffMember.address || "",
       hireDate: staffMember.hireDate ? new Date(staffMember.hireDate).toISOString().split('T')[0] : "",
+      contractType: contract.contractType || "Término fijo",
       endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : "",
       salary: contract.salary || 0,
       document: contract.documentName,
@@ -85,6 +87,7 @@ export default function StaffForm({ mode, staffId }: { mode: "create" | "edit"; 
   }, [mode, staffMember, contract, form])
 
   const documentValue = form.watch("document")
+  const contractType = form.watch("contractType")
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -142,7 +145,8 @@ export default function StaffForm({ mode, staffId }: { mode: "create" | "edit"; 
         const newContract = {
           staffId: newStaffMember.id,
           startDate: data.hireDate,
-          endDate: data.endDate,
+          endDate: data.contractType === "Término fijo" ? (data.endDate || "") : "",
+          contractType: data.contractType,
           salary: data.salary,
           status: 'Activo' as const,
           documentName: fileToUpload.name,
@@ -177,7 +181,8 @@ export default function StaffForm({ mode, staffId }: { mode: "create" | "edit"; 
 
         const contractUpdates: any = {
           startDate: data.hireDate,
-          endDate: data.endDate,
+          endDate: data.contractType === "Término fijo" ? (data.endDate || "") : "",
+          contractType: data.contractType,
           salary: data.salary,
         }
 
@@ -246,7 +251,30 @@ export default function StaffForm({ mode, staffId }: { mode: "create" | "edit"; 
                 <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel>Dirección</FormLabel><FormControl><Input placeholder="Ej. Calle Falsa 123" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salario Mensual (COP)</FormLabel><FormControl><Input type="number" placeholder="2500000" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="hireDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Inicio Contrato</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin Contrato</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="contractType" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Contrato</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value)
+                        if (value === "Término indefinido") {
+                          form.setValue("endDate", "", { shouldValidate: true })
+                        }
+                      }}
+                      value={field.value || ""}
+                    >
+                      <FormControl><SelectTrigger><SelectValue placeholder="Seleccione el tipo de contrato" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="Término fijo">Término fijo</SelectItem>
+                        <SelectItem value="Término indefinido">Término indefinido</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                {contractType !== "Término indefinido" && (
+                  <FormField control={form.control} name="endDate" render={({ field }) => (<FormItem><FormLabel>Fecha de Fin Contrato</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                )}
               </div>
 
               <FormField

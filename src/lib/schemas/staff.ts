@@ -10,14 +10,24 @@ export const staffFormSchema = z.object({
   address: z.string().min(5, { message: "La dirección debe ser válida." }),
   salary: z.coerce.number().min(0, { message: "El salario debe ser un número positivo." }),
   hireDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de contratación inválida." }),
-  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha de fin inválida." }),
+  contractType: z.enum(["Término fijo", "Término indefinido"]),
+  // Solo obligatorio cuando contractType es "Término fijo" — ver el
+  // superRefine de abajo, que es donde se aplica esa condición.
+  endDate: z.string().optional(),
   // Requerido solo al crear (un contrato nuevo siempre necesita PDF); en
   // edición puede quedar vacío si no se sube un reemplazo — ese matiz se
   // aplica en el componente según el `mode`, no aquí.
   document: z.any().optional(),
-}).refine(data => new Date(data.endDate) > new Date(data.hireDate), {
-    message: "La fecha de fin debe ser posterior a la fecha de inicio.",
-    path: ["endDate"],
+}).superRefine((data, ctx) => {
+  if (data.contractType !== "Término fijo") return
+
+  if (!data.endDate || isNaN(Date.parse(data.endDate))) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Fecha de fin inválida.", path: ["endDate"] })
+    return
+  }
+  if (new Date(data.endDate) <= new Date(data.hireDate)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La fecha de fin debe ser posterior a la fecha de inicio.", path: ["endDate"] })
+  }
 })
 
 export type StaffFormValues = z.infer<typeof staffFormSchema>
