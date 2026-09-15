@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef } from "react"
+import React from "react"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { Log, EvolutionEntry } from "@/hooks/use-logs"
 import { cn } from "@/lib/utils"
+import { generateLogDetailReport } from "@/lib/pdf-generator"
 
 interface LogDetailDialogProps {
   isOpen: boolean
@@ -82,8 +83,6 @@ export default function LogDetailDialog({
   residentName,
 }: LogDetailDialogProps) {
   if (!log) return null
-
-  const pdfRef = useRef<HTMLDivElement | null>(null)
 
   const typedLog = log as LogWithExtras
   const isMedical = typedLog.reportType === "medico"
@@ -195,52 +194,50 @@ export default function LogDetailDialog({
   // Compatibilidad con formato viejo (arrays de strings)
   const legacyImageUrls: string[] = typedLog.images ?? typedLog.photoUrls ?? []
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
     if (typeof window === "undefined") return
-    if (!pdfRef.current) return
 
-    const element = pdfRef.current
-
-    const [{ jsPDF }, html2canvasModule] = await Promise.all([
-      import("jspdf"),
-      import("html2canvas"),
-    ])
-    const html2canvas = html2canvasModule.default
-
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-    })
-
-    const imgData = canvas.toDataURL("image/png")
-    const pdf = new jsPDF("p", "mm", "a4")
-
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = pdf.internal.pageSize.getHeight()
-
-    const imgWidthPx = canvas.width
-    const imgHeightPx = canvas.height
-    const ratio = Math.min(pdfWidth / imgWidthPx, pdfHeight / imgHeightPx)
-
-    const imgWidth = imgWidthPx * ratio
-    const imgHeight = imgHeightPx * ratio
-
-    const marginX = (pdfWidth - imgWidth) / 2
-    const marginY = (pdfHeight - imgHeight) / 2
-
-    pdf.addImage(imgData, "PNG", marginX, marginY, imgWidth, imgHeight)
-    const safeName = (residentName || "residente").replace(/\s+/g, "-")
-    const dateStr = endDate.toISOString().slice(0, 10)
-
-    pdf.save(`reporte-${safeName}-${dateStr}.pdf`)
+    generateLogDetailReport(
+      {
+        id: typedLog.id,
+        residentId: typedLog.residentId,
+        reportType: typedLog.reportType,
+        endDate: typedLog.endDate,
+        createdBy: typedLog.createdBy,
+        finalComment: typedLog.finalComment,
+        pendingTasks: typedLog.pendingTasks,
+        notes: typedLog.notes,
+        supplyDescription: typedLog.supplyDescription,
+        supplyDate: typedLog.supplyDate,
+        supplyNotes: typedLog.supplyNotes,
+        photoEvidence: typedLog.photoEvidence,
+        supplyPhotoEvidence: typedLog.supplyPhotoEvidence,
+        images: typedLog.images,
+        photoUrls: typedLog.photoUrls,
+        // Se reutiliza la misma normalizacion de evoluciones que ya usa
+        // la pantalla, para no duplicar el parseo de formatos legacy.
+        evolutionEntries: evolutionEntries.map((entry, index) => ({
+          id: `${typedLog.id}-${index}`,
+          professionalName: entry.professionalName,
+          visitType: entry.visitType,
+          createdTimeLabel: entry.time,
+          note: entry.text,
+          heartRate: entry.heartRate,
+          respiratoryRate: entry.respiratoryRate,
+          spo2: entry.spo2,
+          bloodPressureSys: entry.bloodPressureSys,
+          bloodPressureDia: entry.bloodPressureDia,
+          temperature: entry.temperature,
+        })),
+      },
+      residentName
+    )
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-3xl w-full h-[90dvh] flex flex-col p-0">
-        {/* ZONA EXPORTABLE A PDF */}
-        <div ref={pdfRef} className="flex-1 flex flex-col bg-white overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white overflow-hidden">
           {/* HEADER */}
           <DialogHeader className="px-6 pt-5 pb-3 border-b">
             <div className="flex items-start gap-3">
