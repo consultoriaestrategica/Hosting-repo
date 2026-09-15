@@ -31,9 +31,10 @@ interface Resident {
 
 interface EvolutionEntry {
   id: string
-  createdAt: string
+  createdAt?: string
   createdTimeLabel?: string
   professionalName?: string
+  visitType?: string
   note: string
   heartRate?: number
   respiratoryRate?: number
@@ -45,12 +46,23 @@ interface EvolutionEntry {
   skinStatus?: string
 }
 
+interface PhotoEvidenceItem {
+  id: string
+  name: string
+  originalName?: string
+  url: string
+  size: number
+  type: string
+  uploadDate?: string
+}
+
 interface Log {
   id: string
   residentId: string
   residentName?: string
   reportType: "medico" | "suministro"
   endDate: string
+  createdBy?: { uid: string; displayName: string; email: string }
   heartRate?: number
   respiratoryRate?: number
   spo2?: number
@@ -66,6 +78,10 @@ interface Log {
   finalComment?: string
   pendingTasks?: string
   notes?: string
+  photoEvidence?: PhotoEvidenceItem[]
+  supplyPhotoEvidence?: PhotoEvidenceItem[]
+  images?: string[]
+  photoUrls?: string[]
   // Cuidados
   woundCare?: boolean
   medicationAdmin?: boolean
@@ -437,6 +453,187 @@ export function generateDateRangeReport(logs: Log[], residents: Resident[], from
 }
 
 // ============================================
+// BLOQUE COMPARTIDO: RENDER DE UN LOG COMPLETO
+// (usado por generateResidentLogsReport y generateLogDetailReport)
+// ============================================
+
+function renderLogBlock(doc: jsPDF, log: Log, y: number, headerLabel: string): number {
+  y = checkPageBreak(doc, y, 60)
+
+  // Cabecera del registro
+  doc.setFillColor(245, 240, 232) // #F5F0E8
+  doc.rect(14, y - 4, doc.internal.pageSize.getWidth() - 28, 14, "F")
+  doc.setFontSize(9)
+  doc.setFont("helvetica", "bold")
+  doc.setTextColor(44, 62, 53)
+  doc.text(headerLabel, 16, y + 4)
+  y += 16
+
+  if (log.reportType === "medico") {
+    if (log.evolutionEntries && log.evolutionEntries.length > 0) {
+      // El orden de llegada (Firestore arrayUnion, o el fallback legacy del
+      // dialogo) ya es cronologico en el caso normal, pero no confiamos
+      // ciegamente en eso: se reordena por "HH:mm" (createdTimeLabel), el
+      // unico dato de hora que ambos flujos garantizan tener siempre. No
+      // distingue cruces de medianoche dentro del mismo log (caso borde no
+      // manejado en ningun otro lugar del sistema tampoco).
+      const sortedEntries = [...log.evolutionEntries].sort((a, b) =>
+        (a.createdTimeLabel || "").localeCompare(b.createdTimeLabel || "")
+      )
+      autoTable(doc, {
+        startY: y,
+        head: [["#", "Hora", "Profesional", "Tipo visita", "FC", "FR", "SpO2", "T/A", "Temp", "Nota de evolucion"]],
+        body: sortedEntries.map((e, i) => [
+          String(i + 1),
+          e.createdTimeLabel || "-",
+          e.professionalName || "-",
+          e.visitType || "-",
+          e.heartRate ? `${e.heartRate}` : "-",
+          e.respiratoryRate ? `${e.respiratoryRate}` : "-",
+          e.spo2 ? `${e.spo2}%` : "-",
+          e.bloodPressureSys && e.bloodPressureDia ? `${e.bloodPressureSys}/${e.bloodPressureDia}` : "-",
+          e.temperature ? `${e.temperature}` : "-",
+          e.note || "-",
+        ]),
+        styles: { fontSize: 7, cellPadding: 2, textColor: [44, 62, 53], overflow: "linebreak" },
+        headStyles: { fillColor: [91, 140, 111], textColor: [255, 255, 255], fontSize: 7, fontStyle: "bold" },
+        columnStyles: {
+          0: { cellWidth: 6 },
+          1: { cellWidth: 12 },
+          2: { cellWidth: 26 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 10 },
+          5: { cellWidth: 10 },
+          6: { cellWidth: 10 },
+          7: { cellWidth: 14 },
+          8: { cellWidth: 10 },
+          9: { cellWidth: 66 },
+        },
+        margin: { left: 14, right: 14 },
+      })
+      y = (doc as any).lastAutoTable.finalY + 4
+    } else {
+      // Formato viejo: signos vitales sueltos a nivel de log + texto libre
+      const vitals: string[][] = []
+      if (log.heartRate) vitals.push(["F.C", `${log.heartRate} lpm`])
+      if (log.respiratoryRate) vitals.push(["F.R", `${log.respiratoryRate} rpm`])
+      if (log.spo2) vitals.push(["SpO2", `${log.spo2}%`])
+      if (log.bloodPressureSys) vitals.push(["T/A", `${log.bloodPressureSys}/${log.bloodPressureDia} mmHg`])
+      if (log.temperature) vitals.push(["Temp", `${log.temperature} C`])
+
+      if (vitals.length > 0) {
+        autoTable(doc, {
+          startY: y,
+          head: [["Signo Vital", "Valor"]],
+          body: vitals,
+          styles: { fontSize: 7, cellPadding: 2, textColor: [44, 62, 53] },
+          headStyles: { fillColor: [138, 173, 203], textColor: [255, 255, 255], fontSize: 7 },
+          tableWidth: 90,
+          margin: { left: 16 },
+        })
+        y = (doc as any).lastAutoTable.finalY + 4
+      }
+
+      const evoText = getFullEvolution(log)
+      if (evoText) {
+        y = checkPageBreak(doc, y, 20)
+        doc.setFontSize(8)
+        doc.setFont("helvetica", "bold")
+        doc.text("Notas de Evolucion:", 16, y)
+        y += 4
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(7)
+        const lines = doc.splitTextToSize(evoText, doc.internal.pageSize.getWidth() - 34)
+        lines.forEach((line: string) => {
+          y = checkPageBreak(doc, y, 6)
+          doc.text(line, 18, y)
+          y += 4
+        })
+        y += 2
+      }
+    }
+
+    // Comentario final
+    if (log.finalComment) {
+      y = checkPageBreak(doc, y, 15)
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "bold")
+      doc.text("Comentario final del turno:", 16, y)
+      y += 4
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(7)
+      const lines = doc.splitTextToSize(log.finalComment, doc.internal.pageSize.getWidth() - 34)
+      lines.forEach((line: string) => {
+        y = checkPageBreak(doc, y, 6)
+        doc.text(line, 18, y)
+        y += 4
+      })
+      y += 2
+    }
+
+    // Tareas pendientes
+    if (log.pendingTasks) {
+      y = checkPageBreak(doc, y, 15)
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "bold")
+      doc.setTextColor(196, 131, 90)
+      doc.text("Tareas pendientes:", 16, y)
+      doc.setTextColor(44, 62, 53)
+      y += 4
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(7)
+      const lines = doc.splitTextToSize(log.pendingTasks, doc.internal.pageSize.getWidth() - 34)
+      lines.forEach((line: string) => {
+        y = checkPageBreak(doc, y, 6)
+        doc.text(line, 18, y)
+        y += 4
+      })
+      y += 2
+    }
+  } else {
+    // Suministro
+    if (log.supplyDescription) {
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "bold")
+      doc.text("Descripcion:", 16, y)
+      y += 4
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(7)
+      const lines = doc.splitTextToSize(log.supplyDescription, doc.internal.pageSize.getWidth() - 34)
+      lines.forEach((line: string) => {
+        y = checkPageBreak(doc, y, 6)
+        doc.text(line, 18, y)
+        y += 4
+      })
+      y += 2
+    }
+    if (log.supplyNotes) {
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "bold")
+      doc.text("Observaciones:", 16, y)
+      y += 4
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(7)
+      const lines = doc.splitTextToSize(log.supplyNotes, doc.internal.pageSize.getWidth() - 34)
+      lines.forEach((line: string) => {
+        y = checkPageBreak(doc, y, 6)
+        doc.text(line, 18, y)
+        y += 4
+      })
+      y += 2
+    }
+  }
+
+  // Separador
+  doc.setDrawColor(208, 213, 200)
+  doc.setLineWidth(0.3)
+  doc.line(14, y, doc.internal.pageSize.getWidth() - 14, y)
+  y += 6
+
+  return y
+}
+
+// ============================================
 // 4. REGISTROS DEL RESIDENTE
 // ============================================
 
@@ -466,138 +663,89 @@ export function generateResidentLogsReport(resident: Resident, logs: Log[], from
 
   // Detalle registro por registro
   filtered.forEach((log, idx) => {
-    y = checkPageBreak(doc, y, 60)
-
-    // Cabecera del registro
-    doc.setFillColor(245, 240, 232) // #F5F0E8
-    doc.rect(14, y - 4, doc.internal.pageSize.getWidth() - 28, 14, "F")
-    doc.setFontSize(9)
-    doc.setFont("helvetica", "bold")
-    doc.setTextColor(44, 62, 53)
-    doc.text(`Registro #${idx + 1} - ${log.reportType === "medico" ? "Evolucion Medica" : "Suministro"} - ${formatDateTime(log.endDate)}`, 16, y + 4)
-    y += 16
-
-    if (log.reportType === "medico") {
-      // Signos vitales en tabla compacta
-      const vitals: string[][] = []
-      if (log.heartRate) vitals.push(["F.C", `${log.heartRate} lpm`])
-      if (log.respiratoryRate) vitals.push(["F.R", `${log.respiratoryRate} rpm`])
-      if (log.spo2) vitals.push(["SpO2", `${log.spo2}%`])
-      if (log.bloodPressureSys) vitals.push(["T/A", `${log.bloodPressureSys}/${log.bloodPressureDia} mmHg`])
-      if (log.temperature) vitals.push(["Temp", `${log.temperature} C`])
-
-      if (vitals.length > 0) {
-        autoTable(doc, {
-          startY: y,
-          head: [["Signo Vital", "Valor"]],
-          body: vitals,
-          styles: { fontSize: 7, cellPadding: 2, textColor: [44, 62, 53] },
-          headStyles: { fillColor: [138, 173, 203], textColor: [255, 255, 255], fontSize: 7 },
-          tableWidth: 90,
-          margin: { left: 16 },
-        })
-        y = (doc as any).lastAutoTable.finalY + 4
-      }
-
-      // Notas de evolución
-      const evoText = getFullEvolution(log)
-      if (evoText) {
-        y = checkPageBreak(doc, y, 20)
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.text("Notas de Evolucion:", 16, y)
-        y += 4
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(7)
-        const lines = doc.splitTextToSize(evoText, doc.internal.pageSize.getWidth() - 34)
-        lines.forEach((line: string) => {
-          y = checkPageBreak(doc, y, 6)
-          doc.text(line, 18, y)
-          y += 4
-        })
-        y += 2
-      }
-
-      // Comentario final
-      if (log.finalComment) {
-        y = checkPageBreak(doc, y, 15)
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.text("Comentario final del turno:", 16, y)
-        y += 4
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(7)
-        const lines = doc.splitTextToSize(log.finalComment, doc.internal.pageSize.getWidth() - 34)
-        lines.forEach((line: string) => {
-          y = checkPageBreak(doc, y, 6)
-          doc.text(line, 18, y)
-          y += 4
-        })
-        y += 2
-      }
-
-      // Tareas pendientes
-      if (log.pendingTasks) {
-        y = checkPageBreak(doc, y, 15)
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.setTextColor(196, 131, 90)
-        doc.text("Tareas pendientes:", 16, y)
-        doc.setTextColor(44, 62, 53)
-        y += 4
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(7)
-        const lines = doc.splitTextToSize(log.pendingTasks, doc.internal.pageSize.getWidth() - 34)
-        lines.forEach((line: string) => {
-          y = checkPageBreak(doc, y, 6)
-          doc.text(line, 18, y)
-          y += 4
-        })
-        y += 2
-      }
-    } else {
-      // Suministro
-      if (log.supplyDescription) {
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.text("Descripcion:", 16, y)
-        y += 4
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(7)
-        const lines = doc.splitTextToSize(log.supplyDescription, doc.internal.pageSize.getWidth() - 34)
-        lines.forEach((line: string) => {
-          y = checkPageBreak(doc, y, 6)
-          doc.text(line, 18, y)
-          y += 4
-        })
-        y += 2
-      }
-      if (log.supplyNotes) {
-        doc.setFontSize(8)
-        doc.setFont("helvetica", "bold")
-        doc.text("Observaciones:", 16, y)
-        y += 4
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(7)
-        const lines = doc.splitTextToSize(log.supplyNotes, doc.internal.pageSize.getWidth() - 34)
-        lines.forEach((line: string) => {
-          y = checkPageBreak(doc, y, 6)
-          doc.text(line, 18, y)
-          y += 4
-        })
-        y += 2
-      }
-    }
-
-    // Separador
-    doc.setDrawColor(208, 213, 200)
-    doc.setLineWidth(0.3)
-    doc.line(14, y, doc.internal.pageSize.getWidth() - 14, y)
-    y += 6
+    const headerLabel = `Registro #${idx + 1} - ${log.reportType === "medico" ? "Evolucion Medica" : "Suministro"} - ${formatDateTime(log.endDate)}`
+    y = renderLogBlock(doc, log, y, headerLabel)
   })
 
   addFooter(doc)
   doc.save(`Registros_${resident.name.replace(/\s/g, "_")}.pdf`)
+}
+
+// ============================================
+// 4B. DETALLE DE UN REGISTRO INDIVIDUAL
+// (un solo log, potencialmente con varias evoluciones del dia)
+// ============================================
+
+export function generateLogDetailReport(log: Log, residentName: string, residentIdNumber?: string): void {
+  const doc = new jsPDF()
+
+  const title = log.reportType === "medico" ? "DETALLE DEL REGISTRO MEDICO" : "DETALLE DEL REGISTRO DE SUMINISTRO"
+  const subtitle = `${residentName}${residentIdNumber ? ` (CC: ${residentIdNumber})` : ""} | ${formatDateTime(log.endDate)}`
+  addHeader(doc, title, subtitle)
+
+  let y = 48
+  doc.setFontSize(9)
+  doc.setTextColor(44, 62, 53)
+  doc.setFont("helvetica", "normal")
+  doc.text(`Registrado por: ${sanitize(log.createdBy?.displayName)}`, 14, y)
+  y += 8
+
+  const headerLabel = log.reportType === "medico" ? "Evolucion Medica" : "Suministro"
+  y = renderLogBlock(doc, log, y, headerLabel)
+
+  if (log.notes) {
+    y = checkPageBreak(doc, y, 15)
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "bold")
+    doc.text("Observaciones generales:", 16, y)
+    y += 4
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(7)
+    const lines = doc.splitTextToSize(log.notes, doc.internal.pageSize.getWidth() - 34)
+    lines.forEach((line: string) => {
+      y = checkPageBreak(doc, y, 6)
+      doc.text(line, 18, y)
+      y += 4
+    })
+    y += 2
+  }
+
+  // Evidencia fotografica: solo listado (nombre + fecha), sin incrustar imagenes
+  const photoItems = log.reportType === "medico" ? (log.photoEvidence ?? []) : (log.supplyPhotoEvidence ?? [])
+  const legacyUrls = log.images ?? log.photoUrls ?? []
+
+  if (photoItems.length > 0 || legacyUrls.length > 0) {
+    y = checkPageBreak(doc, y, 30)
+    y = addSectionTitle(doc, y, "Evidencia Fotografica")
+
+    const body = [
+      ...photoItems.map((p) => [
+        p.originalName || p.name || "Foto",
+        p.uploadDate ? formatDateTime(p.uploadDate) : "N/A",
+      ]),
+      ...legacyUrls.map((_, i) => [`Foto ${i + 1}`, "N/A"]),
+    ]
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Nombre del archivo", "Fecha de carga"]],
+      body,
+      styles: { fontSize: 7, cellPadding: 2, textColor: [44, 62, 53] },
+      headStyles: { fillColor: [91, 140, 111], textColor: [255, 255, 255], fontSize: 7 },
+      margin: { left: 14, right: 14 },
+    })
+    y = (doc as any).lastAutoTable.finalY + 4
+
+    doc.setFontSize(7)
+    doc.setTextColor(107, 143, 123)
+    doc.setFont("helvetica", "italic")
+    doc.text("Las imagenes completas estan disponibles en el sistema.", 14, y)
+  }
+
+  addFooter(doc)
+  const safeName = (residentName || "residente").replace(/\s+/g, "_")
+  const dateStr = new Date(log.endDate).toISOString().slice(0, 10)
+  doc.save(`Detalle_Registro_${safeName}_${dateStr}.pdf`)
 }
 
 // ============================================
@@ -668,7 +816,8 @@ function getFullEvolution(log: Log): string {
     return log.evolutionEntries.map((e) => {
       let text = ""
       if (e.createdTimeLabel) text += `[${e.createdTimeLabel}] `
-      if (e.professionalName) text += `(${e.professionalName}) `
+      const professional = [e.professionalName, e.visitType].filter(Boolean).join(" - ")
+      if (professional) text += `(${professional}) `
       text += e.note
       return text
     }).join("\n\n")
