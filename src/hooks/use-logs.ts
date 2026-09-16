@@ -68,6 +68,30 @@ export type MedicalLogFields = {
   finalComment?: string
   pendingTasks?: string
   evolutionEntries?: EvolutionEntry[]
+  // Campos estructurados de cuidados (Oleada: cierre de turno).
+  // Solo se escriben cuando el auxiliar realmente contesto la
+  // pregunta: su AUSENCIA significa "no evaluado en este registro",
+  // distinto de `false` ("evaluado, la respuesta fue No"). Esa
+  // distincion es la que despues permite calcular cobertura de turno.
+  skinStatus?: string[]
+  woundCare?: boolean
+  medicationAdmin?: boolean
+  fullMeals?: boolean
+  partialMeals?: boolean
+  diaperUse?: boolean
+  diuresis?: boolean
+  diuresisColor?: string
+  bowelMovement?: boolean
+  bowelConsistency?: string
+  sundowning?: boolean
+  agitation?: boolean
+  physicalTherapy?: boolean
+  occupationalTherapy?: boolean
+  glucoAyuno?: number
+  glucoAntesAlmuerzo?: number
+  glucoAntesCena?: number
+  gluco2hAlmuerzo?: number
+  gluco2hCena?: number
 }
 
 export type SupplyLogFields = {
