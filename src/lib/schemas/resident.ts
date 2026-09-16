@@ -13,6 +13,7 @@ export const residentFormSchema = z.object({
   // Medical Info — todos opcionales
   bloodType: z.string().optional().or(z.literal("")),
   fallRisk: z.enum(["Bajo", "Medio", "Alto"]).optional().or(z.literal("")),
+  requiresGlucoseMonitoring: z.boolean().optional(),
   medicalHistory: z.string().optional(),
   surgicalHistory: z.string().optional(),
   allergies: z.string().optional(),

@@ -82,6 +82,10 @@ export type Resident = {
   roomNumber?: string
   bloodType?: string
   fallRisk?: "Bajo" | "Medio" | "Alto"
+  // Config de perfil para el cierre de turno noche (Fase 5): si no esta
+  // presente, se debe tratar como `false` en cualquier lugar que lo lea
+  // (todos los residentes creados antes de este campo no lo tienen).
+  requiresGlucoseMonitoring?: boolean
   familyContacts?: FamilyContact[]
   medications?: Medication[]
   diet?: string

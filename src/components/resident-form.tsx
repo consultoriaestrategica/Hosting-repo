@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useForm, useFieldArray } from "react-hook-form"
@@ -44,6 +45,7 @@ const emptyDefaults: ResidentFormValues = {
   status: "Activo",
   bloodType: "",
   fallRisk: undefined,
+  requiresGlucoseMonitoring: false,
   medicalHistory: "",
   surgicalHistory: "",
   allergies: "",
@@ -96,6 +98,7 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
       status: resident.status || "Activo",
       bloodType: resident.bloodType || "",
       fallRisk: resident.fallRisk || "Bajo",
+      requiresGlucoseMonitoring: resident.requiresGlucoseMonitoring ?? false,
       medicalHistory: resident.medicalHistory?.join(', ') || "",
       surgicalHistory: resident.surgicalHistory?.join(', ') || "",
       allergies: resident.allergies?.join(', ') || "",
@@ -173,6 +176,7 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
       roomNumber: values.roomNumber || (mode === "create" ? undefined : ""),
       bloodType: values.bloodType || undefined,
       fallRisk: (values.fallRisk || undefined) as Resident["fallRisk"],
+      requiresGlucoseMonitoring: values.requiresGlucoseMonitoring ?? false,
       medicalHistory: values.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
       surgicalHistory: values.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean) || [],
       allergies: values.allergies?.split(',').map(a => a.trim()).filter(Boolean) || [],
@@ -228,6 +232,7 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
         roomNumber: data.roomNumber || undefined,
         bloodType: data.bloodType || undefined,
         fallRisk: (data.fallRisk || undefined) as Resident["fallRisk"],
+        requiresGlucoseMonitoring: data.requiresGlucoseMonitoring ?? false,
         medicalHistory: data.medicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         surgicalHistory: data.surgicalHistory?.split(',').map(p => p.trim()).filter(Boolean),
         allergies: data.allergies?.split(',').map(a => a.trim()).filter(Boolean),
@@ -356,6 +361,7 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
                             <FormField control={form.control} name="bloodType" render={({ field }) => (<FormItem><FormLabel>Tipo de Sangre</FormLabel><FormControl><Input placeholder="Ej. O+" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="dependency" render={({ field }) => (<FormItem><FormLabel>Nivel de Dependencia</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un nivel" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Dependiente">Dependiente</SelectItem><SelectItem value="Independiente">Independiente</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="fallRisk" render={({ field }) => (<FormItem><FormLabel>Riesgo de Caída</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Seleccione un riesgo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Bajo">Bajo</SelectItem><SelectItem value="Medio">Medio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="requiresGlucoseMonitoring" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-md border p-3"><FormLabel className="cursor-pointer">Requiere glucometría diaria</FormLabel><FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
                         </div>
                         <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-6">
                             <FormField control={form.control} name="medicalHistory" render={({ field }) => (<FormItem><FormLabel>Antecedentes Médicos</FormLabel><FormControl><Textarea placeholder="Ej. Alzheimer, Hipertensión (separados por comas)" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
