@@ -59,11 +59,16 @@ export function PartialEvolutionForm({ log, onSaved }: PartialEvolutionFormProps
         minute: "2-digit",
       }),
       note: data.note,
-      heartRate: data.heartRate,
-      respiratoryRate: data.respiratoryRate,
-      spo2: data.spo2,
-      professionalName: data.professionalName,
     }
+
+    // arrayUnion() rechaza cualquier elemento con un valor `undefined`
+    // explicito, sin excepcion. Estos campos son opcionales y quedan
+    // `undefined` si el auxiliar deja el input vacio - se omiten en vez
+    // de asignarse para que la clave nunca exista en el objeto.
+    if (data.heartRate !== undefined) entry.heartRate = data.heartRate
+    if (data.respiratoryRate !== undefined) entry.respiratoryRate = data.respiratoryRate
+    if (data.spo2 !== undefined) entry.spo2 = data.spo2
+    if (data.professionalName !== undefined) entry.professionalName = data.professionalName
 
     try {
       await addEvolutionEntry(log.id, entry)
