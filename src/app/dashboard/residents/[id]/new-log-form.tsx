@@ -190,6 +190,36 @@ function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
   return out as T
 }
 
+// Firestore no rechaza una escritura por falta de conexion: la deja en
+// cola local y la Promise que devuelve addDoc() no se resuelve NI se
+// rechaza hasta que el servidor la confirma — sin red, se queda
+// pendiente para siempre. Este timeout es la unica forma de que la UI
+// se entere de que algo no anda bien; la escritura real sigue en cola
+// y podria completarse sola despues (por eso el mensaje de error no
+// dice "se perdio", avisa del riesgo de duplicar el registro).
+const SAVE_TIMEOUT_MS = 10_000
+
+class SaveTimeoutError extends Error {}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new SaveTimeoutError("La escritura no se confirmó a tiempo.")),
+      ms
+    )
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 interface NewReportFormProps {
     residentId?: string;
     onFormSubmit: () => void;
@@ -740,7 +770,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           createdBy,
         });
 
-        await addLog(medicalLogData);
+        await withTimeout(addLog(medicalLogData), SAVE_TIMEOUT_MS);
         resetMedicalStates();
       } else {
         const createdBy = authUser
@@ -761,7 +791,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           supplyPhotoEvidence: data.supplyPhotoEvidence,
           createdBy,
         });
-        await addLog(supplyLogData);
+        await withTimeout(addLog(supplyLogData), SAVE_TIMEOUT_MS);
       }
 
       toast({
@@ -772,6 +802,20 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       form.reset();
     } catch (error) {
       console.error("Error al guardar el reporte:", error)
+
+      if (error instanceof SaveTimeoutError) {
+        // La escritura real puede seguir en cola en el SDK y completarse
+        // sola mas tarde — no afirmamos que se perdio, para no empujar
+        // al auxiliar a repetir el registro y terminar duplicandolo.
+        toast({
+          variant: "destructive",
+          title: "No se pudo confirmar el guardado",
+          description:
+            "Verifica tu conexión a internet. Si la señal vuelve, el registro podría guardarse solo. Revisa el Historial en unos minutos antes de repetirlo, para evitar registros duplicados.",
+        })
+        return
+      }
+
       toast({
         variant: "destructive",
         title: "Error al guardar",
