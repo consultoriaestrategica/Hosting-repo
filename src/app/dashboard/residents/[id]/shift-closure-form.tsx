@@ -104,6 +104,7 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [existingClosure, setExistingClosure] = useState<ShiftClosure | null>(null)
   const [coverage, setCoverage] = useState<CoverageResult | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     const now = new Date()
@@ -117,32 +118,42 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
     if (!shiftDateInput) return
     let cancelled = false
     setIsLoading(true)
+    setLoadError(null)
     setCoverage(null)
     setExistingClosure(null)
 
     async function load() {
-      const existing = await getShiftClosure(resident.id, shiftDateInput, shiftType)
-      if (cancelled) return
-      if (existing) {
-        setExistingClosure(existing)
+      try {
+        const existing = await getShiftClosure(resident.id, shiftDateInput, shiftType)
+        if (cancelled) return
+        if (existing) {
+          setExistingClosure(existing)
+          setIsLoading(false)
+          return
+        }
+
+        let nightFollowUpRequired = false
+        if (shiftType === "noche") {
+          const dayClosure = await getShiftClosure(resident.id, shiftDateInput, "dia")
+          nightFollowUpRequired = dayClosure?.requiresNightFollowUp === true
+        }
+        if (cancelled) return
+
+        const result = await calculateShiftCoverage(resident.id, shiftDateInput, shiftType, {
+          requiresNightFollowUp: nightFollowUpRequired,
+          requiresGlucoseMonitoring: resident.requiresGlucoseMonitoring === true,
+        })
+        if (cancelled) return
+        setCoverage(result)
         setIsLoading(false)
-        return
+      } catch (error) {
+        if (cancelled) return
+        console.error("Error al cargar el estado del turno:", error)
+        setLoadError(
+          error instanceof Error ? error.message : "No se pudo cargar la información del turno."
+        )
+        setIsLoading(false)
       }
-
-      let nightFollowUpRequired = false
-      if (shiftType === "noche") {
-        const dayClosure = await getShiftClosure(resident.id, shiftDateInput, "dia")
-        nightFollowUpRequired = dayClosure?.requiresNightFollowUp === true
-      }
-      if (cancelled) return
-
-      const result = await calculateShiftCoverage(resident.id, shiftDateInput, shiftType, {
-        requiresNightFollowUp: nightFollowUpRequired,
-        requiresGlucoseMonitoring: resident.requiresGlucoseMonitoring === true,
-      })
-      if (cancelled) return
-      setCoverage(result)
-      setIsLoading(false)
     }
 
     load()
@@ -155,6 +166,23 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
     return (
       <div className="flex items-center justify-center py-10">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>No se pudo cargar el cierre de turno</AlertTitle>
+          <AlertDescription>{loadError}</AlertDescription>
+        </Alert>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" onClick={onFormSubmit}>Cerrar</Button>
+          </DialogClose>
+        </DialogFooter>
       </div>
     )
   }
