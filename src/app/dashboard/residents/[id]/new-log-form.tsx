@@ -111,7 +111,7 @@ const photoEvidenceSchema = z.object({
 
 // ✅ Esquema del formulario, extendido con campos médicos adicionales
 const reportFormSchema = z.object({
-  residentId: z.string({ required_error: "Debe seleccionar un residente." }),
+  residentId: z.string({ required_error: "Debe seleccionar un residente." }).min(1, "Debe seleccionar un residente."),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
@@ -174,6 +174,21 @@ const reportFormSchema = z.object({
 type ReportFormValues = z.infer<typeof reportFormSchema>
 type PhotoEvidence = z.infer<typeof photoEvidenceSchema>
 type DictationField = `evolutionNotes.${number}.note` | "supplyNotes";
+
+// Firestore rechaza cualquier valor `undefined` explicito en un
+// addDoc/setDoc/updateDoc, tanto en un campo raiz como anidado dentro
+// de un array (ej. evolutionEntries). Los signos vitales de este
+// formulario son opcionales y quedan `undefined` cuando el auxiliar no
+// los toca — sin este filtro, addLog() fallaba en silencio (la promesa
+// se rechazaba sin await/catch) cada vez que se guardaba un registro
+// parcial, dando la falsa impresion de que "hay que llenar casi todo".
+function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const out: Record<string, unknown> = {}
+  for (const key in obj) {
+    if (obj[key] !== undefined) out[key] = obj[key]
+  }
+  return out as T
+}
 
 interface NewReportFormProps {
     residentId?: string;
@@ -645,7 +660,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     setGluco2hCenaChecked(false)
   }
 
-  function onSubmit(data: ReportFormValues) {
+  async function onSubmit(data: ReportFormValues) {
     if (isListening) {
       recognitionRef.current?.stop()
     }
@@ -663,94 +678,106 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       reportType: data.reportType,
     }
 
-    if (data.reportType === 'medico') {
-      // Notas escritas manualmente
-      const manualNotesArray =
-        data.evolutionNotes?.map(n => n.note).filter(Boolean) ?? []
+    try {
+      if (data.reportType === 'medico') {
+        // Notas escritas manualmente
+        const manualNotesArray =
+          data.evolutionNotes?.map(n => n.note).filter(Boolean) ?? []
 
-      // Resumen estructurado con todos los campos nuevos
-      const structuredSummary = buildMedicalSummary(data)
+        // Resumen estructurado con todos los campos nuevos
+        const structuredSummary = buildMedicalSummary(data)
 
-      const combinedEvolutionNotes: string[] = []
-      if (manualNotesArray.length > 0) {
-        combinedEvolutionNotes.push("Notas de evolución:")
-        combinedEvolutionNotes.push(...manualNotesArray)
+        const combinedEvolutionNotes: string[] = []
+        if (manualNotesArray.length > 0) {
+          combinedEvolutionNotes.push("Notas de evolución:")
+          combinedEvolutionNotes.push(...manualNotesArray)
+        }
+        if (structuredSummary.trim().length > 0) {
+          combinedEvolutionNotes.push("Resumen clínico del día:")
+          combinedEvolutionNotes.push(structuredSummary)
+        }
+
+        // Crear el evolutionEntry inicial con todos los detalles.
+        // omitUndefined() es obligatorio acá: estos 6 campos quedan
+        // `undefined` si el auxiliar no los toca, y este objeto termina
+        // anidado dentro de evolutionEntries (un array) en el documento.
+        const initialEvolutionEntry = omitUndefined({
+          id: `evo-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          createdTimeLabel: currentTime,
+          professionalName: data.professionalName,
+          visitType: data.visitType,
+          note: combinedEvolutionNotes.join("\n\n"),
+          heartRate: data.heartRate,
+          respiratoryRate: data.respiratoryRate,
+          spo2: data.spo2,
+          bloodPressureSys: data.bloodPressureSys,
+          bloodPressureDia: data.bloodPressureDia,
+          temperature: data.temperature,
+        });
+
+        const createdBy = authUser
+          ? {
+              uid: authUser.uid,
+              displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
+              email: authUser.email || "",
+            }
+          : undefined
+
+        const medicalLogData = omitUndefined({
+          ...baseLogData,
+          notes: combinedEvolutionNotes.join("\n\n"),
+          heartRate: data.heartRate,
+          respiratoryRate: data.respiratoryRate,
+          spo2: data.spo2,
+          feedingType: data.feedingType,
+          evolutionNotes: combinedEvolutionNotes,
+          evolutionEntries: [initialEvolutionEntry], // Nuevo campo con detalles completos
+          photoEvidence: data.photoEvidence,
+          visitType: data.visitType,
+          professionalName: data.professionalName,
+          exitTime: currentTime,
+          createdBy,
+        });
+
+        await addLog(medicalLogData);
+        resetMedicalStates();
+      } else {
+        const createdBy = authUser
+          ? {
+              uid: authUser.uid,
+              displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
+              email: authUser.email || "",
+            }
+          : undefined
+
+        const supplyLogData = omitUndefined({
+          ...baseLogData,
+          notes: data.supplyNotes || "",
+          supplierName: data.supplierName,
+          supplyDate: data.supplyDate,
+          supplyDescription: data.supplyDescription,
+          supplyNotes: data.supplyNotes,
+          supplyPhotoEvidence: data.supplyPhotoEvidence,
+          createdBy,
+        });
+        await addLog(supplyLogData);
       }
-      if (structuredSummary.trim().length > 0) {
-        combinedEvolutionNotes.push("Resumen clínico del día:")
-        combinedEvolutionNotes.push(structuredSummary)
-      }
 
-      // Crear el evolutionEntry inicial con todos los detalles
-      const initialEvolutionEntry = {
-        id: `evo-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        createdTimeLabel: currentTime,
-        professionalName: data.professionalName,
-        visitType: data.visitType,
-        note: combinedEvolutionNotes.join("\n\n"),
-        heartRate: data.heartRate,
-        respiratoryRate: data.respiratoryRate,
-        spo2: data.spo2,
-        bloodPressureSys: data.bloodPressureSys,
-        bloodPressureDia: data.bloodPressureDia,
-        temperature: data.temperature,
-      };
-
-      const createdBy = authUser
-        ? {
-            uid: authUser.uid,
-            displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
-            email: authUser.email || "",
-          }
-        : undefined
-
-      const medicalLogData = {
-        ...baseLogData,
-        notes: combinedEvolutionNotes.join("\n\n"),
-        heartRate: data.heartRate,
-        respiratoryRate: data.respiratoryRate,
-        spo2: data.spo2,
-        feedingType: data.feedingType,
-        evolutionNotes: combinedEvolutionNotes,
-        evolutionEntries: [initialEvolutionEntry], // Nuevo campo con detalles completos
-        photoEvidence: data.photoEvidence,
-        visitType: data.visitType,
-        professionalName: data.professionalName,
-        exitTime: currentTime,
-        createdBy,
-      };
-
-      addLog(medicalLogData);
-      resetMedicalStates();
-    } else {
-      const createdBy = authUser
-        ? {
-            uid: authUser.uid,
-            displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
-            email: authUser.email || "",
-          }
-        : undefined
-
-      const supplyLogData = {
-        ...baseLogData,
-        notes: data.supplyNotes || "",
-        supplierName: data.supplierName,
-        supplyDate: data.supplyDate,
-        supplyDescription: data.supplyDescription,
-        supplyNotes: data.supplyNotes,
-        supplyPhotoEvidence: data.supplyPhotoEvidence,
-        createdBy,
-      };
-      addLog(supplyLogData);
+      toast({
+        title: "Reporte Guardado",
+        description: `Se ha añadido un nuevo reporte de ${data.reportType}.`,
+      })
+      onFormSubmit();
+      form.reset();
+    } catch (error) {
+      console.error("Error al guardar el reporte:", error)
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: error instanceof Error ? error.message : "No se pudo guardar el reporte. Intenta de nuevo.",
+      })
     }
-
-    toast({
-      title: "Reporte Guardado",
-      description: `Se ha añadido un nuevo reporte de ${data.reportType}.`,
-    })
-    onFormSubmit();
-    form.reset();
   }
 
   const renderPhotoEvidence = () => (
@@ -932,7 +959,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
               name="reportType"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel>Tipo de Registro</FormLabel>
+                  <FormLabel>Tipo de Registro <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={(value) => {
@@ -1002,7 +1029,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     name="residentId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Residente</FormLabel>
+                        <FormLabel>Residente <span className="text-destructive">*</span></FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger><SelectValue placeholder="Seleccione un residente" /></SelectTrigger>
