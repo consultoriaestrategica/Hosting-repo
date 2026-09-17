@@ -65,6 +65,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "view_agenda",
     "manage_agenda",
     "access_all_modules",
+    "close_shift_override",
   ],
   "Supervisor": [
     "view_residents",
@@ -74,6 +75,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "edit_reports",
     "view_agenda",
     "manage_agenda",
+    "close_shift_override",
   ],
   "Líder de Enfermería": [
     "manage_residents",

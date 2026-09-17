@@ -68,11 +68,36 @@ export type MedicalLogFields = {
   finalComment?: string
   pendingTasks?: string
   evolutionEntries?: EvolutionEntry[]
-  // Campos estructurados de cuidados (Oleada: cierre de turno).
-  // Solo se escriben cuando el auxiliar realmente contesto la
-  // pregunta: su AUSENCIA significa "no evaluado en este registro",
-  // distinto de `false` ("evaluado, la respuesta fue No"). Esa
-  // distincion es la que despues permite calcular cobertura de turno.
+  // ============================================================
+  // ATENCION antes de tocar cualquiera de estos 11 campos boolean
+  // (woundCare...occupationalTherapy): NO son booleanos comunes.
+  //
+  // Su AUSENCIA (la clave ni siquiera existe en el documento) significa
+  // "nadie evaluo esto en este registro". Un valor `false` presente
+  // significa "se evaluo y la respuesta fue No". Esas dos cosas son
+  // semanticamente distintas y hay logica real que depende de poder
+  // diferenciarlas: src/lib/shift-coverage.ts (calculateShiftCoverage)
+  // usa `campo !== undefined` para decidir si una categoria del cierre
+  // de turno (cuidados de enfermeria, eliminacion, comportamientos...)
+  // esta cubierta. Si este campo tuviera un default `false` en vez de
+  // quedar ausente, CUALQUIER registro "cubriria" la categoria aunque
+  // el auxiliar nunca haya tocado esa pregunta, y el bloqueo duro del
+  // cierre de turno dejaria de servir para lo que fue disenado.
+  //
+  // Por eso en new-log-form.tsx estos campos NO se llenan desde un
+  // useState<boolean> con default false, sino desde un tri-estado
+  // YesNo = "si" | "no" | "" (default ""), convertido con
+  // yesNoToBoolean() — que devuelve `undefined` (clave omitida del
+  // todo) cuando el valor es "". Si en algun momento se "simplifica"
+  // ese tri-estado a un boolean simple, esta distincion se pierde en
+  // silencio y la validacion de cobertura de turno deja de funcionar
+  // sin que ningun tipo ni build lo marque como error.
+  //
+  // Ver tambien los tests en src/lib/shift-coverage.test.ts:
+  // "falta nursingCare si solo se contesto curacion pero no
+  // medicacion" y "cuenta nursingCare aunque la respuesta haya sido
+  // 'No' (false, no ausente)".
+  // ============================================================
   skinStatus?: string[]
   woundCare?: boolean
   medicationAdmin?: boolean

@@ -79,6 +79,7 @@ import {
   Download,
   MoreHorizontal,
   Upload,
+  Lock,
 } from "lucide-react";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -89,6 +90,7 @@ import AlertForm from "./alert-form";
 import NewLogForm from "./new-log-form";
 import AgendaForm from "../../components/agenda-form";
 import { PartialEvolutionForm } from "../../logs/partial-evolution-form";
+import ShiftClosureForm from "./shift-closure-form";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -147,6 +149,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
   const [currentPage, setCurrentPage] = useState(1);
   const [isPartialEvolutionDialogOpen, setIsPartialEvolutionDialogOpen] = useState(false);
   const [logForPartialEvolution, setLogForPartialEvolution] = useState<Log | null>(null);
+  const [isShiftClosureDialogOpen, setIsShiftClosureDialogOpen] = useState(false);
 
   // Document state
   const [docToDelete, setDocToDelete] = useState<{ doc: ResidentDocument; index: number } | null>(null);
@@ -162,7 +165,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
   }, []);
 
   useEffect(() => {
-    if (!isDetailDialogOpen && !isDischargeDialogOpen && !isAlertDialogOpen && !isNewLogDialogOpen && !isAgendaFormOpen && !isPartialEvolutionDialogOpen) {
+    if (!isDetailDialogOpen && !isDischargeDialogOpen && !isAlertDialogOpen && !isNewLogDialogOpen && !isAgendaFormOpen && !isPartialEvolutionDialogOpen && !isShiftClosureDialogOpen) {
       const cleanup = () => {
         if (!document.querySelector('[data-state="open"][role="dialog"]')) {
           document.body.style.pointerEvents = '';
@@ -175,7 +178,7 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
       const t2 = setTimeout(cleanup, 500);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
-  }, [isDetailDialogOpen, isDischargeDialogOpen, isAlertDialogOpen, isNewLogDialogOpen, isAgendaFormOpen, isPartialEvolutionDialogOpen]);
+  }, [isDetailDialogOpen, isDischargeDialogOpen, isAlertDialogOpen, isNewLogDialogOpen, isAgendaFormOpen, isPartialEvolutionDialogOpen, isShiftClosureDialogOpen]);
 
   const residentLogs = useMemo(() => {
     if (!resident) return [];
@@ -902,22 +905,40 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                   <CardTitle>Historial de Registros</CardTitle>
                   <CardDescription>Todos los reportes médicos y de suministros para {resident.name}.</CardDescription>
                 </div>
-                <Dialog open={isNewLogDialogOpen} onOpenChange={setIsNewLogDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Agregar Registro</span>
-                      <span className="sm:hidden">Agregar</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90dvh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Agregar Registro para {resident.name}</DialogTitle>
-                      <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
-                    </DialogHeader>
-                    <NewLogForm residentId={resident.id} onFormSubmit={() => setIsNewLogDialogOpen(false)} />
-                  </DialogContent>
-                </Dialog>
+                <div className="flex gap-2">
+                  <Dialog open={isShiftClosureDialogOpen} onOpenChange={setIsShiftClosureDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Lock className="mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Cerrar Turno</span>
+                        <span className="sm:hidden">Cerrar</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Cerrar Turno de {resident.name}</DialogTitle>
+                        <DialogDescription>Confirma que el turno quedó completo antes de cerrarlo. Una vez cerrado no se puede editar ni reabrir.</DialogDescription>
+                      </DialogHeader>
+                      <ShiftClosureForm resident={resident} onFormSubmit={() => setIsShiftClosureDialogOpen(false)} />
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={isNewLogDialogOpen} onOpenChange={setIsNewLogDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Agregar Registro</span>
+                        <span className="sm:hidden">Agregar</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90dvh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Agregar Registro para {resident.name}</DialogTitle>
+                        <DialogDescription>Seleccione el tipo de reporte y complete la información.</DialogDescription>
+                      </DialogHeader>
+                      <NewLogForm residentId={resident.id} onFormSubmit={() => setIsNewLogDialogOpen(false)} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardHeader>
               <CardContent>
                 {/* Mobile */}
