@@ -111,7 +111,7 @@ const photoEvidenceSchema = z.object({
 
 // ✅ Esquema del formulario, extendido con campos médicos adicionales
 const reportFormSchema = z.object({
-  residentId: z.string({ required_error: "Debe seleccionar un residente." }),
+  residentId: z.string({ required_error: "Debe seleccionar un residente." }).min(1, "Debe seleccionar un residente."),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
@@ -174,6 +174,51 @@ const reportFormSchema = z.object({
 type ReportFormValues = z.infer<typeof reportFormSchema>
 type PhotoEvidence = z.infer<typeof photoEvidenceSchema>
 type DictationField = `evolutionNotes.${number}.note` | "supplyNotes";
+
+// Firestore rechaza cualquier valor `undefined` explicito en un
+// addDoc/setDoc/updateDoc, tanto en un campo raiz como anidado dentro
+// de un array (ej. evolutionEntries). Los signos vitales de este
+// formulario son opcionales y quedan `undefined` cuando el auxiliar no
+// los toca — sin este filtro, addLog() fallaba en silencio (la promesa
+// se rechazaba sin await/catch) cada vez que se guardaba un registro
+// parcial, dando la falsa impresion de que "hay que llenar casi todo".
+function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const out: Record<string, unknown> = {}
+  for (const key in obj) {
+    if (obj[key] !== undefined) out[key] = obj[key]
+  }
+  return out as T
+}
+
+// Firestore no rechaza una escritura por falta de conexion: la deja en
+// cola local y la Promise que devuelve addDoc() no se resuelve NI se
+// rechaza hasta que el servidor la confirma — sin red, se queda
+// pendiente para siempre. Este timeout es la unica forma de que la UI
+// se entere de que algo no anda bien; la escritura real sigue en cola
+// y podria completarse sola despues (por eso el mensaje de error no
+// dice "se perdio", avisa del riesgo de duplicar el registro).
+const SAVE_TIMEOUT_MS = 10_000
+
+class SaveTimeoutError extends Error {}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new SaveTimeoutError("La escritura no se confirmó a tiempo.")),
+      ms
+    )
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
 
 interface NewReportFormProps {
     residentId?: string;
@@ -707,7 +752,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     setGluco2hCenaChecked(false)
   }
 
-  function onSubmit(data: ReportFormValues) {
+  async function onSubmit(data: ReportFormValues) {
     if (isListening) {
       recognitionRef.current?.stop()
     }
@@ -725,95 +770,121 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       reportType: data.reportType,
     }
 
-    if (data.reportType === 'medico') {
-      // Notas escritas manualmente
-      const manualNotesArray =
-        data.evolutionNotes?.map(n => n.note).filter(Boolean) ?? []
+    try {
+      if (data.reportType === 'medico') {
+        // Notas escritas manualmente
+        const manualNotesArray =
+          data.evolutionNotes?.map(n => n.note).filter(Boolean) ?? []
 
-      // Resumen estructurado con todos los campos nuevos
-      const structuredSummary = buildMedicalSummary(data)
+        // Resumen estructurado con todos los campos nuevos
+        const structuredSummary = buildMedicalSummary(data)
 
-      const combinedEvolutionNotes: string[] = []
-      if (manualNotesArray.length > 0) {
-        combinedEvolutionNotes.push("Notas de evolución:")
-        combinedEvolutionNotes.push(...manualNotesArray)
+        const combinedEvolutionNotes: string[] = []
+        if (manualNotesArray.length > 0) {
+          combinedEvolutionNotes.push("Notas de evolución:")
+          combinedEvolutionNotes.push(...manualNotesArray)
+        }
+        if (structuredSummary.trim().length > 0) {
+          combinedEvolutionNotes.push("Resumen clínico del día:")
+          combinedEvolutionNotes.push(structuredSummary)
+        }
+
+        // Crear el evolutionEntry inicial con todos los detalles.
+        // omitUndefined() es obligatorio acá: estos 6 campos quedan
+        // `undefined` si el auxiliar no los toca, y este objeto termina
+        // anidado dentro de evolutionEntries (un array) en el documento.
+        const initialEvolutionEntry = omitUndefined({
+          id: `evo-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          createdTimeLabel: currentTime,
+          professionalName: data.professionalName,
+          visitType: data.visitType,
+          note: combinedEvolutionNotes.join("\n\n"),
+          heartRate: data.heartRate,
+          respiratoryRate: data.respiratoryRate,
+          spo2: data.spo2,
+          bloodPressureSys: data.bloodPressureSys,
+          bloodPressureDia: data.bloodPressureDia,
+          temperature: data.temperature,
+        });
+
+        const createdBy = authUser
+          ? {
+              uid: authUser.uid,
+              displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
+              email: authUser.email || "",
+            }
+          : undefined
+
+        const medicalLogData = omitUndefined({
+          ...baseLogData,
+          notes: combinedEvolutionNotes.join("\n\n"),
+          heartRate: data.heartRate,
+          respiratoryRate: data.respiratoryRate,
+          spo2: data.spo2,
+          feedingType: data.feedingType,
+          evolutionNotes: combinedEvolutionNotes,
+          evolutionEntries: [initialEvolutionEntry], // Nuevo campo con detalles completos
+          photoEvidence: data.photoEvidence,
+          visitType: data.visitType,
+          professionalName: data.professionalName,
+          exitTime: currentTime,
+          createdBy,
+          ...buildStructuredMedicalFields(data),
+        });
+
+        await withTimeout(addLog(medicalLogData), SAVE_TIMEOUT_MS);
+        resetMedicalStates();
+      } else {
+        const createdBy = authUser
+          ? {
+              uid: authUser.uid,
+              displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
+              email: authUser.email || "",
+            }
+          : undefined
+
+        const supplyLogData = omitUndefined({
+          ...baseLogData,
+          notes: data.supplyNotes || "",
+          supplierName: data.supplierName,
+          supplyDate: data.supplyDate,
+          supplyDescription: data.supplyDescription,
+          supplyNotes: data.supplyNotes,
+          supplyPhotoEvidence: data.supplyPhotoEvidence,
+          createdBy,
+        });
+        await withTimeout(addLog(supplyLogData), SAVE_TIMEOUT_MS);
       }
-      if (structuredSummary.trim().length > 0) {
-        combinedEvolutionNotes.push("Resumen clínico del día:")
-        combinedEvolutionNotes.push(structuredSummary)
+
+      toast({
+        title: "Reporte Guardado",
+        description: `Se ha añadido un nuevo reporte de ${data.reportType}.`,
+      })
+      onFormSubmit();
+      form.reset();
+    } catch (error) {
+      console.error("Error al guardar el reporte:", error)
+
+      if (error instanceof SaveTimeoutError) {
+        // La escritura real puede seguir en cola en el SDK y completarse
+        // sola mas tarde — no afirmamos que se perdio, para no empujar
+        // al auxiliar a repetir el registro y terminar duplicandolo.
+        toast({
+          variant: "destructive",
+          title: "No se pudo confirmar el guardado",
+          description:
+            "Verifica tu conexión a internet. Si la señal vuelve, el registro podría guardarse solo. Revisa el Historial en unos minutos antes de repetirlo, para evitar registros duplicados.",
+        })
+        return
       }
 
-      // Crear el evolutionEntry inicial con todos los detalles
-      const initialEvolutionEntry = {
-        id: `evo-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        createdTimeLabel: currentTime,
-        professionalName: data.professionalName,
-        visitType: data.visitType,
-        note: combinedEvolutionNotes.join("\n\n"),
-        heartRate: data.heartRate,
-        respiratoryRate: data.respiratoryRate,
-        spo2: data.spo2,
-        bloodPressureSys: data.bloodPressureSys,
-        bloodPressureDia: data.bloodPressureDia,
-        temperature: data.temperature,
-      };
-
-      const createdBy = authUser
-        ? {
-            uid: authUser.uid,
-            displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
-            email: authUser.email || "",
-          }
-        : undefined
-
-      const medicalLogData = {
-        ...baseLogData,
-        notes: combinedEvolutionNotes.join("\n\n"),
-        heartRate: data.heartRate,
-        respiratoryRate: data.respiratoryRate,
-        spo2: data.spo2,
-        feedingType: data.feedingType,
-        evolutionNotes: combinedEvolutionNotes,
-        evolutionEntries: [initialEvolutionEntry], // Nuevo campo con detalles completos
-        photoEvidence: data.photoEvidence,
-        visitType: data.visitType,
-        professionalName: data.professionalName,
-        exitTime: currentTime,
-        createdBy,
-        ...buildStructuredMedicalFields(data),
-      };
-
-      addLog(medicalLogData);
-      resetMedicalStates();
-    } else {
-      const createdBy = authUser
-        ? {
-            uid: authUser.uid,
-            displayName: staffUser?.name || authUser.displayName || authUser.email || "—",
-            email: authUser.email || "",
-          }
-        : undefined
-
-      const supplyLogData = {
-        ...baseLogData,
-        notes: data.supplyNotes || "",
-        supplierName: data.supplierName,
-        supplyDate: data.supplyDate,
-        supplyDescription: data.supplyDescription,
-        supplyNotes: data.supplyNotes,
-        supplyPhotoEvidence: data.supplyPhotoEvidence,
-        createdBy,
-      };
-      addLog(supplyLogData);
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: error instanceof Error ? error.message : "No se pudo guardar el reporte. Intenta de nuevo.",
+      })
     }
-
-    toast({
-      title: "Reporte Guardado",
-      description: `Se ha añadido un nuevo reporte de ${data.reportType}.`,
-    })
-    onFormSubmit();
-    form.reset();
   }
 
   const renderPhotoEvidence = () => (
@@ -995,7 +1066,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
               name="reportType"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel>Tipo de Registro</FormLabel>
+                  <FormLabel>Tipo de Registro <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={(value) => {
@@ -1065,7 +1136,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     name="residentId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Residente</FormLabel>
+                        <FormLabel>Residente <span className="text-destructive">*</span></FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger><SelectValue placeholder="Seleccione un residente" /></SelectTrigger>
