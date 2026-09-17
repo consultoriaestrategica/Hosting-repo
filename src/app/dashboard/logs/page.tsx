@@ -24,8 +24,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList, ChevronLeft, ChevronRight, Trash2, UserCheck } from "lucide-react"
+import { PlusCircle, Stethoscope, Truck, Eye, ClipboardList, ChevronLeft, ChevronRight, Trash2, UserCheck, Lock, X } from "lucide-react"
 import NewLogForm from "../residents/[id]/new-log-form"
 import { useLogs, Log } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
@@ -34,6 +41,12 @@ import LogDetailDialog from "../components/log-detail-dialog"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { PartialEvolutionForm } from "./partial-evolution-form"
+import ShiftClosureForm from "../residents/[id]/shift-closure-form"
+
+// Radix Select no permite SelectItem con value="" (esa cadena esta
+// reservada para "sin seleccion") — se usa este sentinel para el
+// item "Todos los residentes" en vez de un string vacio.
+const ALL_RESIDENTS_VALUE = "__all__"
 
 function getLogPreview(log: Log): string {
   if (log.reportType !== "medico") return (log as any).supplyDescription || ""
@@ -64,8 +77,16 @@ function LogsPageContent() {
   const [isPartialDialogOpen, setIsPartialDialogOpen] = useState(false)
   const [logForPartial, setLogForPartial] = useState<Log | null>(null)
 
+  // Filtro por residente + cierre de turno (Fase 3.5): la lista es
+  // global por diseño, pero cerrar un turno es una accion por
+  // residente — filtrar primero le da al auxiliar el mismo contexto
+  // que veria en el perfil del residente, sin tener que salir de
+  // Registro Diario, que es donde trabaja el dia a dia.
+  const [selectedResidentId, setSelectedResidentId] = useState("")
+  const [isShiftClosureDialogOpen, setIsShiftClosureDialogOpen] = useState(false)
+
   useEffect(() => {
-    if (!isNewLogDialogOpen && !isDetailDialogOpen && !isPartialDialogOpen) {
+    if (!isNewLogDialogOpen && !isDetailDialogOpen && !isPartialDialogOpen && !isShiftClosureDialogOpen) {
       const cleanup = () => {
         if (!document.querySelector('[data-state="open"][role="dialog"]')) {
           document.body.style.pointerEvents = '';
@@ -78,9 +99,14 @@ function LogsPageContent() {
       const t2 = setTimeout(cleanup, 500);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
-  }, [isNewLogDialogOpen, isDetailDialogOpen, isPartialDialogOpen]);
+  }, [isNewLogDialogOpen, isDetailDialogOpen, isPartialDialogOpen, isShiftClosureDialogOpen]);
 
   const isLoading = logsLoading || residentsLoading
+
+  const selectedResident = useMemo(
+    () => residents.find((r) => r.id === selectedResidentId) || null,
+    [residents, selectedResidentId]
+  )
 
   const enrichedLogs = useMemo(() => {
     return logs
@@ -91,10 +117,11 @@ function LogsPageContent() {
           residentName: resident?.name || "Residente no encontrado",
         }
       })
+      .filter((log) => !selectedResidentId || log.residentId === selectedResidentId)
       .sort(
         (a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime()
       )
-  }, [logs, residents])
+  }, [logs, residents, selectedResidentId])
 
   const totalPages = Math.max(1, Math.ceil(enrichedLogs.length / ITEMS_PER_PAGE))
 
@@ -105,7 +132,7 @@ function LogsPageContent() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [enrichedLogs.length])
+  }, [enrichedLogs.length, selectedResidentId])
 
   const handleLogClick = (log: Log) => {
     setSelectedLog(log)
@@ -185,6 +212,55 @@ function LogsPageContent() {
             Un listado completo de todos los registros médicos y de suministros
             del sistema.
           </CardDescription>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-3">
+            <div className="flex items-center gap-2 flex-1 sm:max-w-xs">
+              <Select
+                value={selectedResidentId || ALL_RESIDENTS_VALUE}
+                onValueChange={(value) => setSelectedResidentId(value === ALL_RESIDENTS_VALUE ? "" : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por residente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_RESIDENTS_VALUE}>Todos los residentes</SelectItem>
+                  {residents.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedResidentId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-9 w-9"
+                  onClick={() => setSelectedResidentId("")}
+                  aria-label="Quitar filtro de residente"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {selectedResident && (
+              <Dialog open={isShiftClosureDialogOpen} onOpenChange={setIsShiftClosureDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="shrink-0">
+                    <Lock className="mr-2 h-4 w-4" />
+                    Cerrar Turno de {selectedResident.name}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Cerrar Turno de {selectedResident.name}</DialogTitle>
+                    <DialogDescription>Confirma que el turno quedó completo antes de cerrarlo. Una vez cerrado no se puede editar ni reabrir.</DialogDescription>
+                  </DialogHeader>
+                  <ShiftClosureForm resident={selectedResident} onFormSubmit={() => setIsShiftClosureDialogOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {/* Vista Mobile (tarjetas) */}
