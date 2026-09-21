@@ -7,12 +7,12 @@ import { LogOut, ArrowLeft, Home, ChevronDown } from "lucide-react"
 
 import DashboardGuard from "@/components/dashboard-guard"
 import { DashboardNav } from "@/components/dashboard-nav"
+import { BottomNav } from "@/components/bottom-nav"
 import {
   SidebarProvider,
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -76,7 +76,9 @@ export default function DashboardLayout({
       {/* Contenedor raíz: ocupa toda la pantalla y no permite scroll horizontal */}
       <div className="min-h-screen flex w-full bg-background text-foreground overflow-x-hidden">
         {/* ======= SIDEBAR ======= */}
-        <Sidebar className="border-r bg-sidebar">
+        {/* Solo escritorio: en mobile la navegacion vive en BottomNav
+            (barra inferior fija), el drawer lateral ya no se usa ahi. */}
+        <Sidebar className="hidden md:flex border-r bg-sidebar">
           <SidebarHeader className="px-4 py-4 border-b">
             <div className="flex flex-col gap-1">
               <p className="text-sm font-semibold tracking-tight text-[#EAF2F7]">
@@ -100,9 +102,6 @@ export default function DashboardLayout({
           <header className="border-b bg-card/80 backdrop-blur">
             <div className="mx-auto flex h-14 md:h-16 max-w-6xl w-full items-center justify-between px-4 md:px-6">
               <div className="flex items-center gap-3 min-w-0">
-                {/* Hamburguesa SOLO en móvil */}
-                <SidebarTrigger className="-ml-1 md:hidden" />
-
                 {/* Botones de navegación: Atrás / Inicio */}
                 {!isDashboardHome && (
                   <div className="flex items-center gap-2">
@@ -204,14 +203,16 @@ export default function DashboardLayout({
           </header>
 
           {/* CONTENIDO PRINCIPAL */}
+          {/* pb-24 en mobile: deja lugar para que BottomNav (fija, h-16
+              + safe-area) no tape el final del contenido. */}
           <main className="flex-1 bg-background w-full">
-            <div className="mx-auto max-w-6xl w-full px-4 md:px-6 py-4 md:py-6 pb-8">
+            <div className="mx-auto max-w-6xl w-full px-4 md:px-6 py-4 md:py-6 pb-24 md:pb-8">
               {children}
             </div>
           </main>
 
-          {/* FOOTER GLOBAL */}
-          <footer className="border-t bg-card/90 backdrop-blur px-4 md:px-6 py-2 text-[11px] md:text-xs text-muted-foreground flex items-center justify-between w-full">
+          {/* FOOTER GLOBAL — oculto en mobile, reemplazado por BottomNav */}
+          <footer className="hidden md:flex border-t bg-card/90 backdrop-blur px-4 md:px-6 py-2 text-[11px] md:text-xs text-muted-foreground items-center justify-between w-full">
             <span>© {new Date().getFullYear()} Hogar San Juan</span>
             <span className="hidden sm:inline">
               Plataforma de gestión integral del hogar.
@@ -219,6 +220,7 @@ export default function DashboardLayout({
           </footer>
         </div>
       </div>
+      <BottomNav />
       <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
