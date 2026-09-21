@@ -96,7 +96,6 @@ interface Log {
   agitation?: boolean
   physicalTherapy?: boolean
   occupationalTherapy?: boolean
-  spiritualCare?: boolean
 }
 
 // ============================================

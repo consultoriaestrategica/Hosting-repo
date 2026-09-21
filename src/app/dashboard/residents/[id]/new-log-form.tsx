@@ -22,7 +22,7 @@ import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
-import { useLogs } from "@/hooks/use-logs"
+import { useLogs, type MedicalLogFields } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
@@ -272,7 +272,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const [agitation, setAgitation] = useState<YesNo>("")
   const [physicalTherapy, setPhysicalTherapy] = useState<YesNo>("")
   const [occupationalTherapy, setOccupationalTherapy] = useState<YesNo>("")
-  const [spiritualSupport, setSpiritualSupport] = useState<YesNo>("")
 
   // Glucometría – checkboxes para saber qué se midió
   const [glucoAyunoChecked, setGlucoAyunoChecked] = useState(false)
@@ -649,7 +648,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     boolLines.push(`Agitación: ${yn(agitation)}`)
     boolLines.push(`Terapia física: ${yn(physicalTherapy)}`)
     boolLines.push(`Terapia ocupacional: ${yn(occupationalTherapy)}`)
-    boolLines.push(`Acompañamiento espiritual: ${yn(spiritualSupport)}`)
 
     lines.push("Cuidados y terapias:")
     boolLines.forEach(l => lines.push(`- ${l}`))
@@ -670,6 +668,71 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     return lines.join("\n")
   }
 
+  // Convierte una respuesta Si/No a boolean. "" (no respondido) se
+  // traduce a `undefined` para que el llamador pueda omitir la clave
+  // por completo en vez de escribir un valor — ver comentario en
+  // MedicalLogFields (src/hooks/use-logs.ts) sobre por que importa
+  // la diferencia entre "campo ausente" y "campo en false".
+  function yesNoToBoolean(value: YesNo): boolean | undefined {
+    if (value === "si") return true
+    if (value === "no") return false
+    return undefined
+  }
+
+  // Campos estructurados y consultables en paralelo al resumen de
+  // texto de buildMedicalSummary(). Ambos se derivan de las mismas
+  // variables locales para que nunca queden desincronizados.
+  function buildStructuredMedicalFields(data: ReportFormValues): Partial<MedicalLogFields> {
+    const fields: Partial<MedicalLogFields> = {}
+
+    const woundCare = yesNoToBoolean(curacion)
+    if (woundCare !== undefined) fields.woundCare = woundCare
+
+    const medicationAdmin = yesNoToBoolean(medsAdmin)
+    if (medicationAdmin !== undefined) fields.medicationAdmin = medicationAdmin
+
+    const fullMeals = yesNoToBoolean(feedingComplete)
+    if (fullMeals !== undefined) fields.fullMeals = fullMeals
+
+    const partialMeals = yesNoToBoolean(feedingPartial)
+    if (partialMeals !== undefined) fields.partialMeals = partialMeals
+
+    const diaperUseValue = yesNoToBoolean(diaperUse)
+    if (diaperUseValue !== undefined) fields.diaperUse = diaperUseValue
+
+    const diuresisValue = yesNoToBoolean(diuresis)
+    if (diuresisValue !== undefined) fields.diuresis = diuresisValue
+    if (diuresis === "si" && data.diuresisColor) fields.diuresisColor = data.diuresisColor
+
+    const bowelMovement = yesNoToBoolean(deposicion)
+    if (bowelMovement !== undefined) fields.bowelMovement = bowelMovement
+    if (deposicion === "si" && data.deposicionConsistencia) fields.bowelConsistency = data.deposicionConsistencia
+
+    const sundowning = yesNoToBoolean(sindromeVespertino)
+    if (sundowning !== undefined) fields.sundowning = sundowning
+
+    const agitationValue = yesNoToBoolean(agitation)
+    if (agitationValue !== undefined) fields.agitation = agitationValue
+
+    const physicalTherapyValue = yesNoToBoolean(physicalTherapy)
+    if (physicalTherapyValue !== undefined) fields.physicalTherapy = physicalTherapyValue
+
+    const occupationalTherapyValue = yesNoToBoolean(occupationalTherapy)
+    if (occupationalTherapyValue !== undefined) fields.occupationalTherapy = occupationalTherapyValue
+
+    if (data.skinStatus && data.skinStatus.length > 0) {
+      fields.skinStatus = data.skinStatus
+    }
+
+    if (glucoAyunoChecked && data.glucoAyuno !== undefined) fields.glucoAyuno = data.glucoAyuno
+    if (glucoAntesAlmuerzoChecked && data.glucoAntesAlmuerzo !== undefined) fields.glucoAntesAlmuerzo = data.glucoAntesAlmuerzo
+    if (glucoAntesCenaChecked && data.glucoAntesCena !== undefined) fields.glucoAntesCena = data.glucoAntesCena
+    if (gluco2hAlmuerzoChecked && data.gluco2hAlmuerzo !== undefined) fields.gluco2hAlmuerzo = data.gluco2hAlmuerzo
+    if (gluco2hCenaChecked && data.gluco2hCena !== undefined) fields.gluco2hCena = data.gluco2hCena
+
+    return fields
+  }
+
   function resetMedicalStates() {
     setCuracion("")
     setMedsAdmin("")
@@ -682,7 +745,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     setAgitation("")
     setPhysicalTherapy("")
     setOccupationalTherapy("")
-    setSpiritualSupport("")
     setGlucoAyunoChecked(false)
     setGlucoAntesAlmuerzoChecked(false)
     setGlucoAntesCenaChecked(false)
@@ -768,6 +830,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           professionalName: data.professionalName,
           exitTime: currentTime,
           createdBy,
+          ...buildStructuredMedicalFields(data),
         });
 
         await withTimeout(addLog(medicalLogData), SAVE_TIMEOUT_MS);
@@ -1554,7 +1617,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       { label: "Agitación", value: agitation, setter: setAgitation },
                       { label: "Terapia física", value: physicalTherapy, setter: setPhysicalTherapy },
                       { label: "Terapia ocupacional", value: occupationalTherapy, setter: setOccupationalTherapy },
-                      { label: "Acompañamiento espiritual", value: spiritualSupport, setter: setSpiritualSupport },
                     ].map(({ label, value, setter }) => (
                       <div key={label}>
                         <FormLabel>{label}</FormLabel>

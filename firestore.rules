@@ -33,6 +33,15 @@ service cloud.firestore {
       return isStaff() && myRole().role == 'Administrador';
     }
 
+    // Cierre de turno tardio (Fase 4 del plan de cierre de turno):
+    // user_roles solo expone `role`, no la lista granular de
+    // `permissions` de la coleccion `staff` — por eso esta validacion
+    // es por nombre de rol, igual que isAdmin(), y no por la clave de
+    // permiso abstracta `close_shift_override` que usa la UI.
+    function isSupervisorOrAdmin() {
+      return isStaff() && (myRole().role == 'Administrador' || myRole().role == 'Supervisor');
+    }
+
     function isFamily() {
       return hasRoleDoc() && myRole().kind == 'family';
     }
@@ -107,6 +116,20 @@ service cloud.firestore {
       allow write: if isStaff();
     }
 
+    // Cierre de turno (Fase 3): un log queda "bloqueado" cuando un
+    // cierre de turno lo incluyo — resource.data.lockedInClosure pasa a
+    // tener el id de ese shiftClosures. A partir de ahi, update/delete
+    // quedan negados para SIEMPRE (ni Administrador puede revertirlo
+    // via la app), sin necesitar un get() a otra coleccion: se resuelve
+    // completo contra resource.data, que Firestore ya trae gratis.
+    // El write que agrega el campo por primera vez (el propio cierre,
+    // dentro del mismo batch que crea el shiftClosures) SI se permite,
+    // porque en ese momento resource.data (el estado ANTES del write)
+    // todavia no tiene la clave.
+    function isLockedLog() {
+      return resource.data.get('lockedInClosure', null) != null;
+    }
+
     // ============================================================
     // COLECCIÓN: dailyLogs
     // Igual criterio que residents: staff mantiene su acceso actual;
@@ -115,7 +138,8 @@ service cloud.firestore {
     match /dailyLogs/{logId} {
       allow read: if isStaff() ||
         (isFamily() && resource.data.residentId == myRole().residentId);
-      allow create, update, delete: if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if isStaff() && !isLockedLog();
     }
 
     // ============================================================
@@ -124,7 +148,23 @@ service cloud.firestore {
     match /logs/{logId} {
       allow read: if isStaff() ||
         (isFamily() && resource.data.residentId == myRole().residentId);
-      allow create, update, delete: if isStaff();
+      allow create: if isStaff();
+      allow update, delete: if isStaff() && !isLockedLog();
+    }
+
+    // ============================================================
+    // COLECCIÓN: shiftClosures (Fase 3 del cierre de turno)
+    // Se crea una sola vez y nunca se edita ni se borra — es el
+    // registro definitivo de que un turno quedo cerrado. Un cierre
+    // isLate:true (fuera de la ventana normal de 2h) solo lo puede
+    // crear un Supervisor o Administrador.
+    // ============================================================
+    match /shiftClosures/{closureId} {
+      allow read: if isStaff();
+      allow create: if isStaff() && (
+        request.resource.data.isLate != true || isSupervisorOrAdmin()
+      );
+      allow update, delete: if false;
     }
 
     // ============================================================
