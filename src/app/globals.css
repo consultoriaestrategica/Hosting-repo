@@ -30,7 +30,7 @@ body {
     --popover: 120 14% 98%;
     --popover-foreground: 150 17% 21%;
 
-    --primary: 147 23% 46%;
+    --primary: 204 30% 51%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 90 14% 90%;
@@ -47,7 +47,7 @@ body {
 
     --border: 80 12% 81%;
     --input: 80 12% 81%;
-    --ring: 147 23% 46%;
+    --ring: 204 30% 51%;
 
     --radius: 0.75rem;
 
@@ -56,6 +56,17 @@ body {
     --chart-3: 207 35% 67%;
     --chart-4: 150 17% 30%;
     --chart-5: 147 30% 60%;
+
+    /* Panel lateral (sidebar) — unico lugar donde se define este color;
+       tailwind.config.ts y las reglas de [data-sidebar] mas abajo en
+       este archivo referencian estas variables via hsl(var(--x)) en vez
+       de repetir el valor en otro formato (antes: hex en este archivo,
+       HSL literal en tailwind.config.ts, dos copias sin conexion). */
+    --sidebar: 210 28% 28%;
+    --sidebar-foreground: 205 25% 78%;
+    --sidebar-active: 204 30% 51%;
+    --sidebar-active-foreground: 0 0% 100%;
+    --sidebar-hover-foreground: 205 30% 88%;
   }
 
   .dark {
@@ -119,22 +130,22 @@ body {
   height: 100vh;
   max-width: 100%;
   overflow: hidden;
-  background-color: #2C3E35;
+  background-color: hsl(var(--sidebar));
 }
 
 /* Colores de texto e interacción del menú lateral */
 [data-sidebar="sidebar"] [data-sidebar="menu-button"] {
-  color: #9AB8A6;
+  color: hsl(var(--sidebar-foreground));
 }
 
 [data-sidebar="sidebar"] [data-sidebar="menu-button"]:hover {
   background-color: rgba(255, 255, 255, 0.07);
-  color: #c8e0d1;
+  color: hsl(var(--sidebar-hover-foreground));
 }
 
 [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"] {
-  background-color: #5B8C6F;
-  color: #ffffff;
+  background-color: hsl(var(--sidebar-active));
+  color: hsl(var(--sidebar-active-foreground));
 }
 
 /* Scroll vertical interno del sidebar */

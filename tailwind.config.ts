@@ -63,13 +63,13 @@ export default {
           '5': 'hsl(var(--chart-5))',
         },
         sidebar: {
-          DEFAULT: "hsl(150, 17%, 21%)",
-          foreground: "hsl(150, 30%, 72%)",
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
           border: "hsla(0, 0%, 100%, 0.1)",
-          active: "hsl(147, 23%, 46%)",
-          "active-foreground": "#ffffff",
+          active: "hsl(var(--sidebar-active))",
+          "active-foreground": "hsl(var(--sidebar-active-foreground))",
           hover: "hsla(0, 0%, 100%, 0.07)",
-          "hover-foreground": "hsl(150, 30%, 82%)",
+          "hover-foreground": "hsl(var(--sidebar-hover-foreground))",
         },
       },
       borderRadius: {
