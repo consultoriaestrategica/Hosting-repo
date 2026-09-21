@@ -133,7 +133,6 @@ const reportFormSchema = z.object({
   skinStatus: z.array(z.string()).optional(),
 
   // Texto libre adicional
-  finalComment: z.string().optional(),
   pendingTasks: z.string().optional(),
   diuresisColor: z.string().optional(),
   deposicionConsistencia: z.string().optional(),
@@ -300,7 +299,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       gluco2hCena: undefined,
 
       skinStatus: [],
-      finalComment: "",
       pendingTasks: "",
       diuresisColor: "",
       deposicionConsistencia: "",
@@ -652,12 +650,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     lines.push("Cuidados y terapias:")
     boolLines.forEach(l => lines.push(`- ${l}`))
     lines.push("")
-
-    if (data.finalComment) {
-      lines.push("Comentario final del día/turno:")
-      lines.push(data.finalComment)
-      lines.push("")
-    }
 
     if (data.pendingTasks) {
       lines.push("Pendientes:")
@@ -1091,7 +1083,6 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                               gluco2hAlmuerzo: undefined,
                               gluco2hCena: undefined,
                               skinStatus: [],
-                              finalComment: "",
                               pendingTasks: "",
                               diuresisColor: "",
                               deposicionConsistencia: "",
@@ -1749,28 +1740,8 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   />
                 </div>
 
-                {/* COMENTARIO FINAL DEL DÍA */}
-                <Separator />
-                <FormField
-                  control={form.control}
-                  name="finalComment"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Comentario final del día / turno</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          rows={4}
-                          placeholder="Evolución general del residente durante el día/turno."
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 {/* PENDIENTES */}
+                <Separator />
                 <FormField
                   control={form.control}
                   name="pendingTasks"
