@@ -227,7 +227,7 @@ export default function LoginPage() {
               width={1}
               height={1}
               priority
-              className="h-14 sm:h-16 w-auto opacity-95"
+              className="h-24 sm:h-28 w-auto opacity-95"
             />
           </div>
 
