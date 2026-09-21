@@ -44,7 +44,7 @@ export default function AlertForm({ resident, onFormSubmit }: AlertFormProps) {
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: {
-      message: `Hola, le escribimos desde el Hogar Geriátrico Ángel Guardián para informarle sobre una eventualidad con el residente ${resident.name}. Por favor, contáctenos lo antes posible.`,
+      message: `Buenos días/tardes, le escribimos desde Hogar San Juan para informarle sobre una eventualidad con el residente ${resident.name}. Por favor, contáctenos lo antes posible al +57 316 6286972.`,
     },
   })
 
