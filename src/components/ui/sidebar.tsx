@@ -19,7 +19,16 @@ import {
 // ======================
 
 const useSidebar = () => {
-  const [isOpen, setIsOpen] = React.useState(false)
+  // Default true: en desktop el sidebar debe verse expandido desde el
+  // primer render, sin esperar al useEffect de abajo (que antes era la
+  // unica forma de corregirlo, dejando un frame — a veces perceptible
+  // segun que tan rapido hidrate React — con el sidebar colapsado en
+  // w-20). El caso movil sigue andando igual: el useEffect de abajo lo
+  // cierra apenas isMobile se resuelve a true, y las clases de ancho de
+  // escritorio en Sidebar (mas abajo en este archivo) quedaron atadas a
+  // md: para que nunca se apliquen por debajo de 768px sin importar
+  // este estado.
+  const [isOpen, setIsOpen] = React.useState(true)
   const isMobile = useIsMobile()
 
   // En desktop: sidebar siempre abierto
@@ -108,7 +117,11 @@ const Sidebar = React.forwardRef<
           "fixed left-0 top-0 z-50 flex h-screen flex-shrink-0 flex-col border-r bg-card transition-[width,transform] duration-300 ease-in-out md:relative",
           isMobile ? "w-72 max-w-xs md:w-72" : "",
           isMobile && !isOpen ? "-translate-x-full" : "",
-          !isMobile && (isOpen ? "w-72" : "w-20"),
+          // md: en vez de un ancho plano: evita que esta clase se
+          // filtre visualmente en un viewport real <768px mientras
+          // isMobile todavia no se resolvio en JS (ver comentario en
+          // useSidebar()).
+          !isMobile && (isOpen ? "md:w-72" : "md:w-20"),
           className
         )}
         {...props}
