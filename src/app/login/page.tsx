@@ -211,11 +211,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F0E8] via-[#E8EDE4] to-[#F5F0E8] p-4">
-      {/* Card más compacto, pero con logo dominante */}
-      <Card className="w-full max-w-xl shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(204,30%,96%)] via-background to-[hsl(204,35%,93%)] p-4">
+      {/* Card casi invisible: borde tenue, sombra minima, el acento de
+          marca lo aporta la franja de color de arriba, no el logo. */}
+      <Card className="w-full max-w-xl overflow-hidden border border-primary/10 shadow-sm">
+        {/* Franja de acento — reemplaza al logo grande como protagonista */}
+        <div className="h-1 w-full bg-primary" />
+
         <CardHeader className="text-center pt-6 pb-3">
-          {/* LOGO PRINCIPAL (protagonista) */}
+          {/* LOGO — presente pero discreto, ya no domina el encabezado */}
           <div className="flex justify-center mb-3">
             <Image
               src="/logo/hogar-san-juan.svg"
@@ -223,12 +227,12 @@ export default function LoginPage() {
               width={1}
               height={1}
               priority
-              className="h-24 sm:h-36 w-auto opacity-95"
+              className="h-24 sm:h-28 w-auto opacity-95"
             />
           </div>
 
           {/* Marca textual como complemento */}
-          <CardTitle className="text-2xl md:text-3xl font-bold tracking-wide">
+          <CardTitle className="text-xl md:text-2xl font-semibold">
             HOGAR SAN JUAN
           </CardTitle>
           <CardDescription className="mt-1 text-sm md:text-base">
@@ -238,12 +242,21 @@ export default function LoginPage() {
 
         <CardContent className="pb-6">
           <Tabs defaultValue="staff" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-5">
-              <TabsTrigger value="staff" className="flex items-center gap-2">
+            {/* Pill suave: track neutro, activo en azul (un tono mas oscuro
+                que --primary para que el texto blanco mantenga AA, ver
+                nota de contraste en el resumen de este cambio). */}
+            <TabsList className="grid w-full grid-cols-2 mb-5 h-11 rounded-full bg-muted/60 p-1">
+              <TabsTrigger
+                value="staff"
+                className="flex items-center gap-2 rounded-full transition-all data-[state=active]:bg-[hsl(204,35%,38%)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+              >
                 <Users className="h-4 w-4" />
                 Personal
               </TabsTrigger>
-              <TabsTrigger value="family" className="flex items-center gap-2">
+              <TabsTrigger
+                value="family"
+                className="flex items-center gap-2 rounded-full transition-all data-[state=active]:bg-[hsl(204,35%,38%)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+              >
                 <Heart className="h-4 w-4" />
                 Familiares
               </TabsTrigger>
@@ -263,6 +276,7 @@ export default function LoginPage() {
                     required
                     disabled={staffLoading}
                     autoComplete="username"
+                    className="border-slate-200"
                   />
                 </div>
 
@@ -278,6 +292,7 @@ export default function LoginPage() {
                       required
                       disabled={staffLoading}
                       autoComplete="current-password"
+                      className="border-slate-200"
                     />
                     <Button
                       type="button"
@@ -332,6 +347,7 @@ export default function LoginPage() {
                     required
                     disabled={familyLoading}
                     autoComplete="email"
+                    className="border-slate-200"
                   />
                 </div>
 
@@ -347,6 +363,7 @@ export default function LoginPage() {
                       required
                       disabled={familyLoading}
                       autoComplete="current-password"
+                      className="border-slate-200"
                     />
                     <Button
                       type="button"
@@ -383,8 +400,8 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-900">
+              <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/15">
+                <p className="text-xs text-slate-700">
                   <strong>Portal Familiar:</strong> Consulte la evolución diaria
                   y eventos programados de su familiar residente.
                 </p>
