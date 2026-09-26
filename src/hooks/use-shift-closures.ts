@@ -7,10 +7,14 @@ import {
   doc,
   getDocs,
   limit,
+  orderBy,
   query,
   serverTimestamp,
+  startAfter,
   where,
   writeBatch,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore"
 import type { ShiftType, VitalReading } from "@/lib/shift-coverage"
 import type { CreatedByInfo } from "./use-logs"
@@ -29,6 +33,20 @@ export type ShiftClosure = {
   closingNote: string
   fieldsCovered: string[]
   requiresNightFollowUp?: boolean
+}
+
+export type ShiftClosureCursor = QueryDocumentSnapshot<DocumentData>
+
+export type ListShiftClosuresParams = {
+  residentId: string
+  pageSize?: number
+  cursor?: ShiftClosureCursor | null
+}
+
+export type ListShiftClosuresResult = {
+  closures: ShiftClosure[]
+  nextCursor: ShiftClosureCursor | null
+  hasMore: boolean
 }
 
 export type CloseShiftInput = {
@@ -64,6 +82,28 @@ function omitUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   return out
 }
 
+// Mapeo compartido Firestore doc -> ShiftClosure, usado tanto por la
+// consulta puntual (getShiftClosure) como por el listado paginado
+// (listShiftClosures) para que no queden dos copias del mismo mapeo.
+function mapShiftClosureDoc(docSnap: QueryDocumentSnapshot<DocumentData>): ShiftClosure {
+  const raw = docSnap.data() as Record<string, any>
+  return {
+    id: docSnap.id,
+    residentId: raw.residentId,
+    shiftType: raw.shiftType,
+    shiftDate: raw.shiftDate,
+    shiftStart: raw.shiftStart,
+    shiftEnd: raw.shiftEnd,
+    closedBy: raw.closedBy,
+    closedAt: raw.closedAt?.toDate?.() ?? null,
+    isLate: raw.isLate ?? false,
+    lastVitalsSnapshot: raw.lastVitalsSnapshot ?? null,
+    closingNote: raw.closingNote ?? "",
+    fieldsCovered: raw.fieldsCovered ?? [],
+    requiresNightFollowUp: raw.requiresNightFollowUp,
+  }
+}
+
 export function useShiftClosures() {
   // Busca si ya existe un cierre para este residente/fecha/turno.
   // Se usa tanto para mostrar la vista de solo lectura de un turno ya
@@ -82,22 +122,36 @@ export function useShiftClosures() {
       const snapshot = await getDocs(q)
       if (snapshot.empty) return null
 
-      const docSnap = snapshot.docs[0]
-      const raw = docSnap.data() as Record<string, any>
+      return mapShiftClosureDoc(snapshot.docs[0])
+    },
+    []
+  )
+
+  // Historial paginado de cierres de un residente, mas reciente
+  // primero. Usa el patron estandar de Firestore para paginacion por
+  // cursor (query() + orderBy() + startAfter() con el ultimo
+  // QueryDocumentSnapshot de la pagina anterior) — no hay precedente de
+  // esto en el proyecto todavia (Registro Diario pagina del lado del
+  // cliente sobre un array ya cargado), asi que este es el primero;
+  // usarlo tambien para Registro Diario en el futuro es un cambio
+  // aparte, no se toco ese paginado existente aca.
+  //
+  // Pide una fila de mas (pageSize + 1) para saber si hay siguiente
+  // pagina sin necesitar una segunda consulta.
+  const listShiftClosures = useCallback(
+    async ({ residentId, pageSize = 10, cursor = null }: ListShiftClosuresParams): Promise<ListShiftClosuresResult> => {
+      const ref = collection(db, "shiftClosures")
+      const base = query(ref, where("residentId", "==", residentId), orderBy("shiftStart", "desc"))
+      const paged = cursor ? query(base, startAfter(cursor), limit(pageSize + 1)) : query(base, limit(pageSize + 1))
+
+      const snapshot = await getDocs(paged)
+      const hasMore = snapshot.docs.length > pageSize
+      const pageDocs = hasMore ? snapshot.docs.slice(0, pageSize) : snapshot.docs
+
       return {
-        id: docSnap.id,
-        residentId: raw.residentId,
-        shiftType: raw.shiftType,
-        shiftDate: raw.shiftDate,
-        shiftStart: raw.shiftStart,
-        shiftEnd: raw.shiftEnd,
-        closedBy: raw.closedBy,
-        closedAt: raw.closedAt?.toDate?.() ?? null,
-        isLate: raw.isLate ?? false,
-        lastVitalsSnapshot: raw.lastVitalsSnapshot ?? null,
-        closingNote: raw.closingNote ?? "",
-        fieldsCovered: raw.fieldsCovered ?? [],
-        requiresNightFollowUp: raw.requiresNightFollowUp,
+        closures: pageDocs.map(mapShiftClosureDoc),
+        nextCursor: hasMore ? pageDocs[pageDocs.length - 1] : null,
+        hasMore,
       }
     },
     []
@@ -140,5 +194,5 @@ export function useShiftClosures() {
     return closureRef.id
   }, [])
 
-  return { getShiftClosure, closeShift }
+  return { getShiftClosure, listShiftClosures, closeShift }
 }

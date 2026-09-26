@@ -91,6 +91,7 @@ import NewLogForm from "./new-log-form";
 import AgendaForm from "../../components/agenda-form";
 import { PartialEvolutionForm } from "../../logs/partial-evolution-form";
 import ShiftClosureForm from "./shift-closure-form";
+import ShiftClosuresTab from "./shift-closures-tab";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -483,6 +484,9 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                 Registros {residentLogs.length > 0 && (
                   <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{residentLogs.length}</Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="shiftClosures">
+                Cierres de Turno
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1066,6 +1070,11 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* TAB: CIERRES DE TURNO */}
+          <TabsContent value="shiftClosures" className="mt-4">
+            <ShiftClosuresTab residentId={resident.id} residentName={resident.name} />
           </TabsContent>
         </Tabs>
       </div>

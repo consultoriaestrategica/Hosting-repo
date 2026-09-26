@@ -7,6 +7,14 @@
         { "fieldPath": "residentId", "order": "ASCENDING" },
         { "fieldPath": "endDate", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "shiftClosures",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "residentId", "order": "ASCENDING" },
+        { "fieldPath": "shiftStart", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
