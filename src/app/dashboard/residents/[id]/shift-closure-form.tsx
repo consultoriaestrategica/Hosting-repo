@@ -144,6 +144,24 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
           requiresGlucoseMonitoring: resident.requiresGlucoseMonitoring === true,
         })
         if (cancelled) return
+
+        // TEMPORAL — diagnóstico en vivo del bug de Cierre de Turno.
+        // Quitar este bloque una vez tengamos evidencia de la causa real.
+        console.log("🔍 DIAGNÓSTICO CIERRE DE TURNO", {
+          residente: resident.name,
+          residentId: resident.id,
+          shiftType,
+          shiftDateInput,
+          requiresNightFollowUp: nightFollowUpRequired,
+          requiresGlucoseMonitoring: resident.requiresGlucoseMonitoring === true,
+          covered: result.covered,
+          missing: result.missing,
+          isComplete: result.isComplete,
+          lastVitalsSnapshot: result.lastVitalsSnapshot,
+          cantidadDeRegistrosEnLaVentanaDelTurno: result.logIds.length,
+          logIds: result.logIds,
+        })
+
         setCoverage(result)
         setIsLoading(false)
       } catch (error) {
