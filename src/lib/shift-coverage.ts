@@ -95,10 +95,10 @@ export interface CoverageResult {
   covered: string[]
   missing: string[]
   // Depende UNICAMENTE de las categorias en BLOCKING_CATEGORIES (hoy:
-  // vitalSigns y evolutionVisitType). Decision del cliente: las demas
+  // vitalSigns y evolutionNote). Decision del cliente: las demas
   // categorias (skinStatus, nursingCare, elimination, behaviors,
-  // feeding, glucose) ya no pueden impedir el cierre del turno, solo
-  // se muestran de forma informativa.
+  // evolutionVisitType, feeding, glucose) ya no pueden impedir el
+  // cierre del turno, solo se muestran de forma informativa.
   isComplete: boolean
   // La lectura de signos vitales mas reciente del turno (para
   // confirmar en el cierre, no para re-ingresar). `null` si no hubo
@@ -111,7 +111,9 @@ export interface CoverageResult {
   // Desglose de que campo especifico falta dentro de una categoria
   // bloqueante, para que la UI pueda decir "falta T/A" en vez de solo
   // "Signos vitales incompleto". Vacio si la categoria esta cubierta o
-  // no aplica a este turno.
+  // no aplica a este turno. evolutionMissingParts solo puede traer
+  // "nota de evolución" (o estar vacio) — evolutionVisitType ya no es
+  // bloqueante y por eso no tiene desglose propio.
   vitalSignsMissingFields: string[]
   evolutionMissingParts: string[]
 }
@@ -137,9 +139,9 @@ const VITAL_SCALAR_LABELS: Record<(typeof VITAL_SCALAR_FIELDS)[number], string> 
 
 // Unicas 2 categorias que pueden bloquear el cierre de un turno
 // (decision del cliente, ver CoverageResult.isComplete). Las demas
-// categorias se siguen calculando y mostrando, solo que de forma
-// informativa.
-const BLOCKING_CATEGORIES = ["vitalSigns", "evolutionVisitType"] as const
+// categorias (incluida "evolutionVisitType", el tipo de visita) se
+// siguen calculando y mostrando, solo que de forma informativa.
+const BLOCKING_CATEGORIES = ["vitalSigns", "evolutionNote"] as const
 const GLUCOSE_FIELDS = [
   "glucoAyuno",
   "glucoAntesAlmuerzo",
@@ -273,13 +275,14 @@ function behaviorsCovered(logs: MedicalLog[], shiftType: ShiftType): boolean {
   return base && anyLogFieldPresent(logs, "physicalTherapy") && anyLogFieldPresent(logs, "occupationalTherapy")
 }
 
-// "Evolucion" ahora exige, de forma independiente, que exista alguna
-// nota de evolucion con contenido Y que exista algun tipo de visita
-// seleccionado — no necesariamente en la misma entrada, igual que los
-// valores escalares de signos vitales. visitType es opcional en el
-// formulario de registro (new-log-form.tsx) y las evoluciones
-// parciales (partial-evolution-form.tsx) nunca lo piden, por lo que en
-// la practica solo la entrada inicial del registro puede cubrirlo.
+// "evolutionNote" (bloqueante) solo exige que exista alguna nota de
+// evolucion con contenido — es la unica de las 2 categorias
+// bloqueantes junto a vitalSigns (decision del cliente). "tipo de
+// visita" quedo como categoria informativa (evolutionVisitType), no
+// bloquea: visitType es opcional en el formulario de registro
+// (new-log-form.tsx) y las evoluciones parciales
+// (partial-evolution-form.tsx) nunca lo piden, por lo que en la
+// practica solo la entrada inicial del registro puede cubrirlo.
 function evolutionNoteCovered(logs: MedicalLog[]): boolean {
   return logs.some((log) => log.evolutionEntries?.some((entry) => (entry.note ?? "").trim().length > 0))
 }
@@ -289,10 +292,7 @@ function evolutionVisitTypeCovered(logs: MedicalLog[]): boolean {
 }
 
 function evolutionMissingParts(logs: MedicalLog[]): string[] {
-  const missing: string[] = []
-  if (!evolutionNoteCovered(logs)) missing.push("nota de evolución")
-  if (!evolutionVisitTypeCovered(logs)) missing.push("tipo de visita")
-  return missing
+  return evolutionNoteCovered(logs) ? [] : ["nota de evolución"]
 }
 
 function glucoseCovered(logs: MedicalLog[]): boolean {
@@ -314,7 +314,8 @@ export async function calculateShiftCoverage(
     ["nursingCare", nursingCareCovered(logs)],
     ["elimination", eliminationCovered(logs)],
     ["behaviors", behaviorsCovered(logs, shiftType)],
-    ["evolutionVisitType", evolutionNoteCovered(logs) && evolutionVisitTypeCovered(logs)],
+    ["evolutionNote", evolutionNoteCovered(logs)],
+    ["evolutionVisitType", evolutionVisitTypeCovered(logs)],
   ]
 
   if (shiftType === "dia") {

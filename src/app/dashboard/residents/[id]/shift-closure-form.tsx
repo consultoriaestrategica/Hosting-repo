@@ -31,24 +31,27 @@ interface ShiftClosureFormProps {
 
 const CATEGORY_ORDER = [
   "vitalSigns",
+  "evolutionNote",
   "skinStatus",
   "nursingCare",
   "elimination",
   "behaviors",
-  "feeding",
   "evolutionVisitType",
+  "feeding",
   "glucose",
 ] as const
 
 // Unicas 2 categorias que bloquean el cierre (decision del cliente,
 // ver CoverageResult.isComplete en shift-coverage.ts). Las demas se
 // siguen mostrando, pero como informativas — no impiden cerrar.
-const BLOCKING_CATEGORIES = new Set<string>(["vitalSigns", "evolutionVisitType"])
+const BLOCKING_CATEGORIES = new Set<string>(["vitalSigns", "evolutionNote"])
 
 function categoryLabel(key: string, shiftType: ShiftType): string {
   switch (key) {
     case "vitalSigns":
       return "Signos vitales (FC, FR, SpO₂, T/A, Temperatura)"
+    case "evolutionNote":
+      return "Nota de evolución"
     case "skinStatus":
       return "Estado de la piel"
     case "nursingCare":
@@ -71,14 +74,14 @@ function categoryLabel(key: string, shiftType: ShiftType): string {
 }
 
 // Desglose puntual de que falta dentro de una categoria bloqueante —
-// solo vitalSigns y evolutionVisitType lo tienen (ver
+// solo vitalSigns y evolutionNote lo tienen (ver
 // CoverageResult.vitalSignsMissingFields / evolutionMissingParts).
 function categoryDetail(key: string, coverage: CoverageResult | null): string | null {
   if (!coverage) return null
   if (key === "vitalSigns" && coverage.vitalSignsMissingFields.length > 0) {
     return coverage.vitalSignsMissingFields.join(", ")
   }
-  if (key === "evolutionVisitType" && coverage.evolutionMissingParts.length > 0) {
+  if (key === "evolutionNote" && coverage.evolutionMissingParts.length > 0) {
     return coverage.evolutionMissingParts.join(", ")
   }
   return null

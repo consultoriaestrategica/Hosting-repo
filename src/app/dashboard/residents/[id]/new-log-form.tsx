@@ -168,6 +168,41 @@ const reportFormSchema = z.object({
             });
         }
     }
+
+    // Signos vitales y nota de evolución: obligatorios en el registro
+    // médico porque son las 2 unicas categorias que bloquean el cierre
+    // de turno (calculateShiftCoverage en shift-coverage.ts) — deben
+    // marcarse como obligatorias desde que se crea el registro, no
+    // detectarse recien al intentar cerrar el turno.
+    if (data.reportType === 'medico') {
+        if (data.heartRate === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['heartRate'], message: "La frecuencia cardíaca es obligatoria." });
+        }
+        if (data.respiratoryRate === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['respiratoryRate'], message: "La frecuencia respiratoria es obligatoria." });
+        }
+        if (data.spo2 === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['spo2'], message: "La saturación de oxígeno es obligatoria." });
+        }
+        if (data.bloodPressureSys === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['bloodPressureSys'], message: "La T/A sistólica es obligatoria." });
+        }
+        if (data.bloodPressureDia === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['bloodPressureDia'], message: "La T/A diastólica es obligatoria." });
+        }
+        if (data.temperature === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['temperature'], message: "La temperatura es obligatoria." });
+        }
+
+        const hasEvolutionNote = (data.evolutionNotes ?? []).some((n) => n.note.trim().length > 0);
+        if (!hasEvolutionNote) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['evolutionNotes', 0, 'note'],
+                message: "La nota de evolución es obligatoria.",
+            });
+        }
+    }
 });
 
 type ReportFormValues = z.infer<typeof reportFormSchema>
@@ -1161,7 +1196,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       name="heartRate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>F.C (Lpm)</FormLabel>
+                          <FormLabel>F.C (Lpm) <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -1181,7 +1216,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       name="respiratoryRate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>F.R (Rpm)</FormLabel>
+                          <FormLabel>F.R (Rpm) <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -1201,7 +1236,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       name="spo2"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>SpO₂ (%)</FormLabel>
+                          <FormLabel>SpO₂ (%) <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -1222,7 +1257,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         name="bloodPressureSys"
                         render={({ field }) => (
                           <FormItem className="flex-1">
-                            <FormLabel>T/A Sistólica (mmHg)</FormLabel>
+                            <FormLabel>T/A Sistólica (mmHg) <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1242,7 +1277,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                         name="bloodPressureDia"
                         render={({ field }) => (
                           <FormItem className="flex-1">
-                            <FormLabel>T/A Diastólica (mmHg)</FormLabel>
+                            <FormLabel>T/A Diastólica (mmHg) <span className="text-destructive">*</span></FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1263,7 +1298,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                       name="temperature"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Temperatura (°C)</FormLabel>
+                          <FormLabel>Temperatura (°C) <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -1638,7 +1673,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                 <Separator />
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <FormLabel className="font-semibold">Evoluciones del día</FormLabel>
+                    <FormLabel className="font-semibold">
+                      Evoluciones del día <span className="text-destructive">*</span>
+                    </FormLabel>
                     <Button
                       type="button"
                       variant="outline"

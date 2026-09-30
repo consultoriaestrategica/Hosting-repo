@@ -353,9 +353,10 @@ describe("calculateShiftCoverage - lastVitalsSnapshot y logIds", () => {
 })
 
 // Decision del cliente: isComplete ya no depende de las 7-8 categorias,
-// solo de vitalSigns y evolutionVisitType (las demas quedan como
-// informativas). covered/missing se siguen calculando completos.
-describe("calculateShiftCoverage - isComplete simplificado (solo vitalSigns + evolucion)", () => {
+// solo de vitalSigns y evolutionNote — la nota de evolucion, NO el
+// tipo de visita (evolutionVisitType quedo informativo, igual que
+// skinStatus/nursingCare/elimination/behaviors/feeding/glucose).
+describe("calculateShiftCoverage - isComplete simplificado (solo vitalSigns + nota de evolucion)", () => {
   beforeEach(() => {
     mockGetDocs.mockReset()
   })
@@ -392,7 +393,20 @@ describe("calculateShiftCoverage - isComplete simplificado (solo vitalSigns + ev
     expect(result.isComplete).toBe(false)
   })
 
-  it("isComplete es false si falta evolutionVisitType, aunque las demas categorias esten cubiertas", async () => {
+  it("isComplete es false si falta la nota de evolucion, aunque las demas categorias esten cubiertas", async () => {
+    mockGetDocs.mockResolvedValue(
+      fakeSnapshot([
+        fullDayCoverageLog({
+          evolutionEntries: [{ id: "e1", note: "", temperature: 36.5, bloodPressureSys: 120, bloodPressureDia: 80, visitType: "Rutina" }],
+        }),
+      ])
+    )
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.isComplete).toBe(false)
+    expect(result.missing).toContain("evolutionNote")
+  })
+
+  it("isComplete sigue true si falta el tipo de visita, mientras la nota este cubierta (visitType ya no bloquea)", async () => {
     mockGetDocs.mockResolvedValue(
       fakeSnapshot([
         fullDayCoverageLog({
@@ -401,10 +415,11 @@ describe("calculateShiftCoverage - isComplete simplificado (solo vitalSigns + ev
       ])
     )
     const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
-    expect(result.isComplete).toBe(false)
+    expect(result.isComplete).toBe(true)
+    expect(result.missing).toContain("evolutionVisitType")
   })
 
-  it("de noche sin requiresNightFollowUp, isComplete depende solo de evolutionVisitType (nota vacia lo bloquea)", async () => {
+  it("de noche sin requiresNightFollowUp, isComplete depende solo de evolutionNote (nota vacia lo bloquea)", async () => {
     mockGetDocs.mockResolvedValue(
       fakeSnapshot([nightLog({ evolutionEntries: [{ id: "e1", note: "", visitType: "Seguimiento" }] })])
     )
@@ -456,19 +471,19 @@ describe("calculateShiftCoverage - desglose de campos faltantes", () => {
     expect(result.vitalSignsMissingFields).toEqual([])
   })
 
-  it("evolutionMissingParts distingue nota, tipo de visita o ambos", async () => {
+  it("evolutionMissingParts marca 'nota de evolución' si la nota esta vacia", async () => {
     mockGetDocs.mockResolvedValue(
-      fakeSnapshot([fullDayCoverageLog({ evolutionEntries: [{ id: "e1", note: "", visitType: "" }] })])
+      fakeSnapshot([fullDayCoverageLog({ evolutionEntries: [{ id: "e1", note: "", visitType: "Rutina" }] })])
     )
     const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
-    expect(result.evolutionMissingParts.sort()).toEqual(["nota de evolución", "tipo de visita"].sort())
+    expect(result.evolutionMissingParts).toEqual(["nota de evolución"])
   })
 
-  it("evolutionMissingParts solo marca tipo de visita si la nota ya esta cubierta", async () => {
+  it("evolutionMissingParts esta vacio si la nota esta cubierta, aunque falte el tipo de visita", async () => {
     mockGetDocs.mockResolvedValue(
       fakeSnapshot([fullDayCoverageLog({ evolutionEntries: [{ id: "e1", note: "control", visitType: "" }] })])
     )
     const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
-    expect(result.evolutionMissingParts).toEqual(["tipo de visita"])
+    expect(result.evolutionMissingParts).toEqual([])
   })
 })
