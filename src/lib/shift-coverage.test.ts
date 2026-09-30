@@ -276,9 +276,25 @@ describe("calculateShiftCoverage - turno noche", () => {
 describe("getShiftClosingStatus", () => {
   const shiftEnd = new Date(2026, 8, 15, 19, 0, 0, 0) // turno dia termina 7:00pm
 
-  it("too-early antes de que termine el turno", () => {
+  it("too-early antes de que termine el turno, sin permiso de cierre anticipado", () => {
     const now = new Date(2026, 8, 15, 18, 59, 59)
     expect(getShiftClosingStatus(shiftEnd, now)).toBe("too-early")
+  })
+
+  it("too-early sigue bloqueando aunque se pase canCloseEarly=false explicito", () => {
+    const now = new Date(2026, 8, 15, 10, 0, 0)
+    expect(getShiftClosingStatus(shiftEnd, now, false)).toBe("too-early")
+  })
+
+  it("early antes de que termine el turno, con permiso de cierre anticipado", () => {
+    const now = new Date(2026, 8, 15, 10, 0, 0)
+    expect(getShiftClosingStatus(shiftEnd, now, true)).toBe("early")
+  })
+
+  it("canCloseEarly=true no cambia nada una vez que el turno ya termino (sigue normal/late)", () => {
+    expect(getShiftClosingStatus(shiftEnd, shiftEnd, true)).toBe("normal")
+    const lateNow = new Date(2026, 8, 16, 10, 0, 0)
+    expect(getShiftClosingStatus(shiftEnd, lateNow, true)).toBe("late")
   })
 
   it("normal justo al terminar el turno", () => {

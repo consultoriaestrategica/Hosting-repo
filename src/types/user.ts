@@ -66,6 +66,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "manage_agenda",
     "access_all_modules",
     "close_shift_override",
+    "close_shift_early",
   ],
   "Supervisor": [
     "view_residents",
@@ -76,6 +77,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "view_agenda",
     "manage_agenda",
     "close_shift_override",
+    "close_shift_early",
   ],
   "Líder de Enfermería": [
     "manage_residents",
@@ -87,12 +89,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "edit_reports",
     "view_agenda",
     "manage_agenda",
+    "close_shift_early",
   ],
   "Personal de Cuidado": [
     "view_residents",
     "view_reports",
     "create_reports",
     "view_agenda",
+    "close_shift_early",
   ],
   "Acceso Familiar": [
     "view_residents",

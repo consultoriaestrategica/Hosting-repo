@@ -249,7 +249,8 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
   }
 
   const shiftWindow = getShiftWindow(shiftDateInput, shiftType)
-  const closingStatus = getShiftClosingStatus(shiftWindow.end, new Date())
+  const canCloseEarly = hasPermission("close_shift_early")
+  const closingStatus = getShiftClosingStatus(shiftWindow.end, new Date(), canCloseEarly)
   const canOverrideLate = hasPermission("close_shift_override")
   const isBlockedByTime = closingStatus === "too-early" || (closingStatus === "late" && !canOverrideLate)
   const isComplete = coverage?.isComplete ?? false
@@ -351,6 +352,15 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
           <AlertTitle>Este turno todavía no termina</AlertTitle>
           <AlertDescription>
             No se puede cerrar antes de las {shiftWindow.end.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}.
+          </AlertDescription>
+        </Alert>
+      )}
+      {closingStatus === "early" && (
+        <Alert className="border-blue-300 bg-blue-50">
+          <AlertTriangle className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800">Vas a cerrar este turno antes de que termine</AlertTitle>
+          <AlertDescription className="text-blue-800">
+            Quedará registrado como "Cerrado anticipadamente por {staffUser?.name || "—"}".
           </AlertDescription>
         </Alert>
       )}

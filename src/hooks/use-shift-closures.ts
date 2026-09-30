@@ -11,6 +11,7 @@ import {
   query,
   serverTimestamp,
   startAfter,
+  Timestamp,
   where,
   writeBatch,
   type DocumentData,
@@ -171,6 +172,12 @@ export function useShiftClosures() {
       shiftDate: input.shiftDate,
       shiftStart: input.shiftStart,
       shiftEnd: input.shiftEnd,
+      // Copia en Timestamp de shiftEnd, solo para que firestore.rules
+      // pueda comparar contra request.time (las rules no pueden
+      // parsear un string ISO como el que ya usa shiftEnd). No
+      // reemplaza el campo string existente, que sigue siendo el que
+      // lee el resto de la app.
+      shiftEndAt: Timestamp.fromDate(new Date(input.shiftEnd)),
       closedBy: input.closedBy,
       closedAt: serverTimestamp(),
       isLate: input.isLate,

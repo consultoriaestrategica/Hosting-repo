@@ -42,6 +42,22 @@ service cloud.firestore {
       return isStaff() && (myRole().role == 'Administrador' || myRole().role == 'Supervisor');
     }
 
+    // Cierre de turno anticipado (turno todavia no termina): permitido
+    // para cualquiera de los 4 roles de personal — hoy, en la
+    // practica, es lo mismo que isStaff() (no existe ningun rol de
+    // personal excluido; el unico rol no incluido es "Acceso Familiar",
+    // que ya no es staff y no puede crear shiftClosures). Se deja
+    // explicito por nombre de rol, igual que isSupervisorOrAdmin(), en
+    // vez de depender silenciosamente de la definicion de isStaff().
+    function canCloseShiftEarly() {
+      return isStaff() && (
+        myRole().role == 'Administrador' ||
+        myRole().role == 'Supervisor' ||
+        myRole().role == 'Líder de Enfermería' ||
+        myRole().role == 'Personal de Cuidado'
+      );
+    }
+
     function isFamily() {
       return hasRoleDoc() && myRole().kind == 'family';
     }
@@ -157,12 +173,21 @@ service cloud.firestore {
     // Se crea una sola vez y nunca se edita ni se borra — es el
     // registro definitivo de que un turno quedo cerrado. Un cierre
     // isLate:true (fuera de la ventana normal de 2h) solo lo puede
-    // crear un Supervisor o Administrador.
+    // crear un Supervisor o Administrador. Un cierre anticipado (el
+    // turno todavia no termina, shiftEndAt > request.time) solo lo
+    // puede crear alguno de los 4 roles de personal (canCloseShiftEarly).
+    // shiftEndAt es una copia en Timestamp de shiftEnd (que en el resto
+    // de la app se guarda como string ISO) — se agrega solo para poder
+    // comparar contra request.time aca; si por algun motivo no viene
+    // (dato viejo/cliente desactualizado), se usa request.time como
+    // default para no bloquear el flujo normal.
     // ============================================================
     match /shiftClosures/{closureId} {
       allow read: if isStaff();
       allow create: if isStaff() && (
         request.resource.data.isLate != true || isSupervisorOrAdmin()
+      ) && (
+        request.time >= request.resource.data.get('shiftEndAt', request.time) || canCloseShiftEarly()
       );
       allow update, delete: if false;
     }
