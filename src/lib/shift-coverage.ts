@@ -89,8 +89,16 @@ export function getShiftClosingStatus(shiftEnd: Date, now: Date): ClosingStatus 
 // ============================================================
 
 export interface CoverageResult {
+  // Cobertura de TODAS las categorias, incluidas las que ya no
+  // bloquean el cierre — se sigue calculando completo para que el
+  // checklist informativo pueda mostrarlo.
   covered: string[]
   missing: string[]
+  // Depende UNICAMENTE de las categorias en BLOCKING_CATEGORIES (hoy:
+  // vitalSigns y evolutionVisitType). Decision del cliente: las demas
+  // categorias (skinStatus, nursingCare, elimination, behaviors,
+  // feeding, glucose) ya no pueden impedir el cierre del turno, solo
+  // se muestran de forma informativa.
   isComplete: boolean
   // La lectura de signos vitales mas reciente del turno (para
   // confirmar en el cierre, no para re-ingresar). `null` si no hubo
@@ -100,6 +108,12 @@ export interface CoverageResult {
   // marcar lockedInClosure en cada uno al cerrar (Fase 3). La
   // cobertura en si solo mira los medicos.
   logIds: string[]
+  // Desglose de que campo especifico falta dentro de una categoria
+  // bloqueante, para que la UI pueda decir "falta T/A" en vez de solo
+  // "Signos vitales incompleto". Vacio si la categoria esta cubierta o
+  // no aplica a este turno.
+  vitalSignsMissingFields: string[]
+  evolutionMissingParts: string[]
 }
 
 export interface ShiftCoverageOptions {
@@ -114,6 +128,18 @@ export interface ShiftCoverageOptions {
 type MedicalLog = Log & MedicalLogFields
 
 const VITAL_SCALAR_FIELDS = ["heartRate", "respiratoryRate", "spo2", "temperature"] as const
+const VITAL_SCALAR_LABELS: Record<(typeof VITAL_SCALAR_FIELDS)[number], string> = {
+  heartRate: "FC",
+  respiratoryRate: "FR",
+  spo2: "SpO₂",
+  temperature: "Temperatura",
+}
+
+// Unicas 2 categorias que pueden bloquear el cierre de un turno
+// (decision del cliente, ver CoverageResult.isComplete). Las demas
+// categorias se siguen calculando y mostrando, solo que de forma
+// informativa.
+const BLOCKING_CATEGORIES = ["vitalSigns", "evolutionVisitType"] as const
 const GLUCOSE_FIELDS = [
   "glucoAyuno",
   "glucoAntesAlmuerzo",
@@ -176,10 +202,24 @@ function collectVitalReadings(logs: MedicalLog[]): TimestampedVitalReading[] {
 // deben venir juntos de una misma lectura, porque una presion arterial
 // siempre se toma como par.
 function vitalSignsComplete(logs: MedicalLog[]): boolean {
+  return vitalSignsMissingFields(logs).length === 0
+}
+
+// Cuales de los 5 valores (FC, FR, SpO2, Temperatura, T/A) todavia no
+// tienen ninguna lectura en el turno. T/A cuenta como un solo valor
+// faltante (no "sistolica" y "diastolica" por separado) porque se
+// reporta y se corrige como un par.
+function vitalSignsMissingFields(logs: MedicalLog[]): string[] {
   const readings = collectVitalReadings(logs)
-  const scalarsCovered = VITAL_SCALAR_FIELDS.every((field) => readings.some((r) => r[field] !== undefined))
+  const missing: string[] = []
+  for (const field of VITAL_SCALAR_FIELDS) {
+    if (!readings.some((r) => r[field] !== undefined)) {
+      missing.push(VITAL_SCALAR_LABELS[field])
+    }
+  }
   const bloodPressureCovered = readings.some((r) => r.bloodPressureSys !== undefined && r.bloodPressureDia !== undefined)
-  return scalarsCovered && bloodPressureCovered
+  if (!bloodPressureCovered) missing.push("T/A")
+  return missing
 }
 
 // La lectura completa (no ensamblada campo por campo) mas reciente por
@@ -233,8 +273,26 @@ function behaviorsCovered(logs: MedicalLog[], shiftType: ShiftType): boolean {
   return base && anyLogFieldPresent(logs, "physicalTherapy") && anyLogFieldPresent(logs, "occupationalTherapy")
 }
 
-function evolutionWithVisitTypeCovered(logs: MedicalLog[]): boolean {
+// "Evolucion" ahora exige, de forma independiente, que exista alguna
+// nota de evolucion con contenido Y que exista algun tipo de visita
+// seleccionado — no necesariamente en la misma entrada, igual que los
+// valores escalares de signos vitales. visitType es opcional en el
+// formulario de registro (new-log-form.tsx) y las evoluciones
+// parciales (partial-evolution-form.tsx) nunca lo piden, por lo que en
+// la practica solo la entrada inicial del registro puede cubrirlo.
+function evolutionNoteCovered(logs: MedicalLog[]): boolean {
+  return logs.some((log) => log.evolutionEntries?.some((entry) => (entry.note ?? "").trim().length > 0))
+}
+
+function evolutionVisitTypeCovered(logs: MedicalLog[]): boolean {
   return logs.some((log) => log.evolutionEntries?.some((entry) => !!entry.visitType))
+}
+
+function evolutionMissingParts(logs: MedicalLog[]): string[] {
+  const missing: string[] = []
+  if (!evolutionNoteCovered(logs)) missing.push("nota de evolución")
+  if (!evolutionVisitTypeCovered(logs)) missing.push("tipo de visita")
+  return missing
 }
 
 function glucoseCovered(logs: MedicalLog[]): boolean {
@@ -256,7 +314,7 @@ export async function calculateShiftCoverage(
     ["nursingCare", nursingCareCovered(logs)],
     ["elimination", eliminationCovered(logs)],
     ["behaviors", behaviorsCovered(logs, shiftType)],
-    ["evolutionVisitType", evolutionWithVisitTypeCovered(logs)],
+    ["evolutionVisitType", evolutionNoteCovered(logs) && evolutionVisitTypeCovered(logs)],
   ]
 
   if (shiftType === "dia") {
@@ -274,11 +332,19 @@ export async function calculateShiftCoverage(
   const covered = checks.filter(([, ok]) => ok).map(([name]) => name)
   const missing = checks.filter(([, ok]) => !ok).map(([name]) => name)
 
+  // isComplete solo mira las categorias bloqueantes QUE APLICAN a este
+  // turno (ej. "vitalSigns" de noche solo aparece en `checks` si
+  // requiresNightFollowUp es true — si no aparece, no puede bloquear).
+  const applicableBlocking = checks.filter(([name]) => (BLOCKING_CATEGORIES as readonly string[]).includes(name))
+  const isComplete = applicableBlocking.every(([, ok]) => ok)
+
   return {
     covered,
     missing,
-    isComplete: missing.length === 0,
+    isComplete,
     lastVitalsSnapshot: getLastVitalsReading(logs),
     logIds: allLogs.map((log) => log.id),
+    vitalSignsMissingFields: vitalSignsMissingFields(logs),
+    evolutionMissingParts: evolutionMissingParts(logs),
   }
 }

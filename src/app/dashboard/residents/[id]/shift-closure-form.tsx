@@ -40,6 +40,11 @@ const CATEGORY_ORDER = [
   "glucose",
 ] as const
 
+// Unicas 2 categorias que bloquean el cierre (decision del cliente,
+// ver CoverageResult.isComplete en shift-coverage.ts). Las demas se
+// siguen mostrando, pero como informativas — no impiden cerrar.
+const BLOCKING_CATEGORIES = new Set<string>(["vitalSigns", "evolutionVisitType"])
+
 function categoryLabel(key: string, shiftType: ShiftType): string {
   switch (key) {
     case "vitalSigns":
@@ -63,6 +68,20 @@ function categoryLabel(key: string, shiftType: ShiftType): string {
     default:
       return key
   }
+}
+
+// Desglose puntual de que falta dentro de una categoria bloqueante —
+// solo vitalSigns y evolutionVisitType lo tienen (ver
+// CoverageResult.vitalSignsMissingFields / evolutionMissingParts).
+function categoryDetail(key: string, coverage: CoverageResult | null): string | null {
+  if (!coverage) return null
+  if (key === "vitalSigns" && coverage.vitalSignsMissingFields.length > 0) {
+    return coverage.vitalSignsMissingFields.join(", ")
+  }
+  if (key === "evolutionVisitType" && coverage.evolutionMissingParts.length > 0) {
+    return coverage.evolutionMissingParts.join(", ")
+  }
+  return null
 }
 
 function toDateInputValue(date: Date): string {
@@ -283,6 +302,8 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
   const categories = CATEGORY_ORDER.filter(
     (key) => coverage?.covered.includes(key) || coverage?.missing.includes(key)
   )
+  const blockingCategories = categories.filter((key) => BLOCKING_CATEGORIES.has(key))
+  const informativeCategories = categories.filter((key) => !BLOCKING_CATEGORIES.has(key))
 
   return (
     <div className="space-y-5">
@@ -350,29 +371,56 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
       )}
 
       {/* Checklist de cobertura */}
-      <div>
-        <p className="text-sm font-semibold mb-2">Campos obligatorios del turno</p>
-        <div className="space-y-1.5">
-          {categories.map((key) => {
-            const ok = coverage?.covered.includes(key) ?? false
-            return (
-              <div key={key} className="flex items-start gap-2 text-sm">
-                {ok ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                )}
-                <span className={ok ? "text-slate-700" : "text-destructive font-medium"}>
-                  {categoryLabel(key, shiftType)}
-                </span>
-              </div>
-            )
-          })}
+      <div className="space-y-4">
+        <div>
+          <p className="text-sm font-semibold mb-2">Obligatorios para cerrar el turno</p>
+          <div className="space-y-1.5">
+            {blockingCategories.map((key) => {
+              const ok = coverage?.covered.includes(key) ?? false
+              const detail = !ok ? categoryDetail(key, coverage) : null
+              return (
+                <div key={key} className="flex items-start gap-2 text-sm">
+                  {ok ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  )}
+                  <span className={ok ? "text-slate-700" : "text-destructive font-medium"}>
+                    {categoryLabel(key, shiftType)}
+                    {detail && <span className="block text-xs font-normal">Falta: {detail}</span>}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          {!isComplete && (
+            <p className="text-xs text-destructive mt-2">
+              Faltan campos obligatorios — no se puede cerrar el turno hasta que estén completos.
+            </p>
+          )}
         </div>
-        {!isComplete && (
-          <p className="text-xs text-destructive mt-2">
-            Faltan campos obligatorios — no se puede cerrar el turno hasta que todos los registros estén completos.
-          </p>
+
+        {informativeCategories.length > 0 && (
+          <div>
+            <p className="text-sm font-semibold mb-2">Informativos (no bloquean el cierre)</p>
+            <div className="space-y-1.5">
+              {informativeCategories.map((key) => {
+                const ok = coverage?.covered.includes(key) ?? false
+                return (
+                  <div key={key} className="flex items-start gap-2 text-sm">
+                    {ok ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                    )}
+                    <span className={ok ? "text-slate-700" : "text-muted-foreground"}>
+                      {categoryLabel(key, shiftType)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         )}
       </div>
 

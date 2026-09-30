@@ -351,3 +351,124 @@ describe("calculateShiftCoverage - lastVitalsSnapshot y logIds", () => {
     expect(result.logIds.sort()).toEqual(["log-medico", "log-suministro"])
   })
 })
+
+// Decision del cliente: isComplete ya no depende de las 7-8 categorias,
+// solo de vitalSigns y evolutionVisitType (las demas quedan como
+// informativas). covered/missing se siguen calculando completos.
+describe("calculateShiftCoverage - isComplete simplificado (solo vitalSigns + evolucion)", () => {
+  beforeEach(() => {
+    mockGetDocs.mockReset()
+  })
+
+  it("isComplete es true aunque falten skinStatus, nursingCare, elimination, behaviors y feeding, si vitalSigns y evolucion estan cubiertos", async () => {
+    mockGetDocs.mockResolvedValue(
+      fakeSnapshot([
+        fullDayCoverageLog({
+          skinStatus: undefined,
+          woundCare: undefined,
+          medicationAdmin: undefined,
+          diaperUse: undefined,
+          diuresis: undefined,
+          bowelMovement: undefined,
+          sundowning: undefined,
+          agitation: undefined,
+          physicalTherapy: undefined,
+          occupationalTherapy: undefined,
+          fullMeals: undefined,
+          partialMeals: undefined,
+        }),
+      ])
+    )
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.isComplete).toBe(true)
+    expect(result.missing).toEqual(
+      expect.arrayContaining(["skinStatus", "nursingCare", "elimination", "behaviors", "feeding"])
+    )
+  })
+
+  it("isComplete es false si falta vitalSigns, aunque las demas categorias esten cubiertas", async () => {
+    mockGetDocs.mockResolvedValue(fakeSnapshot([fullDayCoverageLog({ heartRate: undefined })]))
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.isComplete).toBe(false)
+  })
+
+  it("isComplete es false si falta evolutionVisitType, aunque las demas categorias esten cubiertas", async () => {
+    mockGetDocs.mockResolvedValue(
+      fakeSnapshot([
+        fullDayCoverageLog({
+          evolutionEntries: [{ id: "e1", note: "control", temperature: 36.5, bloodPressureSys: 120, bloodPressureDia: 80 }],
+        }),
+      ])
+    )
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.isComplete).toBe(false)
+  })
+
+  it("de noche sin requiresNightFollowUp, isComplete depende solo de evolutionVisitType (nota vacia lo bloquea)", async () => {
+    mockGetDocs.mockResolvedValue(
+      fakeSnapshot([nightLog({ evolutionEntries: [{ id: "e1", note: "", visitType: "Seguimiento" }] })])
+    )
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "noche")
+    expect(result.isComplete).toBe(false)
+  })
+
+  function nightLog(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "log-1",
+      reportType: "medico",
+      residentId: "r1",
+      endDate: "2026-09-15T22:00:00.000Z",
+      skinStatus: ["Integra"],
+      woundCare: true,
+      medicationAdmin: true,
+      diaperUse: true,
+      diuresis: true,
+      bowelMovement: true,
+      sundowning: true,
+      agitation: true,
+      evolutionEntries: [{ id: "e1", note: "ok", visitType: "Seguimiento" }],
+      ...overrides,
+    }
+  }
+})
+
+describe("calculateShiftCoverage - desglose de campos faltantes", () => {
+  beforeEach(() => {
+    mockGetDocs.mockReset()
+  })
+
+  it("vitalSignsMissingFields lista exactamente los valores faltantes", async () => {
+    mockGetDocs.mockResolvedValue(
+      fakeSnapshot([
+        fullDayCoverageLog({
+          respiratoryRate: undefined,
+          evolutionEntries: [{ id: "e1", note: "control", visitType: "Rutina" }],
+        }),
+      ])
+    )
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.vitalSignsMissingFields.sort()).toEqual(["FR", "T/A", "Temperatura"].sort())
+  })
+
+  it("vitalSignsMissingFields esta vacio si todo esta cubierto", async () => {
+    mockGetDocs.mockResolvedValue(fakeSnapshot([fullDayCoverageLog()]))
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.vitalSignsMissingFields).toEqual([])
+  })
+
+  it("evolutionMissingParts distingue nota, tipo de visita o ambos", async () => {
+    mockGetDocs.mockResolvedValue(
+      fakeSnapshot([fullDayCoverageLog({ evolutionEntries: [{ id: "e1", note: "", visitType: "" }] })])
+    )
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.evolutionMissingParts.sort()).toEqual(["nota de evolución", "tipo de visita"].sort())
+  })
+
+  it("evolutionMissingParts solo marca tipo de visita si la nota ya esta cubierta", async () => {
+    mockGetDocs.mockResolvedValue(
+      fakeSnapshot([fullDayCoverageLog({ evolutionEntries: [{ id: "e1", note: "control", visitType: "" }] })])
+    )
+    const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
+    expect(result.evolutionMissingParts).toEqual(["tipo de visita"])
+  })
+})
