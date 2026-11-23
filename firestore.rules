@@ -191,13 +191,27 @@ service cloud.firestore {
     // coincida con el uid autenticado, se exige que el id EMPIECE por
     // ese uid, para que nadie pueda leer/escribir el borrador de otra
     // persona ni aunque intentara falsificar el campo userId.
+    //
+    // `get` va separado de update/delete: loadDraft() en
+    // use-log-draft.ts hace getDoc() para saber si YA existe un
+    // borrador, y cuando el documento no existe todavía `resource` es
+    // null — evaluar `resource.data.userId` en ese caso niega el
+    // acceso con error en vez de simplemente no encontrar nada. `get`
+    // se valida solo por el prefijo del id (ya ata el borrador al
+    // uid autenticado); update/delete sí pueden exigir
+    // `resource.data.userId` porque ahí el documento YA existe.
     // ============================================================
     match /logDrafts/{draftId} {
-      allow read, update, delete: if isStaff() &&
-        request.auth.uid == resource.data.userId &&
+      allow get: if isStaff() && draftId.matches(request.auth.uid + '_.*');
+      allow delete: if isStaff() &&
+        resource.data.userId == request.auth.uid &&
+        draftId.matches(request.auth.uid + '_.*');
+      allow update: if isStaff() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
         draftId.matches(request.auth.uid + '_.*');
       allow create: if isStaff() &&
-        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.userId == request.auth.uid &&
         draftId.matches(request.auth.uid + '_.*');
     }
 
