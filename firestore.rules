@@ -184,6 +184,24 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // COLECCIÓN: logDrafts (autoguardado de new-log-form.tsx)
+    // Un borrador por usuario+residente+tipo de reporte. El id es
+    // determinista (`${uid}_${residentId}_${reportType}`, armado en
+    // use-log-draft.ts) — además de exigir que el campo userId
+    // coincida con el uid autenticado, se exige que el id EMPIECE por
+    // ese uid, para que nadie pueda leer/escribir el borrador de otra
+    // persona ni aunque intentara falsificar el campo userId.
+    // ============================================================
+    match /logDrafts/{draftId} {
+      allow read, update, delete: if isStaff() &&
+        request.auth.uid == resource.data.userId &&
+        draftId.matches(request.auth.uid + '_.*');
+      allow create: if isStaff() &&
+        request.auth.uid == request.resource.data.userId &&
+        draftId.matches(request.auth.uid + '_.*');
+    }
+
+    // ============================================================
     // COLECCIÓN: resident_contracts
     // Staff mantiene su acceso actual; familiar solo lee el
     // contrato de su residente asignado.

@@ -27,6 +27,7 @@ import { useResidents } from "@/hooks/use-residents"
 import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
 import { useShiftClosures } from "@/hooks/use-shift-closures"
+import { useLogDraft, type LogDraftRecord } from "@/hooks/use-log-draft"
 import {
   getRecentShifts,
   isShiftOver,
@@ -433,6 +434,90 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     control: form.control,
     name: "evolutionNotes",
   });
+
+  // ============================================================
+  // Autoguardado de borrador (Fase 3): un borrador por
+  // usuario+residente+tipo de reporte. Se revisa si existe uno cada
+  // vez que cambia esa combinación; el autoguardado en sí queda en
+  // pausa hasta que el usuario decide continuar el borrador o empezar
+  // de nuevo (draftResolved), para no pisar un borrador real con el
+  // formulario todavía vacío apenas se abre.
+  // ============================================================
+  const watchedResidentId = form.watch("residentId")
+  const { status: draftStatus, lastSavedAt: draftLastSavedAt, loadDraft, saveDraft, clearDraft } = useLogDraft(
+    watchedResidentId || undefined,
+    reportType
+  )
+  const [draftPrompt, setDraftPrompt] = useState<LogDraftRecord | null>(null)
+  const [draftResolved, setDraftResolved] = useState(false)
+  const suppressAutosaveRef = useRef(false)
+
+  useEffect(() => {
+    setDraftResolved(false)
+    setDraftPrompt(null)
+    if (!watchedResidentId || !reportType) return
+    let cancelled = false
+    loadDraft().then((draft) => {
+      if (cancelled) return
+      if (draft) {
+        setDraftPrompt(draft)
+      } else {
+        setDraftResolved(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedResidentId, reportType])
+
+  function applyDraft(draft: LogDraftRecord) {
+    const photoField = reportType === "medico" ? "photoEvidence" : "supplyPhotoEvidence"
+    form.reset({
+      ...form.getValues(),
+      ...(draft.values as Partial<ReportFormValues>),
+      [photoField]: [],
+    })
+    if (draft.shift) {
+      const matchIndex = recentShifts.findIndex(
+        (s) => s.shiftDate === draft.shift!.shiftDate && s.type === draft.shift!.shiftType
+      )
+      if (matchIndex >= 0) {
+        setShiftOptionIndex(matchIndex)
+      } else {
+        setShiftOptionIndex("other")
+        setOtherShiftDate(draft.shift.shiftDate)
+        setOtherShiftType(draft.shift.shiftType)
+      }
+    }
+    setDraftPrompt(null)
+    setDraftResolved(true)
+  }
+
+  function discardDraft() {
+    clearDraft()
+    setDraftPrompt(null)
+    setDraftResolved(true)
+  }
+
+  // Autoguardado: se suscribe a cualquier cambio del formulario y le
+  // pasa a saveDraft() todo menos las fotos (nunca van en el
+  // borrador). saveDraft() ya decide internamente si de verdad cambió
+  // algo antes de escribir.
+  useEffect(() => {
+    if (!reportType || !draftResolved) return
+    const subscription = form.watch((values) => {
+      if (suppressAutosaveRef.current) return
+      const { photoEvidence, supplyPhotoEvidence, ...rest } = values as Record<string, unknown>
+      saveDraft(rest, {
+        shiftDate: selectedShift.shiftDate,
+        shiftType: selectedShift.shiftType,
+        entryTimeOfDay: (values as any).entryTimeOfDay,
+      })
+    })
+    return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportType, draftResolved, selectedShift.shiftDate, selectedShift.shiftType])
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -1010,6 +1095,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         await withTimeout(addLog(supplyLogData), SAVE_TIMEOUT_MS);
       }
 
+      suppressAutosaveRef.current = true
+      await clearDraft()
+
       toast({
         title: "Reporte Guardado",
         description: `Se ha añadido un nuevo reporte de ${data.reportType}.`,
@@ -1315,6 +1403,27 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   </p>
                 </div>
               </div>
+            )}
+
+            {draftPrompt && (
+              <Alert className="border-blue-300 bg-blue-50">
+                <AlertTriangle className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800">
+                  Tienes un borrador
+                  {draftPrompt.updatedAt &&
+                    ` de las ${draftPrompt.updatedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
+                </AlertTitle>
+                <AlertDescription className="text-blue-800">
+                  <div className="flex gap-2 mt-2">
+                    <Button type="button" size="sm" onClick={() => applyDraft(draftPrompt)}>
+                      Continuar
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={discardDraft}>
+                      Empezar de nuevo
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
             )}
 
             {reportType && (
@@ -2121,11 +2230,21 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           </div>
 
           {reportType && (
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit" disabled={isLoading}>Guardar Reporte</Button>
+            <DialogFooter className="sm:justify-between items-center">
+              <p className="text-xs text-muted-foreground order-last sm:order-first">
+                {draftStatus === "saving" && "Guardando…"}
+                {draftStatus === "saved" && draftLastSavedAt &&
+                  `Borrador guardado ${draftLastSavedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
+                {draftStatus === "offline" && (
+                  <span className="text-amber-600">Sin conexión: se enviará al volver.</span>
+                )}
+              </p>
+              <div className="flex gap-2">
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button type="submit" disabled={isLoading}>Guardar Reporte</Button>
+              </div>
             </DialogFooter>
           )}
         </form>
