@@ -33,22 +33,13 @@ service cloud.firestore {
       return isStaff() && myRole().role == 'Administrador';
     }
 
-    // Cierre de turno tardio (Fase 4 del plan de cierre de turno):
-    // user_roles solo expone `role`, no la lista granular de
-    // `permissions` de la coleccion `staff` — por eso esta validacion
-    // es por nombre de rol, igual que isAdmin(), y no por la clave de
-    // permiso abstracta `close_shift_override` que usa la UI.
-    function isSupervisorOrAdmin() {
-      return isStaff() && (myRole().role == 'Administrador' || myRole().role == 'Supervisor');
-    }
-
     // Cierre de turno anticipado (turno todavia no termina): permitido
     // para cualquiera de los 4 roles de personal — hoy, en la
     // practica, es lo mismo que isStaff() (no existe ningun rol de
     // personal excluido; el unico rol no incluido es "Acceso Familiar",
     // que ya no es staff y no puede crear shiftClosures). Se deja
-    // explicito por nombre de rol, igual que isSupervisorOrAdmin(), en
-    // vez de depender silenciosamente de la definicion de isStaff().
+    // explicito por nombre de rol en vez de depender silenciosamente
+    // de la definicion de isStaff().
     function canCloseShiftEarly() {
       return isStaff() && (
         myRole().role == 'Administrador' ||
@@ -172,8 +163,10 @@ service cloud.firestore {
     // COLECCIÓN: shiftClosures (Fase 3 del cierre de turno)
     // Se crea una sola vez y nunca se edita ni se borra — es el
     // registro definitivo de que un turno quedo cerrado. Un cierre
-    // isLate:true (fuera de la ventana normal de 2h) solo lo puede
-    // crear un Supervisor o Administrador. Un cierre anticipado (el
+    // tardio (isLate:true, mas de 2h despues del fin del turno) ya NO
+    // esta restringido por rol — cualquier staff con permiso de cerrar
+    // puede hacerlo, el personal de enfermeria no siempre alcanza a
+    // cerrar dentro de la ventana normal. Un cierre anticipado (el
     // turno todavia no termina, shiftEndAt > request.time) solo lo
     // puede crear alguno de los 4 roles de personal (canCloseShiftEarly).
     // shiftEndAt es una copia en Timestamp de shiftEnd (que en el resto
@@ -185,11 +178,41 @@ service cloud.firestore {
     match /shiftClosures/{closureId} {
       allow read: if isStaff();
       allow create: if isStaff() && (
-        request.resource.data.isLate != true || isSupervisorOrAdmin()
-      ) && (
         request.time >= request.resource.data.get('shiftEndAt', request.time) || canCloseShiftEarly()
       );
       allow update, delete: if false;
+    }
+
+    // ============================================================
+    // COLECCIÓN: logDrafts (autoguardado de new-log-form.tsx)
+    // Un borrador por usuario+residente+tipo de reporte. El id es
+    // determinista (`${uid}_${residentId}_${reportType}`, armado en
+    // use-log-draft.ts) — además de exigir que el campo userId
+    // coincida con el uid autenticado, se exige que el id EMPIECE por
+    // ese uid, para que nadie pueda leer/escribir el borrador de otra
+    // persona ni aunque intentara falsificar el campo userId.
+    //
+    // `get` va separado de update/delete: loadDraft() en
+    // use-log-draft.ts hace getDoc() para saber si YA existe un
+    // borrador, y cuando el documento no existe todavía `resource` es
+    // null — evaluar `resource.data.userId` en ese caso niega el
+    // acceso con error en vez de simplemente no encontrar nada. `get`
+    // se valida solo por el prefijo del id (ya ata el borrador al
+    // uid autenticado); update/delete sí pueden exigir
+    // `resource.data.userId` porque ahí el documento YA existe.
+    // ============================================================
+    match /logDrafts/{draftId} {
+      allow get: if isStaff() && draftId.matches(request.auth.uid + '_.*');
+      allow delete: if isStaff() &&
+        resource.data.userId == request.auth.uid &&
+        draftId.matches(request.auth.uid + '_.*');
+      allow update: if isStaff() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
+        draftId.matches(request.auth.uid + '_.*');
+      allow create: if isStaff() &&
+        request.resource.data.userId == request.auth.uid &&
+        draftId.matches(request.auth.uid + '_.*');
     }
 
     // ============================================================

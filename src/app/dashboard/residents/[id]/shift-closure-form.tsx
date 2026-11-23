@@ -251,8 +251,12 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
   const shiftWindow = getShiftWindow(shiftDateInput, shiftType)
   const canCloseEarly = hasPermission("close_shift_early")
   const closingStatus = getShiftClosingStatus(shiftWindow.end, new Date(), canCloseEarly)
-  const canOverrideLate = hasPermission("close_shift_override")
-  const isBlockedByTime = closingStatus === "too-early" || (closingStatus === "late" && !canOverrideLate)
+  // El cierre tardio (mas de 2h despues del fin del turno) ya no
+  // requiere close_shift_override — el personal de enfermeria no
+  // siempre alcanza a cerrar dentro de la ventana normal. Ese permiso
+  // sigue existiendo en ROLE_PERMISSIONS (ver types/user.ts) por si se
+  // necesita para otra cosa, pero ya no bloquea nada aqui.
+  const isBlockedByTime = closingStatus === "too-early"
   const isComplete = coverage?.isComplete ?? false
   const canSubmit = !isBlockedByTime && isComplete && !isSubmitting
 
@@ -364,16 +368,7 @@ export default function ShiftClosureForm({ resident, onFormSubmit }: ShiftClosur
           </AlertDescription>
         </Alert>
       )}
-      {closingStatus === "late" && !canOverrideLate && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Fuera de tiempo</AlertTitle>
-          <AlertDescription>
-            Este turno debía cerrarse antes de las 2 horas posteriores a su fin. Solo un Supervisor o Administrador puede cerrarlo ahora.
-          </AlertDescription>
-        </Alert>
-      )}
-      {closingStatus === "late" && canOverrideLate && (
+      {closingStatus === "late" && (
         <Alert className="border-amber-300 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800">Vas a cerrar este turno fuera de tiempo</AlertTitle>

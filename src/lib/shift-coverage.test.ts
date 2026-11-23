@@ -11,7 +11,17 @@ vi.mock("firebase/firestore", () => ({
 
 vi.mock("@/lib/firebase", () => ({ db: {} }))
 
-import { getShiftForDate, getShiftWindow, getShiftClosingStatus, calculateShiftCoverage } from "./shift-coverage"
+import {
+  getShiftForDate,
+  getShiftWindow,
+  getShiftClosingStatus,
+  calculateShiftCoverage,
+  getRecentShifts,
+  isShiftOver,
+  resolveShiftEntryDateTime,
+  validateShiftEntryDateTime,
+  calculateIsLateEntry,
+} from "./shift-coverage"
 
 function fakeSnapshot(logs: Array<Record<string, unknown>>) {
   return {
@@ -315,6 +325,33 @@ describe("getShiftClosingStatus", () => {
     const now = new Date(2026, 8, 16, 10, 0, 0)
     expect(getShiftClosingStatus(shiftEnd, now)).toBe("late")
   })
+
+  // Turno noche: termina a las 07:00 del dia siguiente. Misma ventana
+  // de gracia de 2h (NORMAL_CLOSE_GRACE_HOURS), nunca una hora fija de
+  // "9am" hardcodeada — se recalcula a partir de shiftEnd igual que de
+  // dia, solo que acá shiftEnd ya cae al dia siguiente.
+  describe("turno noche (shiftEnd = 07:00 del dia siguiente)", () => {
+    const nightShiftEnd = new Date(2026, 8, 16, 7, 0, 0, 0)
+
+    it("normal justo al terminar el turno (07:00)", () => {
+      expect(getShiftClosingStatus(nightShiftEnd, nightShiftEnd)).toBe("normal")
+    })
+
+    it("normal hasta las 08:59:59", () => {
+      const now = new Date(2026, 8, 16, 8, 59, 59)
+      expect(getShiftClosingStatus(nightShiftEnd, now)).toBe("normal")
+    })
+
+    it("late justo al cumplirse las 2 horas de gracia (09:00:00)", () => {
+      const now = new Date(2026, 8, 16, 9, 0, 0)
+      expect(getShiftClosingStatus(nightShiftEnd, now)).toBe("late")
+    })
+
+    it("too-early antes de que termine el turno noche, sin permiso de cierre anticipado", () => {
+      const now = new Date(2026, 8, 16, 6, 59, 59)
+      expect(getShiftClosingStatus(nightShiftEnd, now)).toBe("too-early")
+    })
+  })
 })
 
 describe("calculateShiftCoverage - lastVitalsSnapshot y logIds", () => {
@@ -501,5 +538,113 @@ describe("calculateShiftCoverage - desglose de campos faltantes", () => {
     )
     const result = await calculateShiftCoverage("r1", "2026-09-15", "dia")
     expect(result.evolutionMissingParts).toEqual([])
+  })
+})
+
+describe("getRecentShifts", () => {
+  it("devuelve el turno actual primero, mas reciente a mas antiguo", () => {
+    const now = new Date(2026, 8, 15, 10, 0, 0) // turno dia 15 sep
+    const shifts = getRecentShifts(now)
+    expect(shifts).toHaveLength(3)
+    expect(shifts[0]).toMatchObject({ type: "dia", shiftDate: "2026-09-15" })
+    expect(shifts[1]).toMatchObject({ type: "noche", shiftDate: "2026-09-14" })
+    expect(shifts[2]).toMatchObject({ type: "dia", shiftDate: "2026-09-14" })
+  })
+
+  it("respeta el parametro count", () => {
+    const now = new Date(2026, 8, 15, 10, 0, 0)
+    expect(getRecentShifts(now, 1)).toHaveLength(1)
+    expect(getRecentShifts(now, 5)).toHaveLength(5)
+  })
+})
+
+describe("isShiftOver", () => {
+  it("false mientras el turno dia no termina", () => {
+    expect(isShiftOver("2026-09-15", "dia", new Date(2026, 8, 15, 18, 59, 59))).toBe(false)
+  })
+
+  it("true justo al terminar el turno dia (19:00)", () => {
+    expect(isShiftOver("2026-09-15", "dia", new Date(2026, 8, 15, 19, 0, 0))).toBe(true)
+  })
+
+  it("true bastante despues de terminado", () => {
+    expect(isShiftOver("2026-09-15", "dia", new Date(2026, 8, 16, 10, 0, 0))).toBe(true)
+  })
+
+  it("funciona igual para turno noche, que cruza medianoche", () => {
+    expect(isShiftOver("2026-09-15", "noche", new Date(2026, 8, 16, 6, 59, 59))).toBe(false)
+    expect(isShiftOver("2026-09-15", "noche", new Date(2026, 8, 16, 7, 0, 0))).toBe(true)
+  })
+})
+
+describe("resolveShiftEntryDateTime", () => {
+  it("turno dia: la hora queda en el mismo dia calendario que shiftDate", () => {
+    const resolved = resolveShiftEntryDateTime("2026-09-15", "dia", "14:30")
+    expect(resolved).toEqual(new Date(2026, 8, 15, 14, 30, 0, 0))
+  })
+
+  it("turno noche, hora >= 19:00: mismo dia calendario que shiftDate", () => {
+    const resolved = resolveShiftEntryDateTime("2026-09-15", "noche", "20:15")
+    expect(resolved).toEqual(new Date(2026, 8, 15, 20, 15, 0, 0))
+  })
+
+  it("turno noche, hora < 07:00: pertenece al dia calendario SIGUIENTE a shiftDate", () => {
+    const resolved = resolveShiftEntryDateTime("2026-09-15", "noche", "03:45")
+    expect(resolved).toEqual(new Date(2026, 8, 16, 3, 45, 0, 0))
+  })
+
+  it("turno noche, limite exacto 07:00: NO cruza (pertenece al mismo shiftDate, el turno ya termino)", () => {
+    const resolved = resolveShiftEntryDateTime("2026-09-15", "noche", "07:00")
+    expect(resolved).toEqual(new Date(2026, 8, 15, 7, 0, 0, 0))
+  })
+})
+
+describe("validateShiftEntryDateTime", () => {
+  const now = new Date(2026, 8, 16, 10, 0, 0)
+
+  it("valida una hora dentro de la ventana del turno dia", () => {
+    const entry = new Date(2026, 8, 15, 14, 30, 0, 0)
+    expect(validateShiftEntryDateTime("2026-09-15", "dia", entry, now)).toEqual({ valid: true })
+  })
+
+  it("rechaza una hora anterior al inicio del turno", () => {
+    const entry = new Date(2026, 8, 15, 6, 59, 59)
+    const result = validateShiftEntryDateTime("2026-09-15", "dia", entry, now)
+    expect(result.valid).toBe(false)
+  })
+
+  it("rechaza una hora igual o posterior al fin del turno", () => {
+    const entry = new Date(2026, 8, 15, 19, 0, 0)
+    const result = validateShiftEntryDateTime("2026-09-15", "dia", entry, now)
+    expect(result.valid).toBe(false)
+  })
+
+  it("rechaza una hora futura respecto a `now`, aunque caiga dentro del turno", () => {
+    const futureNow = new Date(2026, 8, 15, 12, 0, 0)
+    const entry = new Date(2026, 8, 15, 14, 0, 0)
+    const result = validateShiftEntryDateTime("2026-09-15", "dia", entry, futureNow)
+    expect(result.valid).toBe(false)
+  })
+
+  it("acepta una hora de turno noche que cruza medianoche", () => {
+    const entry = resolveShiftEntryDateTime("2026-09-15", "noche", "03:45")
+    expect(validateShiftEntryDateTime("2026-09-15", "noche", entry, now)).toEqual({ valid: true })
+  })
+})
+
+describe("calculateIsLateEntry", () => {
+  it("false si enteredAt cae dentro de la ventana normal (fin + 2h)", () => {
+    const enteredAt = new Date(2026, 8, 15, 20, 59, 59) // turno dia termina 19:00
+    expect(calculateIsLateEntry("2026-09-15", "dia", enteredAt)).toBe(false)
+  })
+
+  it("true justo al cumplirse las 2 horas de gracia", () => {
+    const enteredAt = new Date(2026, 8, 15, 21, 0, 0)
+    expect(calculateIsLateEntry("2026-09-15", "dia", enteredAt)).toBe(true)
+  })
+
+  it("funciona igual para turno noche (fin 07:00, gracia hasta 09:00)", () => {
+    expect(calculateIsLateEntry("2026-09-15", "noche", new Date(2026, 8, 16, 8, 59, 59))).toBe(false)
+    expect(calculateIsLateEntry("2026-09-15", "noche", new Date(2026, 8, 16, 9, 0, 0))).toBe(true)
   })
 })

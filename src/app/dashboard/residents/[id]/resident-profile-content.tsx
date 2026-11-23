@@ -951,10 +951,17 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                     paginatedLogs.map((log) => (
                       <div key={log.id} className="border p-4 rounded-lg space-y-2">
                         <div className="flex items-center justify-between">
-                          <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
-                            {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1.5" /> : <Truck className="h-3 w-3 mr-1.5" />}
-                            {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
+                              {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1.5" /> : <Truck className="h-3 w-3 mr-1.5" />}
+                              {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
+                            </Badge>
+                            {log.isLateEntry && (
+                              <Badge variant="outline" className="border-amber-600 text-amber-700 text-[10px] px-1.5 py-0">
+                                Después del turno
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">
                               {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
@@ -1012,10 +1019,17 @@ export default function ResidentProfilePageContent({ id: residentId }: { id: str
                               {new Date(log.endDate).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
                             </TableCell>
                             <TableCell className="cursor-pointer" onClick={() => handleLogClick(log)}>
-                              <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
-                                {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
-                                {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
-                              </Badge>
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className={log.reportType === 'medico' ? 'border-blue-500' : 'border-orange-500'}>
+                                  {log.reportType === 'medico' ? <Stethoscope className="h-3 w-3 mr-1" /> : <Truck className="h-3 w-3 mr-1" />}
+                                  {log.reportType === 'medico' ? 'Médico' : 'Suministro'}
+                                </Badge>
+                                {log.isLateEntry && (
+                                  <Badge variant="outline" className="border-amber-600 text-amber-700 text-[10px] px-1.5 py-0">
+                                    Después del turno
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="max-w-xs truncate cursor-pointer" onClick={() => handleLogClick(log)}>
                               {log.reportType === 'medico'

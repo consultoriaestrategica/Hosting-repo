@@ -74,6 +74,7 @@ type EvolutionEntryUI = {
   temperature?: number
   professionalName?: string
   visitType?: string
+  isLateEntry?: boolean
 }
 
 export default function LogDetailDialog({
@@ -117,6 +118,7 @@ export default function LogDetailDialog({
       temperature: entry.temperature,
       professionalName: entry.professionalName,
       visitType: entry.visitType,
+      isLateEntry: entry.isLateEntry,
     }))
   } else {
     // Fallback al sistema viejo (evolutionNotes)
@@ -203,6 +205,7 @@ export default function LogDetailDialog({
         residentId: typedLog.residentId,
         reportType: typedLog.reportType,
         endDate: typedLog.endDate,
+        isLateEntry: typedLog.isLateEntry,
         createdBy: typedLog.createdBy,
         finalComment: typedLog.finalComment,
         pendingTasks: typedLog.pendingTasks,
@@ -228,6 +231,7 @@ export default function LogDetailDialog({
           bloodPressureSys: entry.bloodPressureSys,
           bloodPressureDia: entry.bloodPressureDia,
           temperature: entry.temperature,
+          isLateEntry: entry.isLateEntry,
         })),
       },
       residentName
@@ -262,17 +266,23 @@ export default function LogDetailDialog({
                   </span>
                 </p>
               </div>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "shrink-0",
-                  isMedical
-                    ? "border-blue-500 text-blue-700"
-                    : "border-orange-500 text-orange-700"
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    isMedical
+                      ? "border-blue-500 text-blue-700"
+                      : "border-orange-500 text-orange-700"
+                  )}
+                >
+                  {isMedical ? "Médico" : "Suministro"}
+                </Badge>
+                {typedLog.isLateEntry && (
+                  <Badge variant="outline" className="border-amber-600 text-amber-700">
+                    Registrado después del turno
+                  </Badge>
                 )}
-              >
-                {isMedical ? "Médico" : "Suministro"}
-              </Badge>
+              </div>
             </div>
           </DialogHeader>
 
@@ -316,11 +326,18 @@ export default function LogDetailDialog({
                           <span className="font-semibold text-xs text-slate-500">
                             Evolución #{index + 1}
                           </span>
-                          {entry.time && (
-                            <span className="text-[11px] text-slate-500">
-                              {entry.time}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {entry.isLateEntry && (
+                              <Badge variant="outline" className="border-amber-600 text-amber-700 text-[10px] px-1.5 py-0">
+                                Después del turno
+                              </Badge>
+                            )}
+                            {entry.time && (
+                              <span className="text-[11px] text-slate-500">
+                                {entry.time}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Información del profesional */}

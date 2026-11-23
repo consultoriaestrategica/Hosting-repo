@@ -6,8 +6,8 @@ import {
   collection,
   query,
   onSnapshot,
-  addDoc,
   doc,
+  setDoc,
   updateDoc,
   deleteDoc,
   Timestamp,
@@ -24,6 +24,8 @@ import { onAuthStateChanged } from "firebase/auth"
 
 export type EvolutionEntry = {
   id: string
+  // Hora real del hecho (editable por el usuario si el turno ya
+  // terminó) — NO es la hora de digitación, ver enteredAt.
   createdAt: string
   createdTimeLabel: string
   professionalName?: string
@@ -35,6 +37,10 @@ export type EvolutionEntry = {
   bloodPressureSys?: number
   bloodPressureDia?: number
   temperature?: number
+  // Hora real en que se guardó esta evolución (no editable). Junto con
+  // isLateEntry, mismo tratamiento que BaseLog — ver comentario ahí.
+  enteredAt?: string
+  isLateEntry?: boolean
 }
 
 export type CreatedByInfo = {
@@ -47,12 +53,29 @@ export type BaseLog = {
   id: string
   residentId: string
   startDate: string
+  // Hora real del HECHO (no de digitación) — invariante sin cambios:
+  // fetchLogsInWindow() en shift-coverage.ts sigue filtrando por este
+  // campo, así que siempre debe caer dentro de la ventana de
+  // shiftDate/shiftType.
   endDate: string
   reportType: "medico" | "suministro"
   notes?: string
   createdAt?: Date | null
   updatedAt?: Date | null
   createdBy?: CreatedByInfo
+  // ============================================================
+  // Registros por turno: a qué turno pertenece este registro y cuándo
+  // se digitó realmente (new-log-form.tsx). Ausentes en logs creados
+  // antes de este cambio — esos se siguen leyendo igual, derivando el
+  // turno de `endDate` vía getShiftForDate() cuando haga falta (ver
+  // shift-coverage.ts), sin necesidad de migrarlos.
+  // ============================================================
+  shiftDate?: string // "YYYY-MM-DD"
+  shiftType?: "dia" | "noche"
+  enteredAt?: string // ISO; hora real de digitación, no editable
+  // true solo si enteredAt cayó pasada la ventana normal (fin del
+  // turno + 2h) — ver calculateIsLateEntry() en shift-coverage.ts.
+  isLateEntry?: boolean
 }
 
 export type MedicalLogFields = {
@@ -207,15 +230,23 @@ export function useLogs() {
   // -------------------------------------------------
   // Crear un nuevo LOG
   // -------------------------------------------------
-  const addLog = useCallback(async (data: NewLogInput) => {
+  // `id` es OBLIGATORIO (no autogenerado con addDoc): con la cache
+  // local de Firestore (persistentLocalCache en lib/firebase.ts),
+  // addDoc() sin internet nunca resuelve y el withTimeout() del
+  // llamador lo marcaba como error, aunque la escritura real seguía
+  // en cola — si el usuario reintentaba, el registro quedaba
+  // duplicado al volver la señal. El llamador genera el id UNA SOLA
+  // VEZ por instancia del formulario (useRef) y usa setDoc(), que con
+  // el mismo id es idempotente: reintentar sobreescribe el mismo
+  // documento en vez de crear uno nuevo.
+  const addLog = useCallback(async (id: string, data: NewLogInput) => {
     const now = new Date()
-    const logsColRef = collection(db, "logs")
     const payload = {
       ...data,
       createdAt: Timestamp.fromDate(now),
       updatedAt: Timestamp.fromDate(now),
     }
-    await addDoc(logsColRef, payload)
+    await setDoc(doc(db, "logs", id), payload)
   }, [])
 
   // -------------------------------------------------

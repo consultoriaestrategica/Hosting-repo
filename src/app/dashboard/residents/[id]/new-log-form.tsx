@@ -18,7 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
@@ -26,7 +26,20 @@ import { useLogs, type MedicalLogFields } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
-import React, { useState, useEffect, useRef } from "react"
+import { useShiftClosures } from "@/hooks/use-shift-closures"
+import { useLogDraft, type LogDraftRecord } from "@/hooks/use-log-draft"
+import { db } from "@/lib/firebase"
+import { collection, doc } from "firebase/firestore"
+import {
+  getRecentShifts,
+  isShiftOver,
+  resolveShiftEntryDateTime,
+  validateShiftEntryDateTime,
+  calculateIsLateEntry,
+  type Shift,
+  type ShiftType,
+} from "@/lib/shift-coverage"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { 
   Mic, 
@@ -113,6 +126,14 @@ const photoEvidenceSchema = z.object({
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }).min(1, "Debe seleccionar un residente."),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
+
+  // Registros por turno: a qué turno pertenece este registro y la
+  // hora real del hecho (ver superRefine más abajo para su validación
+  // cruzada contra la ventana del turno elegido).
+  shiftDate: z.string().min(1, "Debe seleccionar un turno."),
+  shiftType: z.enum(["dia", "noche"], { required_error: "Debe seleccionar un turno." }),
+  entryTimeOfDay: z.string().optional(),
+
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
@@ -152,6 +173,32 @@ const reportFormSchema = z.object({
   supplyNotes: z.string().optional(),
   supplyPhotoEvidence: z.array(photoEvidenceSchema).optional(),
 }).superRefine((data, ctx) => {
+    // Hora real del hecho: obligatoria si el turno elegido ya
+    // terminó (no se puede asumir "ahora"); opcional mientras el
+    // turno sigue en curso, pero si se escribe igual debe caer dentro
+    // de la ventana de ese turno y no ser futura.
+    if (data.shiftDate && data.shiftType) {
+        const now = new Date()
+        const shiftEnded = isShiftOver(data.shiftDate, data.shiftType, now)
+        if (shiftEnded && (!data.entryTimeOfDay || data.entryTimeOfDay.trim().length === 0)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['entryTimeOfDay'],
+                message: "La hora real del hecho es obligatoria porque el turno ya terminó.",
+            });
+        } else if (data.entryTimeOfDay) {
+            const resolved = resolveShiftEntryDateTime(data.shiftDate, data.shiftType, data.entryTimeOfDay)
+            const validation = validateShiftEntryDateTime(data.shiftDate, data.shiftType, resolved, now)
+            if (!validation.valid) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['entryTimeOfDay'],
+                    message: validation.error ?? "Hora inválida.",
+                });
+            }
+        }
+    }
+
     if (data.reportType === 'suministro') {
         if (!data.supplierName || data.supplierName.trim().length < 3) {
             ctx.addIssue({
@@ -209,6 +256,25 @@ type ReportFormValues = z.infer<typeof reportFormSchema>
 type PhotoEvidence = z.infer<typeof photoEvidenceSchema>
 type DictationField = `evolutionNotes.${number}.note` | "supplyNotes";
 
+// Nombres legibles para el aviso "Faltan N datos obligatorios" — ver
+// onInvalid() más abajo.
+const FIELD_LABELS_FOR_ERRORS: Record<string, string> = {
+  residentId: "Residente",
+  reportType: "Tipo de registro",
+  shiftDate: "Turno",
+  shiftType: "Turno",
+  entryTimeOfDay: "Hora real del hecho",
+  heartRate: "F.C",
+  respiratoryRate: "F.R",
+  spo2: "SpO₂",
+  bloodPressureSys: "T/A sistólica",
+  bloodPressureDia: "T/A diastólica",
+  temperature: "Temperatura",
+  evolutionNotes: "Nota de evolución",
+  supplierName: "Nombre de quien entrega",
+  supplyDescription: "Descripción del suministro",
+}
+
 // Firestore rechaza cualquier valor `undefined` explicito en un
 // addDoc/setDoc/updateDoc, tanto en un campo raiz como anidado dentro
 // de un array (ej. evolutionEntries). Los signos vitales de este
@@ -265,6 +331,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { residents } = useResidents()
   const { user: authUser } = useAuth()
   const { user: staffUser } = useUser()
+  const { getShiftClosure } = useShiftClosures()
 
   const allowedImageTypes = {
     'image/jpeg': ['.jpg', '.jpeg'],
@@ -280,6 +347,12 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const maxFileSize = 10 * 1024 * 1024;
 
   const startDateRef = React.useRef<string>(new Date().toISOString());
+  // Id del log generado una sola vez por intento de guardado — ver
+  // comentario en addLog() (use-logs.ts) sobre por qué setDoc() con
+  // este mismo id en cada reintento es lo que hace el guardado
+  // idempotente (sin esto, reintentar tras un timeout sin internet
+  // duplicaba el registro al volver la señal).
+  const logIdRef = React.useRef<string>(doc(collection(db, "logs")).id);
   const [isListening, setIsListening] = useState(false);
   const [activeDictationField, setActiveDictationField] = useState<DictationField | null>(null);
   const recognitionRef = React.useRef<SpeechRecognition | null>(null);
@@ -314,11 +387,38 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const [gluco2hAlmuerzoChecked, setGluco2hAlmuerzoChecked] = useState(false)
   const [gluco2hCenaChecked, setGluco2hCenaChecked] = useState(false)
 
+  // ============================================================
+  // Registros por turno: "¿De qué turno es este registro?" — el
+  // turno actual + los 2 anteriores como opciones rápidas, más "otro
+  // turno" (fecha + día/noche) para digitación tardía fuera de esas 3.
+  // ============================================================
+  const recentShifts = useMemo(() => getRecentShifts(new Date()), [])
+  const [shiftOptionIndex, setShiftOptionIndex] = useState<number | "other">(0)
+  const [otherShiftDate, setOtherShiftDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })
+  const [otherShiftType, setOtherShiftType] = useState<ShiftType>("dia")
+
+  const selectedShift: { shiftDate: string; shiftType: ShiftType } =
+    shiftOptionIndex === "other"
+      ? { shiftDate: otherShiftDate, shiftType: otherShiftType }
+      : { shiftDate: recentShifts[shiftOptionIndex].shiftDate, shiftType: recentShifts[shiftOptionIndex].type }
+
+  function shiftOptionLabel(shift: Shift, isCurrent: boolean): string {
+    const dateLabel = shift.start.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+    const turnoLabel = shift.type === "dia" ? "Día (7am-7pm)" : "Noche (7pm-7am)"
+    return `${turnoLabel} · ${dateLabel}${isCurrent ? " (actual)" : ""}`
+  }
+
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
     defaultValues: {
       residentId: residentId || "",
       reportType: undefined,
+      shiftDate: recentShifts[0].shiftDate,
+      shiftType: recentShifts[0].type,
+      entryTimeOfDay: "",
       heartRate: undefined,
       respiratoryRate: undefined,
       spo2: undefined,
@@ -361,6 +461,91 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     control: form.control,
     name: "evolutionNotes",
   });
+
+  // ============================================================
+  // Autoguardado de borrador (Fase 3): un borrador por
+  // usuario+residente+tipo de reporte. Se revisa si existe uno cada
+  // vez que cambia esa combinación; el autoguardado en sí queda en
+  // pausa hasta que el usuario decide continuar el borrador o empezar
+  // de nuevo (draftResolved), para no pisar un borrador real con el
+  // formulario todavía vacío apenas se abre.
+  // ============================================================
+  const watchedResidentId = form.watch("residentId")
+  const { status: draftStatus, lastSavedAt: draftLastSavedAt, loadDraft, saveDraft, clearDraft } = useLogDraft(
+    watchedResidentId || undefined,
+    reportType
+  )
+  const [draftPrompt, setDraftPrompt] = useState<LogDraftRecord | null>(null)
+  const [draftResolved, setDraftResolved] = useState(false)
+  const suppressAutosaveRef = useRef(false)
+  const [invalidFieldsMessage, setInvalidFieldsMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDraftResolved(false)
+    setDraftPrompt(null)
+    if (!watchedResidentId || !reportType) return
+    let cancelled = false
+    loadDraft().then((draft) => {
+      if (cancelled) return
+      if (draft) {
+        setDraftPrompt(draft)
+      } else {
+        setDraftResolved(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedResidentId, reportType])
+
+  function applyDraft(draft: LogDraftRecord) {
+    const photoField = reportType === "medico" ? "photoEvidence" : "supplyPhotoEvidence"
+    form.reset({
+      ...form.getValues(),
+      ...(draft.values as Partial<ReportFormValues>),
+      [photoField]: [],
+    })
+    if (draft.shift) {
+      const matchIndex = recentShifts.findIndex(
+        (s) => s.shiftDate === draft.shift!.shiftDate && s.type === draft.shift!.shiftType
+      )
+      if (matchIndex >= 0) {
+        setShiftOptionIndex(matchIndex)
+      } else {
+        setShiftOptionIndex("other")
+        setOtherShiftDate(draft.shift.shiftDate)
+        setOtherShiftType(draft.shift.shiftType)
+      }
+    }
+    setDraftPrompt(null)
+    setDraftResolved(true)
+  }
+
+  function discardDraft() {
+    clearDraft()
+    setDraftPrompt(null)
+    setDraftResolved(true)
+  }
+
+  // Autoguardado: se suscribe a cualquier cambio del formulario y le
+  // pasa a saveDraft() todo menos las fotos (nunca van en el
+  // borrador). saveDraft() ya decide internamente si de verdad cambió
+  // algo antes de escribir.
+  useEffect(() => {
+    if (!reportType || !draftResolved) return
+    const subscription = form.watch((values) => {
+      if (suppressAutosaveRef.current) return
+      const { photoEvidence, supplyPhotoEvidence, ...rest } = values as Record<string, unknown>
+      saveDraft(rest, {
+        shiftDate: selectedShift.shiftDate,
+        shiftType: selectedShift.shiftType,
+        entryTimeOfDay: (values as any).entryTimeOfDay,
+      })
+    })
+    return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportType, draftResolved, selectedShift.shiftDate, selectedShift.shiftType])
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -631,6 +816,25 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     };
   }, [residentId, form]);
 
+  // Sincroniza el turno elegido al form, y propone una hora por
+  // defecto para "hora real del hecho": si el turno sigue en curso,
+  // la hora actual (editable); si ya terminó, se deja vacío para que
+  // el usuario esté obligado a digitarla (ver superRefine del schema).
+  useEffect(() => {
+    form.setValue("shiftDate", selectedShift.shiftDate, { shouldValidate: false })
+    form.setValue("shiftType", selectedShift.shiftType, { shouldValidate: false })
+
+    const now = new Date()
+    if (!isShiftOver(selectedShift.shiftDate, selectedShift.shiftType, now)) {
+      const hh = String(now.getHours()).padStart(2, "0")
+      const mm = String(now.getMinutes()).padStart(2, "0")
+      form.setValue("entryTimeOfDay", `${hh}:${mm}`, { shouldValidate: false })
+    } else {
+      form.setValue("entryTimeOfDay", "", { shouldValidate: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShift.shiftDate, selectedShift.shiftType])
+
   // 👉 Construye un resumen estructurado con todos los campos médicos
   function buildMedicalSummary(data: ReportFormValues) {
     const lines: string[] = []
@@ -780,8 +984,27 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   }
 
   async function onSubmit(data: ReportFormValues) {
+    setInvalidFieldsMessage(null)
     if (isListening) {
       recognitionRef.current?.stop()
+    }
+
+    // Bloqueo por turno cerrado: el id de shiftClosures no es
+    // determinista (ver use-shift-closures.ts), así que esta
+    // verificación es solo del lado del cliente — no hay un path fijo
+    // contra el cual firestore.rules pueda validar esto con exists().
+    try {
+      const existingClosure = await getShiftClosure(data.residentId, data.shiftDate, data.shiftType)
+      if (existingClosure) {
+        toast({
+          variant: "destructive",
+          title: "Este turno ya fue cerrado",
+          description: "No se pueden agregar nuevos registros a un turno ya cerrado. Selecciona otro turno.",
+        })
+        return
+      }
+    } catch (error) {
+      console.error("Error al verificar si el turno está cerrado:", error)
     }
 
     const currentTime = new Date().toLocaleTimeString('es-ES', {
@@ -790,10 +1013,25 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       hour12: false
     });
 
+    // enteredAt: hora real de digitación (no editable). eventDate:
+    // hora real del hecho — la que elige el usuario si el turno ya
+    // terminó o si la ajustó manualmente; "ahora" si el turno sigue en
+    // curso y no la tocó. isLateEntry se calcula sobre enteredAt, no
+    // sobre eventDate (ver calculateIsLateEntry en shift-coverage.ts).
+    const enteredAt = new Date()
+    const eventDate = data.entryTimeOfDay
+      ? resolveShiftEntryDateTime(data.shiftDate, data.shiftType, data.entryTimeOfDay)
+      : enteredAt
+    const isLateEntry = calculateIsLateEntry(data.shiftDate, data.shiftType, enteredAt)
+
     const baseLogData = {
       residentId: data.residentId,
       startDate: startDateRef.current,
-      endDate: new Date().toISOString(),
+      endDate: eventDate.toISOString(),
+      shiftDate: data.shiftDate,
+      shiftType: data.shiftType,
+      enteredAt: enteredAt.toISOString(),
+      isLateEntry,
       reportType: data.reportType,
     }
 
@@ -822,7 +1060,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         // anidado dentro de evolutionEntries (un array) en el documento.
         const initialEvolutionEntry = omitUndefined({
           id: `evo-${Date.now()}`,
-          createdAt: new Date().toISOString(),
+          createdAt: eventDate.toISOString(),
+          enteredAt: enteredAt.toISOString(),
+          isLateEntry,
           createdTimeLabel: currentTime,
           professionalName: data.professionalName,
           visitType: data.visitType,
@@ -860,7 +1100,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           ...buildStructuredMedicalFields(data),
         });
 
-        await withTimeout(addLog(medicalLogData), SAVE_TIMEOUT_MS);
+        await withTimeout(addLog(logIdRef.current, medicalLogData), SAVE_TIMEOUT_MS);
         resetMedicalStates();
       } else {
         const createdBy = authUser
@@ -881,8 +1121,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           supplyPhotoEvidence: data.supplyPhotoEvidence,
           createdBy,
         });
-        await withTimeout(addLog(supplyLogData), SAVE_TIMEOUT_MS);
+        await withTimeout(addLog(logIdRef.current, supplyLogData), SAVE_TIMEOUT_MS);
       }
+
+      suppressAutosaveRef.current = true
+      await clearDraft()
+      // Nuevo id para el PRÓXIMO registro, por si este mismo
+      // formulario se reutiliza para otro sin desmontarse — así no
+      // reintenta sobreescribir el documento que se acaba de crear.
+      logIdRef.current = doc(collection(db, "logs")).id
 
       toast({
         title: "Reporte Guardado",
@@ -911,6 +1158,32 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         title: "Error al guardar",
         description: error instanceof Error ? error.message : "No se pudo guardar el reporte. Intenta de nuevo.",
       })
+    }
+  }
+
+  // Formulario inválido al intentar enviar: hace scroll al primer
+  // campo con error, lo enfoca, y muestra arriba un aviso con los
+  // nombres de los campos que faltan (en vez de dejar que el usuario
+  // busque manualmente cuál de todos los FormMessage está en rojo).
+  function onInvalid(errors: FieldErrors<ReportFormValues>) {
+    const fieldNames = Object.keys(errors) as Array<keyof ReportFormValues>
+    if (fieldNames.length === 0) {
+      setInvalidFieldsMessage(null)
+      return
+    }
+
+    const labels = fieldNames.map((f) => FIELD_LABELS_FOR_ERRORS[f] ?? f)
+    setInvalidFieldsMessage(
+      `Faltan ${labels.length} dato${labels.length === 1 ? "" : "s"} obligatorio${labels.length === 1 ? "" : "s"}: ${labels.join(", ")}`
+    )
+
+    const firstErrorField = fieldNames[0]
+    const selector =
+      firstErrorField === "evolutionNotes" ? `[name="evolutionNotes.0.note"]` : `[name="${firstErrorField}"]`
+    const el = document.querySelector<HTMLElement>(selector)
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.focus()
     }
   }
 
@@ -1086,7 +1359,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+          {invalidFieldsMessage && (
+            <Alert variant="destructive" className="mx-4 mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{invalidFieldsMessage}</AlertTitle>
+            </Alert>
+          )}
           <div className="space-y-4 p-4 max-h-[70vh] overflow-y-auto">
             <FormField
               control={form.control}
@@ -1097,10 +1376,20 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   <FormControl>
                     <RadioGroup
                       onValueChange={(value) => {
+                          // Reanuda el autoguardado (puede haber quedado
+                          // en pausa tras el guardado exitoso de un
+                          // registro anterior en esta misma instancia).
+                          suppressAutosaveRef.current = false
                           const currentResidentId = form.getValues("residentId");
+                          const currentShiftDate = form.getValues("shiftDate");
+                          const currentShiftType = form.getValues("shiftType");
+                          const currentEntryTimeOfDay = form.getValues("entryTimeOfDay");
                           form.reset({
                               residentId: currentResidentId,
                               reportType: value as "medico" | "suministro",
+                              shiftDate: currentShiftDate,
+                              shiftType: currentShiftType,
+                              entryTimeOfDay: currentEntryTimeOfDay,
                               evolutionNotes: [{ note: "" }],
                               supplyNotes: "",
                               photoEvidence: [],
@@ -1177,11 +1466,129 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   />
                 )}
                 <div className="p-2 bg-muted rounded-md col-span-full lg:col-span-2">
-                  <p className="text-sm font-medium text-muted-foreground">Fecha y Hora de Registro</p>
+                  <p className="text-sm font-medium text-muted-foreground">Hora de digitación (automática)</p>
                   <p className="text-sm">
                     {new Date(startDateRef.current).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {draftPrompt && (
+              <Alert className="border-blue-300 bg-blue-50">
+                <AlertTriangle className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800">
+                  Tienes un borrador
+                  {draftPrompt.updatedAt &&
+                    ` de las ${draftPrompt.updatedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
+                </AlertTitle>
+                <AlertDescription className="text-blue-800">
+                  <div className="flex gap-2 mt-2">
+                    <Button type="button" size="sm" onClick={() => applyDraft(draftPrompt)}>
+                      Continuar
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={discardDraft}>
+                      Empezar de nuevo
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {reportType && (
+              <div className="space-y-3 pt-4 border-t">
+                <FormLabel className="font-semibold">
+                  ¿De qué turno es este registro? <span className="text-destructive">*</span>
+                </FormLabel>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {recentShifts.map((shift, idx) => (
+                    <Button
+                      key={idx}
+                      type="button"
+                      variant={shiftOptionIndex === idx ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShiftOptionIndex(idx)}
+                    >
+                      {shiftOptionLabel(shift, idx === 0)}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    variant={shiftOptionIndex === "other" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShiftOptionIndex("other")}
+                  >
+                    Otro turno
+                  </Button>
+                </div>
+
+                {shiftOptionIndex === "other" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Fecha del turno</label>
+                      <input
+                        type="date"
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                        value={otherShiftDate}
+                        onChange={(e) => setOtherShiftDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Turno</label>
+                      <div className="flex gap-1 border rounded-md p-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={otherShiftType === "dia" ? "default" : "ghost"}
+                          onClick={() => setOtherShiftType("dia")}
+                        >
+                          Día (7am-7pm)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={otherShiftType === "noche" ? "default" : "ghost"}
+                          onClick={() => setOtherShiftType("noche")}
+                        >
+                          Noche (7pm-7am)
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="entryTimeOfDay"
+                  render={({ field }) => {
+                    const shiftEnded = isShiftOver(selectedShift.shiftDate, selectedShift.shiftType, new Date())
+                    return (
+                      <FormItem>
+                        <FormLabel>
+                          Hora real del hecho {shiftEnded && <span className="text-destructive">*</span>}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            className="text-lg h-12 max-w-[200px]"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        {shiftEnded ? (
+                          <p className="text-xs text-muted-foreground">
+                            Este turno ya terminó — indica a qué hora ocurrió realmente.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            El turno sigue en curso — puedes ajustar la hora si es necesario.
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
               </div>
             )}
 
@@ -1892,11 +2299,21 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           </div>
 
           {reportType && (
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit" disabled={isLoading}>Guardar Reporte</Button>
+            <DialogFooter className="sm:justify-between items-center">
+              <p className="text-xs text-muted-foreground order-last sm:order-first">
+                {draftStatus === "saving" && "Guardando…"}
+                {draftStatus === "saved" && draftLastSavedAt &&
+                  `Borrador guardado ${draftLastSavedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
+                {draftStatus === "offline" && (
+                  <span className="text-amber-600">Sin conexión: se enviará al volver.</span>
+                )}
+              </p>
+              <div className="flex gap-2">
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button type="submit" disabled={isLoading}>Guardar Reporte</Button>
+              </div>
             </DialogFooter>
           )}
         </form>
