@@ -216,6 +216,31 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // COLECCIÓN: residentDrafts (autoguardado de resident-form.tsx)
+    // Mismo esquema que logDrafts, ya corregido: get solo valida el
+    // prefijo del id (sin tocar resource.data, para no negar con
+    // error la lectura de un borrador que todavía no existe);
+    // create exige request.resource.data.userId == uid + el prefijo;
+    // update y delete exigen resource.data.userId == uid, y update
+    // además request.resource.data.userId == uid. Sin `list`: el
+    // hook solo hace lecturas puntuales por id (getDoc), nunca
+    // consulta la colección completa. Sin acceso para familiares.
+    // ============================================================
+    match /residentDrafts/{draftId} {
+      allow get: if isStaff() && draftId.matches(request.auth.uid + '_.*');
+      allow delete: if isStaff() &&
+        resource.data.userId == request.auth.uid &&
+        draftId.matches(request.auth.uid + '_.*');
+      allow update: if isStaff() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
+        draftId.matches(request.auth.uid + '_.*');
+      allow create: if isStaff() &&
+        request.resource.data.userId == request.auth.uid &&
+        draftId.matches(request.auth.uid + '_.*');
+    }
+
+    // ============================================================
     // COLECCIÓN: resident_contracts
     // Staff mantiene su acceso actual; familiar solo lee el
     // contrato de su residente asignado.
