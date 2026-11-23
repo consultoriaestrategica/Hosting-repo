@@ -6,8 +6,8 @@ import {
   collection,
   query,
   onSnapshot,
-  addDoc,
   doc,
+  setDoc,
   updateDoc,
   deleteDoc,
   Timestamp,
@@ -230,15 +230,23 @@ export function useLogs() {
   // -------------------------------------------------
   // Crear un nuevo LOG
   // -------------------------------------------------
-  const addLog = useCallback(async (data: NewLogInput) => {
+  // `id` es OBLIGATORIO (no autogenerado con addDoc): con la cache
+  // local de Firestore (persistentLocalCache en lib/firebase.ts),
+  // addDoc() sin internet nunca resuelve y el withTimeout() del
+  // llamador lo marcaba como error, aunque la escritura real seguía
+  // en cola — si el usuario reintentaba, el registro quedaba
+  // duplicado al volver la señal. El llamador genera el id UNA SOLA
+  // VEZ por instancia del formulario (useRef) y usa setDoc(), que con
+  // el mismo id es idempotente: reintentar sobreescribe el mismo
+  // documento en vez de crear uno nuevo.
+  const addLog = useCallback(async (id: string, data: NewLogInput) => {
     const now = new Date()
-    const logsColRef = collection(db, "logs")
     const payload = {
       ...data,
       createdAt: Timestamp.fromDate(now),
       updatedAt: Timestamp.fromDate(now),
     }
-    await addDoc(logsColRef, payload)
+    await setDoc(doc(db, "logs", id), payload)
   }, [])
 
   // -------------------------------------------------

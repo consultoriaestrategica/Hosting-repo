@@ -2,7 +2,8 @@
 
 import { useEffect, useCallback, useRef } from "react"
 import { signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase"
+import { waitForPendingWrites } from "firebase/firestore"
+import { auth, db } from "@/lib/firebase"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
@@ -18,13 +19,25 @@ export function useInactivityLogout() {
 
   const handleLogout = useCallback(async () => {
     try {
+      // Si queda un borrador o un registro con la escritura todavia
+      // en cola (ej. logDrafts guardandose por el autoguardado de
+      // new-log-form.tsx), esperamos a que el servidor la confirme
+      // antes de cerrar sesion — waitForPendingWrites() resuelve de
+      // inmediato si no hay nada pendiente, y no resuelve en absoluto
+      // mientras no haya conexion, lo que de hecho pospone el cierre
+      // de sesion sin necesidad de un timeout explicito.
+      toast({
+        title: "Guardando cambios pendientes…",
+        description: "La sesión se cerrará en cuanto se confirme el guardado.",
+      })
+      await waitForPendingWrites(db)
       await signOut(auth)
       router.push("/login")
     } catch (error) {
       console.error("Error al cerrar sesión por inactividad:", error)
       router.push("/login")
     }
-  }, [router])
+  }, [router, toast])
 
   const showWarning = useCallback(() => {
     if (!isWarningShown.current) {

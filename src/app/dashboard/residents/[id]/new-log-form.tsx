@@ -18,7 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
@@ -28,6 +28,8 @@ import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
 import { useShiftClosures } from "@/hooks/use-shift-closures"
 import { useLogDraft, type LogDraftRecord } from "@/hooks/use-log-draft"
+import { db } from "@/lib/firebase"
+import { collection, doc } from "firebase/firestore"
 import {
   getRecentShifts,
   isShiftOver,
@@ -254,6 +256,25 @@ type ReportFormValues = z.infer<typeof reportFormSchema>
 type PhotoEvidence = z.infer<typeof photoEvidenceSchema>
 type DictationField = `evolutionNotes.${number}.note` | "supplyNotes";
 
+// Nombres legibles para el aviso "Faltan N datos obligatorios" — ver
+// onInvalid() más abajo.
+const FIELD_LABELS_FOR_ERRORS: Record<string, string> = {
+  residentId: "Residente",
+  reportType: "Tipo de registro",
+  shiftDate: "Turno",
+  shiftType: "Turno",
+  entryTimeOfDay: "Hora real del hecho",
+  heartRate: "F.C",
+  respiratoryRate: "F.R",
+  spo2: "SpO₂",
+  bloodPressureSys: "T/A sistólica",
+  bloodPressureDia: "T/A diastólica",
+  temperature: "Temperatura",
+  evolutionNotes: "Nota de evolución",
+  supplierName: "Nombre de quien entrega",
+  supplyDescription: "Descripción del suministro",
+}
+
 // Firestore rechaza cualquier valor `undefined` explicito en un
 // addDoc/setDoc/updateDoc, tanto en un campo raiz como anidado dentro
 // de un array (ej. evolutionEntries). Los signos vitales de este
@@ -326,6 +347,12 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const maxFileSize = 10 * 1024 * 1024;
 
   const startDateRef = React.useRef<string>(new Date().toISOString());
+  // Id del log generado una sola vez por intento de guardado — ver
+  // comentario en addLog() (use-logs.ts) sobre por qué setDoc() con
+  // este mismo id en cada reintento es lo que hace el guardado
+  // idempotente (sin esto, reintentar tras un timeout sin internet
+  // duplicaba el registro al volver la señal).
+  const logIdRef = React.useRef<string>(doc(collection(db, "logs")).id);
   const [isListening, setIsListening] = useState(false);
   const [activeDictationField, setActiveDictationField] = useState<DictationField | null>(null);
   const recognitionRef = React.useRef<SpeechRecognition | null>(null);
@@ -451,6 +478,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const [draftPrompt, setDraftPrompt] = useState<LogDraftRecord | null>(null)
   const [draftResolved, setDraftResolved] = useState(false)
   const suppressAutosaveRef = useRef(false)
+  const [invalidFieldsMessage, setInvalidFieldsMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setDraftResolved(false)
@@ -956,6 +984,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   }
 
   async function onSubmit(data: ReportFormValues) {
+    setInvalidFieldsMessage(null)
     if (isListening) {
       recognitionRef.current?.stop()
     }
@@ -1071,7 +1100,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           ...buildStructuredMedicalFields(data),
         });
 
-        await withTimeout(addLog(medicalLogData), SAVE_TIMEOUT_MS);
+        await withTimeout(addLog(logIdRef.current, medicalLogData), SAVE_TIMEOUT_MS);
         resetMedicalStates();
       } else {
         const createdBy = authUser
@@ -1092,11 +1121,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
           supplyPhotoEvidence: data.supplyPhotoEvidence,
           createdBy,
         });
-        await withTimeout(addLog(supplyLogData), SAVE_TIMEOUT_MS);
+        await withTimeout(addLog(logIdRef.current, supplyLogData), SAVE_TIMEOUT_MS);
       }
 
       suppressAutosaveRef.current = true
       await clearDraft()
+      // Nuevo id para el PRÓXIMO registro, por si este mismo
+      // formulario se reutiliza para otro sin desmontarse — así no
+      // reintenta sobreescribir el documento que se acaba de crear.
+      logIdRef.current = doc(collection(db, "logs")).id
 
       toast({
         title: "Reporte Guardado",
@@ -1125,6 +1158,32 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         title: "Error al guardar",
         description: error instanceof Error ? error.message : "No se pudo guardar el reporte. Intenta de nuevo.",
       })
+    }
+  }
+
+  // Formulario inválido al intentar enviar: hace scroll al primer
+  // campo con error, lo enfoca, y muestra arriba un aviso con los
+  // nombres de los campos que faltan (en vez de dejar que el usuario
+  // busque manualmente cuál de todos los FormMessage está en rojo).
+  function onInvalid(errors: FieldErrors<ReportFormValues>) {
+    const fieldNames = Object.keys(errors) as Array<keyof ReportFormValues>
+    if (fieldNames.length === 0) {
+      setInvalidFieldsMessage(null)
+      return
+    }
+
+    const labels = fieldNames.map((f) => FIELD_LABELS_FOR_ERRORS[f] ?? f)
+    setInvalidFieldsMessage(
+      `Faltan ${labels.length} dato${labels.length === 1 ? "" : "s"} obligatorio${labels.length === 1 ? "" : "s"}: ${labels.join(", ")}`
+    )
+
+    const firstErrorField = fieldNames[0]
+    const selector =
+      firstErrorField === "evolutionNotes" ? `[name="evolutionNotes.0.note"]` : `[name="${firstErrorField}"]`
+    const el = document.querySelector<HTMLElement>(selector)
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      el.focus()
     }
   }
 
@@ -1300,7 +1359,13 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+          {invalidFieldsMessage && (
+            <Alert variant="destructive" className="mx-4 mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{invalidFieldsMessage}</AlertTitle>
+            </Alert>
+          )}
           <div className="space-y-4 p-4 max-h-[70vh] overflow-y-auto">
             <FormField
               control={form.control}
@@ -1311,6 +1376,10 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   <FormControl>
                     <RadioGroup
                       onValueChange={(value) => {
+                          // Reanuda el autoguardado (puede haber quedado
+                          // en pausa tras el guardado exitoso de un
+                          // registro anterior en esta misma instancia).
+                          suppressAutosaveRef.current = false
                           const currentResidentId = form.getValues("residentId");
                           const currentShiftDate = form.getValues("shiftDate");
                           const currentShiftType = form.getValues("shiftType");
