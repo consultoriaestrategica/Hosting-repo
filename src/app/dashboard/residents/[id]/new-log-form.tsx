@@ -26,7 +26,17 @@ import { useLogs, type MedicalLogFields } from "@/hooks/use-logs"
 import { useResidents } from "@/hooks/use-residents"
 import { useUser } from "@/hooks/use-user"
 import { useAuth } from "@/hooks/use-auth"
-import React, { useState, useEffect, useRef } from "react"
+import { useShiftClosures } from "@/hooks/use-shift-closures"
+import {
+  getRecentShifts,
+  isShiftOver,
+  resolveShiftEntryDateTime,
+  validateShiftEntryDateTime,
+  calculateIsLateEntry,
+  type Shift,
+  type ShiftType,
+} from "@/lib/shift-coverage"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { 
   Mic, 
@@ -113,6 +123,14 @@ const photoEvidenceSchema = z.object({
 const reportFormSchema = z.object({
   residentId: z.string({ required_error: "Debe seleccionar un residente." }).min(1, "Debe seleccionar un residente."),
   reportType: z.enum(["medico", "suministro"], { required_error: "Debe seleccionar un tipo de reporte." }),
+
+  // Registros por turno: a qué turno pertenece este registro y la
+  // hora real del hecho (ver superRefine más abajo para su validación
+  // cruzada contra la ventana del turno elegido).
+  shiftDate: z.string().min(1, "Debe seleccionar un turno."),
+  shiftType: z.enum(["dia", "noche"], { required_error: "Debe seleccionar un turno." }),
+  entryTimeOfDay: z.string().optional(),
+
   heartRate: z.coerce.number().optional(),
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
@@ -152,6 +170,32 @@ const reportFormSchema = z.object({
   supplyNotes: z.string().optional(),
   supplyPhotoEvidence: z.array(photoEvidenceSchema).optional(),
 }).superRefine((data, ctx) => {
+    // Hora real del hecho: obligatoria si el turno elegido ya
+    // terminó (no se puede asumir "ahora"); opcional mientras el
+    // turno sigue en curso, pero si se escribe igual debe caer dentro
+    // de la ventana de ese turno y no ser futura.
+    if (data.shiftDate && data.shiftType) {
+        const now = new Date()
+        const shiftEnded = isShiftOver(data.shiftDate, data.shiftType, now)
+        if (shiftEnded && (!data.entryTimeOfDay || data.entryTimeOfDay.trim().length === 0)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['entryTimeOfDay'],
+                message: "La hora real del hecho es obligatoria porque el turno ya terminó.",
+            });
+        } else if (data.entryTimeOfDay) {
+            const resolved = resolveShiftEntryDateTime(data.shiftDate, data.shiftType, data.entryTimeOfDay)
+            const validation = validateShiftEntryDateTime(data.shiftDate, data.shiftType, resolved, now)
+            if (!validation.valid) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['entryTimeOfDay'],
+                    message: validation.error ?? "Hora inválida.",
+                });
+            }
+        }
+    }
+
     if (data.reportType === 'suministro') {
         if (!data.supplierName || data.supplierName.trim().length < 3) {
             ctx.addIssue({
@@ -265,6 +309,7 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const { residents } = useResidents()
   const { user: authUser } = useAuth()
   const { user: staffUser } = useUser()
+  const { getShiftClosure } = useShiftClosures()
 
   const allowedImageTypes = {
     'image/jpeg': ['.jpg', '.jpeg'],
@@ -314,11 +359,38 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
   const [gluco2hAlmuerzoChecked, setGluco2hAlmuerzoChecked] = useState(false)
   const [gluco2hCenaChecked, setGluco2hCenaChecked] = useState(false)
 
+  // ============================================================
+  // Registros por turno: "¿De qué turno es este registro?" — el
+  // turno actual + los 2 anteriores como opciones rápidas, más "otro
+  // turno" (fecha + día/noche) para digitación tardía fuera de esas 3.
+  // ============================================================
+  const recentShifts = useMemo(() => getRecentShifts(new Date()), [])
+  const [shiftOptionIndex, setShiftOptionIndex] = useState<number | "other">(0)
+  const [otherShiftDate, setOtherShiftDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })
+  const [otherShiftType, setOtherShiftType] = useState<ShiftType>("dia")
+
+  const selectedShift: { shiftDate: string; shiftType: ShiftType } =
+    shiftOptionIndex === "other"
+      ? { shiftDate: otherShiftDate, shiftType: otherShiftType }
+      : { shiftDate: recentShifts[shiftOptionIndex].shiftDate, shiftType: recentShifts[shiftOptionIndex].type }
+
+  function shiftOptionLabel(shift: Shift, isCurrent: boolean): string {
+    const dateLabel = shift.start.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
+    const turnoLabel = shift.type === "dia" ? "Día (7am-7pm)" : "Noche (7pm-7am)"
+    return `${turnoLabel} · ${dateLabel}${isCurrent ? " (actual)" : ""}`
+  }
+
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
     defaultValues: {
       residentId: residentId || "",
       reportType: undefined,
+      shiftDate: recentShifts[0].shiftDate,
+      shiftType: recentShifts[0].type,
+      entryTimeOfDay: "",
       heartRate: undefined,
       respiratoryRate: undefined,
       spo2: undefined,
@@ -631,6 +703,25 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
     };
   }, [residentId, form]);
 
+  // Sincroniza el turno elegido al form, y propone una hora por
+  // defecto para "hora real del hecho": si el turno sigue en curso,
+  // la hora actual (editable); si ya terminó, se deja vacío para que
+  // el usuario esté obligado a digitarla (ver superRefine del schema).
+  useEffect(() => {
+    form.setValue("shiftDate", selectedShift.shiftDate, { shouldValidate: false })
+    form.setValue("shiftType", selectedShift.shiftType, { shouldValidate: false })
+
+    const now = new Date()
+    if (!isShiftOver(selectedShift.shiftDate, selectedShift.shiftType, now)) {
+      const hh = String(now.getHours()).padStart(2, "0")
+      const mm = String(now.getMinutes()).padStart(2, "0")
+      form.setValue("entryTimeOfDay", `${hh}:${mm}`, { shouldValidate: false })
+    } else {
+      form.setValue("entryTimeOfDay", "", { shouldValidate: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShift.shiftDate, selectedShift.shiftType])
+
   // 👉 Construye un resumen estructurado con todos los campos médicos
   function buildMedicalSummary(data: ReportFormValues) {
     const lines: string[] = []
@@ -784,16 +875,49 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
       recognitionRef.current?.stop()
     }
 
+    // Bloqueo por turno cerrado: el id de shiftClosures no es
+    // determinista (ver use-shift-closures.ts), así que esta
+    // verificación es solo del lado del cliente — no hay un path fijo
+    // contra el cual firestore.rules pueda validar esto con exists().
+    try {
+      const existingClosure = await getShiftClosure(data.residentId, data.shiftDate, data.shiftType)
+      if (existingClosure) {
+        toast({
+          variant: "destructive",
+          title: "Este turno ya fue cerrado",
+          description: "No se pueden agregar nuevos registros a un turno ya cerrado. Selecciona otro turno.",
+        })
+        return
+      }
+    } catch (error) {
+      console.error("Error al verificar si el turno está cerrado:", error)
+    }
+
     const currentTime = new Date().toLocaleTimeString('es-ES', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     });
 
+    // enteredAt: hora real de digitación (no editable). eventDate:
+    // hora real del hecho — la que elige el usuario si el turno ya
+    // terminó o si la ajustó manualmente; "ahora" si el turno sigue en
+    // curso y no la tocó. isLateEntry se calcula sobre enteredAt, no
+    // sobre eventDate (ver calculateIsLateEntry en shift-coverage.ts).
+    const enteredAt = new Date()
+    const eventDate = data.entryTimeOfDay
+      ? resolveShiftEntryDateTime(data.shiftDate, data.shiftType, data.entryTimeOfDay)
+      : enteredAt
+    const isLateEntry = calculateIsLateEntry(data.shiftDate, data.shiftType, enteredAt)
+
     const baseLogData = {
       residentId: data.residentId,
       startDate: startDateRef.current,
-      endDate: new Date().toISOString(),
+      endDate: eventDate.toISOString(),
+      shiftDate: data.shiftDate,
+      shiftType: data.shiftType,
+      enteredAt: enteredAt.toISOString(),
+      isLateEntry,
       reportType: data.reportType,
     }
 
@@ -822,7 +946,9 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
         // anidado dentro de evolutionEntries (un array) en el documento.
         const initialEvolutionEntry = omitUndefined({
           id: `evo-${Date.now()}`,
-          createdAt: new Date().toISOString(),
+          createdAt: eventDate.toISOString(),
+          enteredAt: enteredAt.toISOString(),
+          isLateEntry,
           createdTimeLabel: currentTime,
           professionalName: data.professionalName,
           visitType: data.visitType,
@@ -1098,9 +1224,15 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                     <RadioGroup
                       onValueChange={(value) => {
                           const currentResidentId = form.getValues("residentId");
+                          const currentShiftDate = form.getValues("shiftDate");
+                          const currentShiftType = form.getValues("shiftType");
+                          const currentEntryTimeOfDay = form.getValues("entryTimeOfDay");
                           form.reset({
                               residentId: currentResidentId,
                               reportType: value as "medico" | "suministro",
+                              shiftDate: currentShiftDate,
+                              shiftType: currentShiftType,
+                              entryTimeOfDay: currentEntryTimeOfDay,
                               evolutionNotes: [{ note: "" }],
                               supplyNotes: "",
                               photoEvidence: [],
@@ -1177,11 +1309,108 @@ export default function NewLogForm({ residentId, onFormSubmit }: NewReportFormPr
                   />
                 )}
                 <div className="p-2 bg-muted rounded-md col-span-full lg:col-span-2">
-                  <p className="text-sm font-medium text-muted-foreground">Fecha y Hora de Registro</p>
+                  <p className="text-sm font-medium text-muted-foreground">Hora de digitación (automática)</p>
                   <p className="text-sm">
                     {new Date(startDateRef.current).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {reportType && (
+              <div className="space-y-3 pt-4 border-t">
+                <FormLabel className="font-semibold">
+                  ¿De qué turno es este registro? <span className="text-destructive">*</span>
+                </FormLabel>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {recentShifts.map((shift, idx) => (
+                    <Button
+                      key={idx}
+                      type="button"
+                      variant={shiftOptionIndex === idx ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShiftOptionIndex(idx)}
+                    >
+                      {shiftOptionLabel(shift, idx === 0)}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    variant={shiftOptionIndex === "other" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShiftOptionIndex("other")}
+                  >
+                    Otro turno
+                  </Button>
+                </div>
+
+                {shiftOptionIndex === "other" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Fecha del turno</label>
+                      <input
+                        type="date"
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                        value={otherShiftDate}
+                        onChange={(e) => setOtherShiftDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Turno</label>
+                      <div className="flex gap-1 border rounded-md p-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={otherShiftType === "dia" ? "default" : "ghost"}
+                          onClick={() => setOtherShiftType("dia")}
+                        >
+                          Día (7am-7pm)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={otherShiftType === "noche" ? "default" : "ghost"}
+                          onClick={() => setOtherShiftType("noche")}
+                        >
+                          Noche (7pm-7am)
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="entryTimeOfDay"
+                  render={({ field }) => {
+                    const shiftEnded = isShiftOver(selectedShift.shiftDate, selectedShift.shiftType, new Date())
+                    return (
+                      <FormItem>
+                        <FormLabel>
+                          Hora real del hecho {shiftEnded && <span className="text-destructive">*</span>}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            className="text-lg h-12 max-w-[200px]"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        {shiftEnded ? (
+                          <p className="text-xs text-muted-foreground">
+                            Este turno ya terminó — indica a qué hora ocurrió realmente.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            El turno sigue en curso — puedes ajustar la hora si es necesario.
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
               </div>
             )}
 

@@ -17,6 +17,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useLogs, EvolutionEntry, Log } from "@/hooks/use-logs"
 import { useToast } from "@/hooks/use-toast"
+import {
+  getShiftForDate,
+  isShiftOver,
+  resolveShiftEntryDateTime,
+  validateShiftEntryDateTime,
+  calculateIsLateEntry,
+} from "@/lib/shift-coverage"
 
 const evolutionSchema = z.object({
   note: z.string().min(3, "La nota es obligatoria"),
@@ -24,6 +31,7 @@ const evolutionSchema = z.object({
   respiratoryRate: z.coerce.number().optional(),
   spo2: z.coerce.number().optional(),
   professionalName: z.string().optional(),
+  entryTimeOfDay: z.string().optional(),
 })
 
 type EvolutionFormValues = z.infer<typeof evolutionSchema>
@@ -37,6 +45,19 @@ export function PartialEvolutionForm({ log, onSaved }: PartialEvolutionFormProps
   const { addEvolutionEntry } = useLogs()
   const { toast } = useToast()
 
+  // El turno al que pertenece este log: si el log ya trae
+  // shiftDate/shiftType (registros creados después de este cambio) se
+  // usan directo; los logs viejos lo derivan de endDate, igual que
+  // hace shift-coverage.ts en cualquier otro lugar donde falten estos
+  // campos — sin necesidad de migrar datos existentes.
+  const logShift = log.shiftDate && log.shiftType
+    ? { shiftDate: log.shiftDate, shiftType: log.shiftType }
+    : (() => {
+        const derived = getShiftForDate(new Date(log.endDate))
+        return { shiftDate: derived.shiftDate, shiftType: derived.type }
+      })()
+  const shiftEnded = isShiftOver(logShift.shiftDate, logShift.shiftType, new Date())
+
   const form = useForm<EvolutionFormValues>({
     resolver: zodResolver(evolutionSchema),
     defaultValues: {
@@ -45,19 +66,42 @@ export function PartialEvolutionForm({ log, onSaved }: PartialEvolutionFormProps
       respiratoryRate: undefined,
       spo2: undefined,
       professionalName: "",
+      entryTimeOfDay: "",
     },
   })
 
   async function onSubmit(data: EvolutionFormValues) {
-    const now = new Date()
+    const enteredAt = new Date()
+
+    if (shiftEnded && (!data.entryTimeOfDay || data.entryTimeOfDay.trim().length === 0)) {
+      form.setError("entryTimeOfDay", {
+        message: "La hora real del hecho es obligatoria porque el turno de este registro ya terminó.",
+      })
+      return
+    }
+
+    let eventDate = enteredAt
+    if (data.entryTimeOfDay) {
+      const resolved = resolveShiftEntryDateTime(logShift.shiftDate, logShift.shiftType, data.entryTimeOfDay)
+      const validation = validateShiftEntryDateTime(logShift.shiftDate, logShift.shiftType, resolved, enteredAt)
+      if (!validation.valid) {
+        form.setError("entryTimeOfDay", { message: validation.error ?? "Hora inválida." })
+        return
+      }
+      eventDate = resolved
+    }
+
+    const isLateEntry = calculateIsLateEntry(logShift.shiftDate, logShift.shiftType, enteredAt)
 
     const entry: EvolutionEntry = {
       id: crypto.randomUUID(),
-      createdAt: now.toISOString(),
-      createdTimeLabel: now.toLocaleTimeString("es-ES", {
+      createdAt: eventDate.toISOString(),
+      createdTimeLabel: eventDate.toLocaleTimeString("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
       }),
+      enteredAt: enteredAt.toISOString(),
+      isLateEntry,
       note: data.note,
     }
 
@@ -174,6 +218,31 @@ export function PartialEvolutionForm({ log, onSaved }: PartialEvolutionFormProps
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="entryTimeOfDay"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Hora real del hecho {shiftEnded && <span className="text-destructive">*</span>}
+              </FormLabel>
+              <FormControl>
+                <Input type="time" className="text-lg h-12 max-w-[200px]" {...field} value={field.value || ""} />
+              </FormControl>
+              {shiftEnded ? (
+                <p className="text-xs text-muted-foreground">
+                  El turno de este registro ya terminó — indica a qué hora ocurrió realmente.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  El turno sigue en curso — puedes ajustar la hora si es necesario.
+                </p>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

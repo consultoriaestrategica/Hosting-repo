@@ -288,23 +288,30 @@ function LogsPageContent() {
                         {(log as any).createdBy?.displayName || "—"}
                       </p>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={`shrink-0 ${
-                        log.reportType === "medico"
-                          ? "border-blue-500"
-                          : "border-orange-500"
-                      }`}
-                    >
-                      {log.reportType === "medico" ? (
-                        <Stethoscope className="h-3 w-3 mr-1" />
-                      ) : (
-                        <Truck className="h-3 w-3 mr-1" />
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge
+                        variant="outline"
+                        className={`shrink-0 ${
+                          log.reportType === "medico"
+                            ? "border-blue-500"
+                            : "border-orange-500"
+                        }`}
+                      >
+                        {log.reportType === "medico" ? (
+                          <Stethoscope className="h-3 w-3 mr-1" />
+                        ) : (
+                          <Truck className="h-3 w-3 mr-1" />
+                        )}
+                        <span className="text-[11px]">
+                          {log.reportType === "medico" ? "Médico" : "Suministro"}
+                        </span>
+                      </Badge>
+                      {(log as any).isLateEntry && (
+                        <Badge variant="outline" className="border-amber-600 text-amber-700 text-[10px] px-1.5 py-0">
+                          Después del turno
+                        </Badge>
                       )}
-                      <span className="text-[11px]">
-                        {log.reportType === "medico" ? "Médico" : "Suministro"}
-                      </span>
-                    </Badge>
+                    </div>
                   </div>
 
                   <p className="text-sm text-muted-foreground pt-2 border-t line-clamp-2">
@@ -385,10 +392,17 @@ function LogsPageContent() {
                   paginatedLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-medium">
-                        {new Date(log.endDate).toLocaleString("es-ES", {
-                          dateStyle: "long",
-                          timeStyle: "short",
-                        })}
+                        <div>
+                          {new Date(log.endDate).toLocaleString("es-ES", {
+                            dateStyle: "long",
+                            timeStyle: "short",
+                          })}
+                        </div>
+                        {(log as any).isLateEntry && (
+                          <Badge variant="outline" className="border-amber-600 text-amber-700 text-[10px] px-1.5 py-0 mt-1">
+                            Después del turno
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Link

@@ -93,6 +93,89 @@ export function getShiftClosingStatus(shiftEnd: Date, now: Date, canCloseEarly: 
 }
 
 // ============================================================
+// REGISTROS POR TURNO (registro/cierre fuera de la ventana normal)
+// ============================================================
+
+// El turno actual + los `count-1` inmediatamente anteriores, mas
+// reciente primero — para el selector "De que turno es este
+// registro" en new-log-form.tsx. Retrocede medio turno (restando 1ms
+// al inicio del turno ya encontrado) en cada vuelta, igual que
+// shift-closure-form.tsx hace para encontrar "el turno que acaba de
+// terminar".
+export function getRecentShifts(now: Date, count: number = 3): Shift[] {
+  const shifts: Shift[] = []
+  let cursor = getShiftForDate(now)
+  shifts.push(cursor)
+  for (let i = 1; i < count; i++) {
+    cursor = getShiftForDate(new Date(cursor.start.getTime() - 1))
+    shifts.push(cursor)
+  }
+  return shifts
+}
+
+// Si el turno elegido (shiftDate/shiftType) ya termino respecto a
+// `now`. Determina si la hora real del hecho es obligatoria (turno ya
+// terminado) u opcional con default "ahora" (turno en curso).
+export function isShiftOver(shiftDate: string, shiftType: ShiftType, now: Date): boolean {
+  const { end } = getShiftWindow(shiftDate, shiftType)
+  return now >= end
+}
+
+// Combina la fecha+turno elegidos con una hora de reloj "HH:mm" en la
+// Date real que le corresponde. De noche, una hora menor a las 07:00
+// pertenece al dia calendario SIGUIENTE a shiftDate (el turno noche
+// cruza medianoche) — por eso no basta "shiftDate + hora", hay que
+// decidir a cual de los 2 dias calendario corresponde, igual que
+// getShiftForDate() decide con el mismo limite de las 07:00.
+export function resolveShiftEntryDateTime(shiftDate: string, shiftType: ShiftType, timeOfDay: string): Date {
+  const [y, m, d] = shiftDate.split("-").map(Number)
+  const [hh, mm] = timeOfDay.split(":").map(Number)
+  if (shiftType === "dia") {
+    return new Date(y, m - 1, d, hh, mm, 0, 0)
+  }
+  const dayOffset = hh < 7 ? 1 : 0
+  return new Date(y, m - 1, d + dayOffset, hh, mm, 0, 0)
+}
+
+export interface ShiftEntryValidation {
+  valid: boolean
+  error?: string
+}
+
+// La hora real del hecho debe caer dentro de la ventana del turno
+// elegido (noche incluida, ver resolveShiftEntryDateTime) y no puede
+// ser futura respecto a `now`.
+export function validateShiftEntryDateTime(
+  shiftDate: string,
+  shiftType: ShiftType,
+  entryDate: Date,
+  now: Date
+): ShiftEntryValidation {
+  if (Number.isNaN(entryDate.getTime())) {
+    return { valid: false, error: "Hora inválida." }
+  }
+  const { start, end } = getShiftWindow(shiftDate, shiftType)
+  if (entryDate < start || entryDate >= end) {
+    return { valid: false, error: "La hora debe estar dentro del turno seleccionado." }
+  }
+  if (entryDate > now) {
+    return { valid: false, error: "La hora no puede ser futura." }
+  }
+  return { valid: true }
+}
+
+// Un registro queda marcado "despues del turno" solo si la DIGITACION
+// (enteredAt, hora real en que se guardo — no editable) ocurrio
+// pasado el mismo limite que usa el cierre normal (fin del turno + 2h,
+// NORMAL_CLOSE_GRACE_HOURS). No depende de la hora real del hecho
+// (endDate), que puede caer en cualquier punto dentro del turno.
+export function calculateIsLateEntry(shiftDate: string, shiftType: ShiftType, enteredAt: Date): boolean {
+  const { end } = getShiftWindow(shiftDate, shiftType)
+  const graceEnd = new Date(end.getTime() + NORMAL_CLOSE_GRACE_HOURS * 60 * 60 * 1000)
+  return enteredAt >= graceEnd
+}
+
+// ============================================================
 // COBERTURA DE CAMPOS OBLIGATORIOS
 // ============================================================
 

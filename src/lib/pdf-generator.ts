@@ -44,6 +44,7 @@ interface EvolutionEntry {
   temperature?: number
   fastingGlucose?: number
   skinStatus?: string
+  isLateEntry?: boolean
 }
 
 interface PhotoEvidenceItem {
@@ -62,6 +63,7 @@ interface Log {
   residentName?: string
   reportType: "medico" | "suministro"
   endDate: string
+  isLateEntry?: boolean
   createdBy?: { uid: string; displayName: string; email: string }
   heartRate?: number
   respiratoryRate?: number
@@ -116,6 +118,13 @@ function formatDateTime(dateStr: string): string {
   } catch {
     return dateStr || "No registrada"
   }
+}
+
+// Sufijo para la columna "Tipo" de los reportes internos cuando el
+// registro se digito pasada la ventana normal (fin del turno + 2h).
+// Nunca se usa en el portal familiar, que no genera estos reportes.
+function lateEntryLabel(isLateEntry?: boolean): string {
+  return isLateEntry ? " (Despues del turno)" : ""
 }
 
 function calculateAge(dob: string): number {
@@ -370,7 +379,7 @@ export function generateIndividualReport(resident: Resident, logs: Log[]): void 
       head: [["Fecha", "Tipo", "Detalle"]],
       body: residentLogs.map((l) => [
         formatDateTime(l.endDate),
-        l.reportType === "medico" ? "Medico" : "Suministro",
+        (l.reportType === "medico" ? "Medico" : "Suministro") + lateEntryLabel(l.isLateEntry),
         getLogPreview(l),
       ]),
       styles: { fontSize: 7, cellPadding: 2, textColor: [44, 62, 53] },
@@ -432,7 +441,7 @@ export function generateDateRangeReport(logs: Log[], residents: Resident[], from
       return [
         formatDateTime(l.endDate),
         resName,
-        isMed ? "Medico" : "Suministro",
+        (isMed ? "Medico" : "Suministro") + lateEntryLabel(l.isLateEntry),
         isMed ? (l.heartRate?.toString() || "-") : "-",
         isMed ? (l.respiratoryRate?.toString() || "-") : "-",
         isMed ? (l.spo2?.toString() || "-") : "-",
@@ -484,7 +493,7 @@ function renderLogBlock(doc: jsPDF, log: Log, y: number, headerLabel: string): n
         head: [["#", "Hora", "Profesional", "Tipo visita", "FC", "FR", "SpO2", "T/A", "Temp", "Nota de evolucion"]],
         body: sortedEntries.map((e, i) => [
           String(i + 1),
-          e.createdTimeLabel || "-",
+          (e.createdTimeLabel || "-") + (e.isLateEntry ? " *" : ""),
           e.professionalName || "-",
           e.visitType || "-",
           e.heartRate ? `${e.heartRate}` : "-",
@@ -511,6 +520,13 @@ function renderLogBlock(doc: jsPDF, log: Log, y: number, headerLabel: string): n
         margin: { left: 14, right: 14 },
       })
       y = (doc as any).lastAutoTable.finalY + 4
+      if (sortedEntries.some((e) => e.isLateEntry)) {
+        doc.setFontSize(6)
+        doc.setFont("helvetica", "italic")
+        doc.text("* Registrado después del turno", 16, y)
+        doc.setFont("helvetica", "normal")
+        y += 5
+      }
     } else {
       // Formato viejo: signos vitales sueltos a nivel de log + texto libre
       const vitals: string[][] = []
@@ -662,7 +678,7 @@ export function generateResidentLogsReport(resident: Resident, logs: Log[], from
 
   // Detalle registro por registro
   filtered.forEach((log, idx) => {
-    const headerLabel = `Registro #${idx + 1} - ${log.reportType === "medico" ? "Evolucion Medica" : "Suministro"} - ${formatDateTime(log.endDate)}`
+    const headerLabel = `Registro #${idx + 1} - ${log.reportType === "medico" ? "Evolucion Medica" : "Suministro"}${lateEntryLabel(log.isLateEntry)} - ${formatDateTime(log.endDate)}`
     y = renderLogBlock(doc, log, y, headerLabel)
   })
 
@@ -689,7 +705,7 @@ export function generateLogDetailReport(log: Log, residentName: string, resident
   doc.text(`Registrado por: ${sanitize(log.createdBy?.displayName)}`, 14, y)
   y += 8
 
-  const headerLabel = log.reportType === "medico" ? "Evolucion Medica" : "Suministro"
+  const headerLabel = (log.reportType === "medico" ? "Evolucion Medica" : "Suministro") + lateEntryLabel(log.isLateEntry)
   y = renderLogBlock(doc, log, y, headerLabel)
 
   if (log.notes) {
@@ -772,7 +788,7 @@ export function generateAllLogsReport(logs: Log[], residents: Resident[]): void 
         return [
           formatDateTime(l.endDate),
           resName,
-          isMed ? "Medico" : "Suministro",
+          (isMed ? "Medico" : "Suministro") + lateEntryLabel(l.isLateEntry),
           isMed ? (l.heartRate?.toString() || "-") : "-",
           isMed ? (l.respiratoryRate?.toString() || "-") : "-",
           isMed ? (l.spo2?.toString() || "-") : "-",
