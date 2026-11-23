@@ -315,6 +315,33 @@ describe("getShiftClosingStatus", () => {
     const now = new Date(2026, 8, 16, 10, 0, 0)
     expect(getShiftClosingStatus(shiftEnd, now)).toBe("late")
   })
+
+  // Turno noche: termina a las 07:00 del dia siguiente. Misma ventana
+  // de gracia de 2h (NORMAL_CLOSE_GRACE_HOURS), nunca una hora fija de
+  // "9am" hardcodeada — se recalcula a partir de shiftEnd igual que de
+  // dia, solo que acá shiftEnd ya cae al dia siguiente.
+  describe("turno noche (shiftEnd = 07:00 del dia siguiente)", () => {
+    const nightShiftEnd = new Date(2026, 8, 16, 7, 0, 0, 0)
+
+    it("normal justo al terminar el turno (07:00)", () => {
+      expect(getShiftClosingStatus(nightShiftEnd, nightShiftEnd)).toBe("normal")
+    })
+
+    it("normal hasta las 08:59:59", () => {
+      const now = new Date(2026, 8, 16, 8, 59, 59)
+      expect(getShiftClosingStatus(nightShiftEnd, now)).toBe("normal")
+    })
+
+    it("late justo al cumplirse las 2 horas de gracia (09:00:00)", () => {
+      const now = new Date(2026, 8, 16, 9, 0, 0)
+      expect(getShiftClosingStatus(nightShiftEnd, now)).toBe("late")
+    })
+
+    it("too-early antes de que termine el turno noche, sin permiso de cierre anticipado", () => {
+      const now = new Date(2026, 8, 16, 6, 59, 59)
+      expect(getShiftClosingStatus(nightShiftEnd, now)).toBe("too-early")
+    })
+  })
 })
 
 describe("calculateShiftCoverage - lastVitalsSnapshot y logIds", () => {

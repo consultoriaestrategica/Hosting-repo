@@ -68,7 +68,10 @@ export function getShiftForDate(date: Date): Shift {
 export type ClosingStatus = "too-early" | "early" | "normal" | "late"
 
 // Confirmado con el cliente: 2 horas de gracia despues del fin del
-// turno para cerrar sin necesitar el permiso close_shift_override.
+// turno para que el cierre cuente como "normal". Pasada esa ventana
+// cualquier staff con permiso de cerrar puede seguir cerrando (el
+// personal de enfermeria no siempre alcanza a cerrar a tiempo) — solo
+// queda marcado isLate: true, ya no exige ningun permiso adicional.
 const NORMAL_CLOSE_GRACE_HOURS = 2
 
 // too-early: antes de que termine el turno, SIN el permiso
@@ -80,8 +83,9 @@ const NORMAL_CLOSE_GRACE_HOURS = 2
 //   anticipadamente.
 // normal: entre el fin del turno y el fin + 2h -> cualquier staff con
 //   create_reports/edit_reports.
-// late: despues de esas 2h -> requiere el permiso close_shift_override
-//   (Administrador/Supervisor) y el cierre queda marcado isLate: true.
+// late: despues de esas 2h -> permitido para cualquier staff con
+//   permiso de cerrar turno (sin restriccion adicional de rol); el
+//   cierre queda marcado isLate: true.
 export function getShiftClosingStatus(shiftEnd: Date, now: Date, canCloseEarly: boolean = false): ClosingStatus {
   if (now < shiftEnd) return canCloseEarly ? "early" : "too-early"
   const graceEnd = new Date(shiftEnd.getTime() + NORMAL_CLOSE_GRACE_HOURS * 60 * 60 * 1000)
