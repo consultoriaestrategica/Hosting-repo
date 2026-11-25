@@ -20,11 +20,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { useResidents, type Resident } from "@/hooks/use-residents"
+import { useResidentDraft, type ResidentDraftRecord } from "@/hooks/use-resident-draft"
 import React, { useState, useEffect } from "react"
 import { UploadCloud, File as FileIcon, X, PlusCircle, Trash2, CalendarDays, Weight, AlertTriangle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -73,6 +75,11 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({})
   const [activeTab, setActiveTab] = useState("general")
   const hasInitialized = React.useRef(false)
+  // true cuando el formulario ya tiene los valores correctos para
+  // empezar a revisar/autoguardar un borrador: de una vez en modo
+  // create, o recién después del form.reset() de abajo en modo edit
+  // (antes de eso form.getValues() todavía tendría los emptyDefaults).
+  const [formReady, setFormReady] = useState(mode === "create")
 
   useEffect(() => {
     setIsClient(true)
@@ -119,6 +126,7 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
     setUploadedFiles(initialDocs)
 
     hasInitialized.current = true
+    setFormReady(true)
   }, [mode, resident, form])
 
   const { fields: familyContactFields, append: appendFamilyContact, remove: removeFamilyContact } = useFieldArray({
@@ -130,6 +138,105 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
     control: form.control,
     name: "medications",
   })
+
+  // ============================================================
+  // Autoguardado de borrador: un borrador por usuario+caso (alta
+  // nueva, o edición de este residente puntual). El autoguardado real
+  // queda en pausa (draftResolved=false) hasta que se revise si existe
+  // un borrador previo y el usuario decida continuarlo o descartarlo
+  // — así no se pisa un borrador real con el formulario recién
+  // inicializado.
+  // ============================================================
+  const { status: draftStatus, lastSavedAt: draftLastSavedAt, loadDraft, saveDraft, clearDraft } = useResidentDraft(
+    mode,
+    residentId
+  )
+  const [draftPrompt, setDraftPrompt] = useState<ResidentDraftRecord | null>(null)
+  const [draftResolved, setDraftResolved] = useState(false)
+  const [draftConflict, setDraftConflict] = useState(false)
+  // updatedAt del residente capturado al empezar a editar (o el que
+  // traía el borrador, si se continúa uno) — se manda en cada
+  // guardado del borrador sin volver a recapturarlo, para que la
+  // comparación contra el updatedAt ACTUAL del residente (al reabrir
+  // el formulario más adelante) siga siendo contra el mismo punto de
+  // partida.
+  const residentUpdatedAtSnapshotRef = React.useRef<string | null>(null)
+  const initialValuesJsonRef = React.useRef<string | null>(null)
+
+  function valuesForDraft(values: Record<string, unknown>): Record<string, unknown> {
+    // documents nunca lleva archivos (eso vive aparte en
+    // uploadedFiles), pero igual se excluye del borrador por
+    // prolijidad — los metadatos no aportan nada al continuar.
+    const { documents, ...rest } = values
+    return rest
+  }
+
+  useEffect(() => {
+    if (!formReady) return
+    setDraftResolved(false)
+    setDraftPrompt(null)
+    setDraftConflict(false)
+    initialValuesJsonRef.current = JSON.stringify(valuesForDraft(form.getValues() as Record<string, unknown>))
+    residentUpdatedAtSnapshotRef.current = resident?.updatedAt ?? null
+
+    let cancelled = false
+    loadDraft().then((draft) => {
+      if (cancelled) return
+      if (draft) {
+        setDraftPrompt(draft)
+        if (
+          mode === "edit" &&
+          draft.residentUpdatedAtSnapshot &&
+          resident?.updatedAt &&
+          resident.updatedAt > draft.residentUpdatedAtSnapshot
+        ) {
+          setDraftConflict(true)
+        }
+      } else {
+        setDraftResolved(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formReady])
+
+  function applyDraft(draft: ResidentDraftRecord) {
+    form.reset({
+      ...form.getValues(),
+      ...(draft.values as Partial<ResidentFormValues>),
+    })
+    if (draft.activeTab) setActiveTab(draft.activeTab)
+    if (draft.residentUpdatedAtSnapshot !== null) {
+      residentUpdatedAtSnapshotRef.current = draft.residentUpdatedAtSnapshot
+    }
+    setDraftPrompt(null)
+    setDraftConflict(false)
+    setDraftResolved(true)
+  }
+
+  function discardDraft() {
+    clearDraft()
+    setDraftPrompt(null)
+    setDraftConflict(false)
+    setDraftResolved(true)
+  }
+
+  // Se suscribe a cualquier cambio del formulario; no guarda si el
+  // contenido es idéntico al que tenía al inicializarse (formulario
+  // intacto) — saveDraft() además decide internamente si de verdad
+  // cambió algo desde el último guardado antes de escribir.
+  useEffect(() => {
+    if (!draftResolved) return
+    const subscription = form.watch((values) => {
+      const rest = valuesForDraft(values as Record<string, unknown>)
+      if (JSON.stringify(rest) === initialValuesJsonRef.current) return
+      saveDraft(rest, activeTab, residentUpdatedAtSnapshotRef.current)
+    })
+    return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftResolved, activeTab])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     if (event.target.files && event.target.files[0]) {
@@ -187,11 +294,13 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
 
     if (mode === "create") {
       const newId = await addResident({ ...payload, documents: [] })
+      await clearDraft()
       toast({ title: "Borrador guardado", description: "Puedes completar la información más tarde." })
       router.push(`/dashboard/residents/${newId}`)
     } else {
       if (!resident) return
       await updateResident(resident.id, payload)
+      await clearDraft()
       toast({ title: "Borrador actualizado", description: "Aún faltan campos obligatorios para activar al residente." })
     }
   }
@@ -242,6 +351,7 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
         documents: documentsData,
       }
       addResident(newResident)
+      clearDraft()
       toast({
         title: "Residente Registrado",
         description: `${data.name} ha sido agregado exitosamente.`,
@@ -272,6 +382,7 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
     }
 
     updateResident(resident.id, updatedData)
+    clearDraft()
     toast({
       title: wasDraft ? "Residente activado exitosamente" : "Residente Actualizado",
       description: wasDraft
@@ -307,6 +418,29 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
             Completa los campos obligatorios marcados con <span className="text-destructive font-bold">*</span> y haz clic en "Guardar y activar" para activarlo.
           </p>
         </div>
+      )}
+      {draftPrompt && (
+        <Alert className={draftConflict ? "border-destructive bg-destructive/10 mb-6" : "border-blue-300 bg-blue-50 mb-6"}>
+          <AlertTriangle className={draftConflict ? "h-4 w-4 text-destructive" : "h-4 w-4 text-blue-600"} />
+          <AlertTitle className={draftConflict ? "text-destructive" : "text-blue-800"}>
+            {draftConflict
+              ? "Este residente fue modificado después de tu borrador"
+              : "Tienes un borrador"}
+            {!draftConflict && draftPrompt.updatedAt &&
+              ` de las ${draftPrompt.updatedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
+          </AlertTitle>
+          <AlertDescription className={draftConflict ? "text-destructive" : "text-blue-800"}>
+            {draftConflict && "Si continúas, podrías sobrescribir esos cambios."}
+            <div className="flex gap-2 mt-2">
+              <Button type="button" size="sm" onClick={() => applyDraft(draftPrompt)}>
+                Continuar
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={discardDraft}>
+                Empezar de nuevo
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8 pb-28 sm:pb-0">
@@ -412,6 +546,14 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
                         <CardTitle>Documentos Requeridos</CardTitle>
                         <CardDescription>{mode === "create" ? "Cargue los documentos obligatorios del residente." : "Actualice los documentos obligatorios del residente."}</CardDescription>
                     </CardHeader>
+                    {Object.values(uploadedFiles).some(f => f.file) && (
+                      <div className="px-6 -mt-2 mb-2">
+                        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span>Los archivos no se guardan en el borrador; tendrás que volver a adjuntarlos.</span>
+                        </div>
+                      </div>
+                    )}
                     <CardContent className="grid sm:grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                         {documentTypes.map((type) => (
                             <div key={type} className="space-y-2">
@@ -465,7 +607,15 @@ export default function ResidentForm({ mode, residentId }: { mode: "create" | "e
               </TabsContent>
            </Tabs>
 
-          <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t p-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:static sm:bg-transparent sm:border-0 sm:p-0">
+          <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t p-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:items-center gap-2 sm:static sm:bg-transparent sm:border-0 sm:p-0">
+            <p className="w-full text-center text-xs text-muted-foreground sm:w-auto sm:text-left sm:mr-auto">
+              {draftStatus === "saving" && "Guardando…"}
+              {draftStatus === "saved" && draftLastSavedAt &&
+                `Borrador guardado ${draftLastSavedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`}
+              {draftStatus === "offline" && (
+                <span className="text-amber-600">Sin conexión: se enviará al volver.</span>
+              )}
+            </p>
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
               Cancelar
             </Button>

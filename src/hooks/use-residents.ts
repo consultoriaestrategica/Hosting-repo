@@ -71,6 +71,11 @@ export type Resident = {
   dob?: string
   idNumber: string
   createdAt?: string
+  // Ausente en residentes que nunca se actualizaron desde que se
+  // agregó este campo (feat/autoguardado-residentes) — se usa para
+  // detectar si alguien más modificó el residente después de que
+  // empezó un borrador de edición (ver use-resident-draft.ts).
+  updatedAt?: string
   gender?: "Femenino" | "Masculino" | "Otro"
   medicalHistory?: string[]
   surgicalHistory?: string[]
@@ -244,8 +249,9 @@ export function useResidents() {
   const updateResident = useCallback(
     async (residentId: string, updated: Partial<Omit<Resident, "id">>) => {
       const residentDoc = doc(db, "residents", residentId)
+      const payload = { ...updated, updatedAt: new Date().toISOString() }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await updateDoc(residentDoc, sanitizeForFirestore(updated as Record<string, unknown>) as any)
+      await updateDoc(residentDoc, sanitizeForFirestore(payload as Record<string, unknown>) as any)
     },
     []
   )
